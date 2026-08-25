@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }} / ${{ matrix.powershell }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            powershell: pwsh
+          - os: windows-latest
+            powershell: powershell
+          - os: ubuntu-latest
+            powershell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap and test
+        shell: ${{ matrix.powershell }} {0}
+        run: |
+          ./build.ps1 -Bootstrap
+          ./build.ps1
