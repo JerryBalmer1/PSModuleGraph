@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://psmodulegraph.invalid/knowledge/pattern.schema.json",
+  "title": "Pattern",
+  "description": "A shape observed at two or more distinct scales. The ledger records what happened to the store; this records what the implementer understood.\n\nThe two-scale minimum is the reflection evidence rule pointed at patterns. One observation is an anecdote, and a log that accepts anecdotes fills with profundities and stops being read. minItems on `scales` is that rule made checkable.\n\nPatterns are NOT subjects and carry no URN. They are addressed by ledger id and filename. Whether they should become subjects classified by facets is open - see ledger 0004.",
+  "type": "object",
+  "required": ["ledger", "tag", "scales", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "ledger": {
+      "description": "The ledger id of the iteration that recorded this pattern, and the filename prefix. Not a date and not a version: two iterations can land on one day and dates do not order them, while the ledger id already increments and already ties to an annotated tag.",
+      "type": "string",
+      "pattern": "^[0-9]{4}$"
+    },
+    "tag": {
+      "description": "The annotated git tag the recording iteration was sealed with.",
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "scales": {
+      "description": "Where the shape was observed, two or more, each a name a reader can go and look up - a function, a file, a rule. Prose belongs in the body's 'Where it was seen' section. Short and comma-free because the store's front-matter grammar splits inline lists on the comma; a scale needing a sentence is a scale that has not been located yet.",
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[^,]+$"
+      }
+    },
+    "confidence": {
+      "description": "Required, and never defaults to 1 - the same rule the store applies to assignments. A shape seen twice and named once is not a law. If you are tempted to write 1 because you have nothing better, the honest value is lower and the body should say why.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    },
+    "supersedes": {
+      "description": "Pattern ids this one subsumes or corrects. Renames never delete, so a superseded pattern stays on disk and stays resolvable.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    }
+  }
+}
