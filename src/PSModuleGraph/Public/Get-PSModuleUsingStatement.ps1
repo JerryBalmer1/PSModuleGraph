@@ -43,30 +43,30 @@ function Get-PSModuleUsingStatement {
 
             foreach ($u in $usings) {
                 $kind = [string]$u.UsingStatementKind
-                $name = $null
+                $usingName = $null
                 $alias = $null
 
                 switch ($kind) {
                     'Namespace' {
-                        $name = if ($u.Name) { $u.Name.Value } else { $u.Extent.Text }
+                        $usingName = if ($u.Name) { $u.Name.Value } else { $u.Extent.Text }
                     }
                     'Assembly' {
-                        $name = if ($u.Name) { $u.Name.Value } else { $null }
-                        if (-not $name -and $u.ModuleName) { $name = $u.ModuleName.Value }
+                        $usingName = if ($u.Name) { $u.Name.Value } else { $null }
+                        if (-not $usingName -and $u.ModuleName) { $usingName = $u.ModuleName.Value }
                     }
                     'Module' {
                         if ($u.ModuleName) {
-                            $name = $u.ModuleName.Value
+                            $usingName = $u.ModuleName.Value
                         }
                         elseif ($u.Name) {
-                            $name = $u.Name.Value
+                            $usingName = $u.Name.Value
                         }
                     }
                     'Command' {
-                        $name = if ($u.Name) { $u.Name.Value } else { $null }
+                        $usingName = if ($u.Name) { $u.Name.Value } else { $null }
                     }
                     default {
-                        $name = $u.Extent.Text
+                        $usingName = $u.Extent.Text
                     }
                 }
 
@@ -79,7 +79,7 @@ function Get-PSModuleUsingStatement {
                     ModuleName    = $target.Name
                     ModuleVersion = $target.Version
                     Kind          = $kind
-                    Name          = $name
+                    Name          = $usingName
                     Alias         = $alias
                     Text          = $u.Extent.Text
                     Path          = $file.Path

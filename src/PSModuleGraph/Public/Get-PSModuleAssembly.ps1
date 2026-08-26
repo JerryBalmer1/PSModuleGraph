@@ -75,14 +75,14 @@ function Get-PSModuleAssembly {
 
             foreach ($entry in @(Get-HashtableValue -InputObject $manifestData -Key 'NestedModules' -Default @())) {
                 if (-not $entry) { continue }
-                $name = if ($entry -is [hashtable] -or $entry -is [System.Collections.IDictionary]) {
+                $nestedName = if ($entry -is [hashtable] -or $entry -is [System.Collections.IDictionary]) {
                     [string](Get-HashtableValue -InputObject $entry -Key 'ModuleName')
                 }
                 else { [string]$entry }
-                if (-not $name) { continue }
-                if ($name -like '*.dll') {
-                    $full = if ([System.IO.Path]::IsPathRooted($name)) { $name } else { Join-Path $target.ModuleBase $name }
-                    Add-AssemblyRecord -AssemblyName $name -Kind 'NestedModuleAssembly' -Source 'Manifest' -Path $full -Exists (Test-Path -LiteralPath $full)
+                if (-not $nestedName) { continue }
+                if ($nestedName -like '*.dll') {
+                    $full = if ([System.IO.Path]::IsPathRooted($nestedName)) { $nestedName } else { Join-Path $target.ModuleBase $nestedName }
+                    Add-AssemblyRecord -AssemblyName $nestedName -Kind 'NestedModuleAssembly' -Source 'Manifest' -Path $full -Exists (Test-Path -LiteralPath $full)
                 }
             }
 

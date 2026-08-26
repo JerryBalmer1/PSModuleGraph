@@ -128,7 +128,15 @@ function Get-PSModuleFileInventory {
     foreach ($pattern in $extensions) {
         Get-ChildItem -Path $moduleBase -Filter $pattern -File -Recurse -ErrorAction SilentlyContinue |
             Where-Object {
-                $_.FullName -notmatch '[\\/](\.git|output|tests|\.tools)[\\/]'
+                # Match exclusions against the module-relative path, not the absolute one.
+                # A module can legitimately live under a directory named 'tests' or
+                # 'output' (the test fixtures do); matching $_.FullName would silently
+                # drop every file in it.
+                $relative = $_.FullName
+                if ($relative.StartsWith($moduleBase, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $relative = $relative.Substring($moduleBase.Length)
+                }
+                $relative -notmatch '[\\/](\.git|output|tests|\.tools)[\\/]'
             } |
             ForEach-Object {
                 $ext = $_.Extension.ToLowerInvariant()
