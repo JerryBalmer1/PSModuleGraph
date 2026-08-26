@@ -5,6 +5,10 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -16,6 +20,8 @@ jobs:
         include:
           - os: windows-latest
             powershell: pwsh
+          # Windows PowerShell 5.1 is load-bearing: the manifest claims Desktop
+          # compatibility and this leg is the only thing proving it.
           - os: windows-latest
             powershell: powershell
           - os: ubuntu-latest
@@ -25,8 +31,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache PowerShell modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/powershell/Modules
+            ~/Documents/PowerShell/Modules
+            ~/Documents/WindowsPowerShell/Modules
+          key: ${{ runner.os }}-${{ matrix.powershell }}-psmodules-${{ hashFiles('Requirements.psd1') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.powershell }}-psmodules-
+
+      # -Bootstrap installs any missing dependency and then runs the default
+      # task (Clean, Lint, Build, Test), so one invocation is enough.
       - name: Bootstrap and test
         shell: ${{ matrix.powershell }} {0}
-        run: |
-          ./build.ps1 -Bootstrap
-          ./build.ps1
+        run: ./build.ps1 -Bootstrap
+
+      - name: Publish test results and coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.powershell }}
+          path: output/*.xml
+          if-no-files-found: warn
