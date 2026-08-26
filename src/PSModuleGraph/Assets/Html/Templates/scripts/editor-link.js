@@ -35,6 +35,21 @@
 
         if (location.protocol === 'vscode-webview:') { return true; }
 
+        // An editor preview pane runs the page in the editor's own Electron
+        // renderer. It is top-level and served over file:, so neither the frame
+        // check above nor the scheme check sees it - and yet a custom scheme
+        // never reaches the OS from there, because the Electron host swallows
+        // it without a prompt and without an error.
+        //
+        // The user agent is the only signal that separates this from a real
+        // browser: a browser never reports Electron/. Matched generically
+        // rather than on any one product name, because every Electron host has
+        // the same problem.
+        //
+        // This case looked exactly like a browser refusing the scheme, and cost
+        // a round of diagnosis aimed at the wrong layer. Do not remove it.
+        if (/\bElectron\//.test(navigator.userAgent)) { return true; }
+
         try {
             // Still worth checking: catches a TOP-LEVEL webview, which the
             // frame check above cannot see.

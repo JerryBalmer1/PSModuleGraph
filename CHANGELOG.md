@@ -213,6 +213,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A report opened in a VS Code preview pane claimed the browser was blocking
+  `vscode://` links.** It was not; no browser was involved. An editor preview
+  runs the page in the editor's own Electron renderer, which swallows a custom
+  scheme with no prompt and no error - the same silence a refusing browser
+  produces, and indistinguishable from it without looking at the user agent.
+
+  `isEmbeddedContext()` missed it because the page is genuinely top-level
+  (`window.top === window.self`), served over `file:` rather than
+  `vscode-webview:`, and reports no ancestor origins. Every check it had was
+  looking for a frame. It now also treats any user agent reporting `Electron/`
+  as embedded, matched generically rather than on a product name because every
+  Electron host has the same limitation.
+
+  The consequence was not cosmetic. The banner named a command that fixes a
+  browser policy, in an environment where no browser policy applies, sending a
+  whole round of diagnosis at the wrong layer. The message now says what is
+  actually true: the viewer cannot hand the URI to the operating system, so
+  re-open the report in a real browser or use **Copy Editor Link**.
 - **A stray coverage report was tracked at the repository root.** The build has
   always written coverage under `output/`; the root copy came from a bare
   `Invoke-Pester`, which defaults to the working directory. That is what the

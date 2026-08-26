@@ -439,6 +439,20 @@ been optimised in both directions already; do not do it a third time. If the
 editor path looks like an obvious improvement, it is the same one that was
 removed.
 
+**`isEmbeddedContext()` checks the user agent for `Electron/`, and that check is
+not redundant.** An editor preview pane is genuinely top-level, is served over
+`file:`, and reports no ancestor origins, so the frame check, the
+`vscode-webview:` check and the `ancestorOrigins` check all pass it as a normal
+browser. It is not one: the Electron host swallows a custom scheme with no
+prompt and no error, which is the same silence a refusing browser produces.
+
+Diagnosing this as a browser policy problem cost a full round. Before concluding
+that a browser is blocking the scheme, **read `navigator.userAgent` in the
+Diagnostics block.** A real browser never reports `Electron/`. Matched
+generically rather than on a product name, both because every Electron host has
+this limitation and because naming VS Code below the seam would violate the
+HTML subsystem directive.
+
 **The scoped `file:///*` origin default is a hypothesis, not a fact.** Chrome's
 URL pattern reference accepts `file:///*` as the only valid file wildcard, so it
 parses and the policy applies cleanly. Microsoft's Edge policy reference states

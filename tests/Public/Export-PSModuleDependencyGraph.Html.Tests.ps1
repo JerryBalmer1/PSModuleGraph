@@ -176,6 +176,19 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $offenders.Count | Should-Be 0
     }
 
+    It 'treats an Electron host as an embedded viewer' {
+        # A VS Code preview pane is top-level, served over file:, and reports no
+        # ancestor origins, so every other embedding check misses it - while a
+        # custom scheme still never reaches the OS from there. Reported for a
+        # real run as "your browser is blocking vscode:// links", which sent the
+        # diagnosis at the wrong layer entirely.
+        $script:Html | Should-MatchString 'Electron'
+        $script:Html | Should-MatchString 'test\(navigator\.userAgent\)'
+        # The user agent is in the diagnostics block too, which is how the host
+        # was identified in the first place.
+        $script:Html | Should-MatchString "\['navigator.userAgent', navigator.userAgent\]"
+    }
+
     It 'flips the arrowheads for test order' {
         # Test order ranks right-to-left so the page reads left-to-right in the
         # order to test. An arrow pointing at the callee would point backwards

@@ -207,17 +207,30 @@ Describe 'Enable-PSModuleGraphEditorLink' {
     }
 
     It 'leaves the real policy tree untouched' {
-        # The guard on every test above. If a default leaked through, this is
-        # where it would show.
+        # The guard on every test above. Compares before against after rather
+        # than asserting the real tree is empty: whoever runs this suite may
+        # legitimately have granted the policy on their own machine, and an
+        # emptiness check cannot tell that apart from a test leaking. It also
+        # fails for the wrong reason the moment they do, which is exactly what
+        # happened here.
+        $readReal = {
+            param($Path)
+            if (-not (Test-Path -LiteralPath $Path)) { return '(no key)' }
+            $item = Get-ItemProperty -LiteralPath $Path -Name 'AutoLaunchProtocolsFromOrigins' -ErrorAction SilentlyContinue
+            if (-not $item) { return '(no value)' }
+            $item.AutoLaunchProtocolsFromOrigins
+        }
+        $realPolicy = 'HKCU:\SOFTWARE\Policies\Google\Chrome'
+        $realBackup = 'HKCU:\SOFTWARE\PSModuleGraph\EditorLinkBackup'
+
+        $before = & $readReal $realPolicy
+        $backupBefore = @(Get-ChildItem -LiteralPath $realBackup -ErrorAction SilentlyContinue).Count
+
         Enable-PSModuleGraphEditorLink -Browser Chrome -PolicyRoot $script:PolicyRoot `
             -LocalStateRoot $TestDrive -BackupRoot $script:BackupRoot -Confirm:$false | Out-Null
 
-        $real = 'HKCU:\SOFTWARE\Policies\Google\Chrome'
-        if (Test-Path -LiteralPath $real) {
-            $value = (Get-ItemProperty -LiteralPath $real -Name 'AutoLaunchProtocolsFromOrigins' -ErrorAction SilentlyContinue)
-            if ($value) { $value.AutoLaunchProtocolsFromOrigins | Should-NotMatchString 'file:///\*' }
-        }
-        Test-Path -LiteralPath 'HKCU:\SOFTWARE\PSModuleGraph\EditorLinkBackup' | Should-BeFalse
+        (& $readReal $realPolicy) | Should-Be $before
+        @(Get-ChildItem -LiteralPath $realBackup -ErrorAction SilentlyContinue).Count | Should-Be $backupBefore
     }
 }
 

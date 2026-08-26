@@ -21,7 +21,7 @@
     EditorLinkNoLaunch            = 'Nothing opened. Your browser is blocking vscode:// links. Run {editorLinkHelpCommand} in PowerShell, restart your browser, and try again. Or use Copy Editor Link and paste it into the Run dialog.'
     EditorLinkNoLaunchNoCommand   = 'Nothing opened. Your browser is blocking vscode:// links. Use Copy Editor Link and paste it into the Run dialog.'
     BannerCopyLabel               = 'Copy command'
-    EmbeddedViewer                = 'Opened in an embedded viewer. Open File Location is disabled - open this file in a browser to jump to source.'
+    EmbeddedViewer                = 'Opened in an embedded viewer, which cannot hand a vscode:// link to the operating system - no prompt appears and nothing reports the failure. Open File Location is disabled here. Re-open this report in a real browser, or use Copy Editor Link and paste the URI into the Run dialog.'
     ScaleGuard                    = 'This module has {count} nodes. Above ~{limit} the layout stops being readable, so the view starts filtered to exported functions. Uncheck "Exported only" to see everything.'
 
     # -- Header ------------------------------------------------------------
