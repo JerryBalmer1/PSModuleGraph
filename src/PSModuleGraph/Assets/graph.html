@@ -28,6 +28,13 @@ html, body {
     margin: 0;
     padding: 0;
     height: 100%;
+    /* The layout is exactly viewport-sized and must never scroll at the document
+       level. Cytoscape sizes its canvases ~15px larger than their container; if
+       that overflow reaches the document it produces a scrollbar, which shrinks
+       the viewport, which fires Cytoscape's resize handler, which re-renders and
+       re-triggers the overflow. The page then flickers in a permanent resize
+       loop. Only #sidebar scrolls. */
+    overflow: hidden;
     background: var(--bg);
     color: var(--fg);
     font: 13px/1.5 "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
@@ -61,8 +68,10 @@ header .counts b { color: var(--fg); font-weight: 600; }
     padding: 12px;
 }
 
-#canvas-wrap { flex: 1 1 auto; position: relative; min-width: 0; }
-#cy { position: absolute; inset: 0; }
+/* Both clip Cytoscape's oversized canvases so the overflow never reaches the
+   document. See the note on html, body above. */
+#canvas-wrap { flex: 1 1 auto; position: relative; min-width: 0; overflow: hidden; }
+#cy { position: absolute; inset: 0; overflow: hidden; }
 
 .section { margin-bottom: 18px; }
 .section > h2 {
@@ -144,6 +153,8 @@ input[type="range"] { width: 100%; }
 #banner button { margin-left: auto; flex: 0 0 auto; background: transparent; border-color: transparent; color: inherit; }
 
 #template-notice {
+    max-height: 100%;
+    overflow-y: auto;
     margin: 40px auto;
     max-width: 640px;
     padding: 20px 24px;
@@ -155,7 +166,7 @@ input[type="range"] { width: 100%; }
 #template-notice h2 { margin-top: 0; font-size: 15px; }
 #template-notice code { background: var(--panel-2); padding: 1px 5px; border-radius: 3px; }
 
-.fatal { margin: 60px auto; max-width: 620px; padding: 24px; background: var(--panel); border: 1px solid var(--danger); border-radius: 6px; }
+.fatal { max-height: 100%; overflow-y: auto; margin: 60px auto; max-width: 620px; padding: 24px; background: var(--panel); border: 1px solid var(--danger); border-radius: 6px; }
 .fatal h2 { margin-top: 0; color: var(--danger); font-size: 16px; }
 </style>
 </head>

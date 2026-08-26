@@ -2,6 +2,9 @@
 output/
 *.nupkg
 
+# Generated HTML reports exported to the repo root.
+# Assets/graph.html is the template and lives under src/, so it is unaffected.
+/*.html
 # PowerShell
 *.pssc
 *.psd1.bak

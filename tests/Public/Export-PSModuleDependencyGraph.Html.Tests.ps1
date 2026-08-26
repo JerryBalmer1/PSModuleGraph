@@ -88,6 +88,18 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should-BeFalse
     }
 
+    It 'keeps the document-level overflow guard' {
+        # Not a style assertion. Cytoscape sizes its canvases larger than their
+        # container; if that overflow reaches the document it adds a scrollbar,
+        # which shrinks the viewport, which fires Cytoscape's resize handler,
+        # which re-renders and re-triggers the overflow. The page then flickers
+        # in a permanent resize loop and is unusable. Removing any of these three
+        # declarations reopens that loop, and no other test would catch it.
+        $script:Html | Should-MatchString 'html, body \{[^}]*overflow: hidden;'
+        $script:Html | Should-MatchString '#canvas-wrap \{[^}]*overflow: hidden;'
+        $script:Html | Should-MatchString '#cy \{[^}]*overflow: hidden;'
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'
