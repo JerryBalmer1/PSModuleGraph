@@ -2,13 +2,643 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__PAGE_TITLE__</title>
+<style>
+:root {
+    --bg: #12161c;
+    --panel: #1a1f27;
+    --panel-2: #222834;
+    --line: #2e3644;
+    --fg: #e6edf6;
+    --fg-dim: #98a4b6;
+    --accent: #4da3ff;
+    --warn: #f2c14e;
+    --danger: #ff7043;
+    --fn: #4da3ff;
+    --cls: #f2c14e;
+    --enum: #6ddf6d;
+    --script: #9b8cff;
+    --ext: #ff7043;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font: 13px/1.5 "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+}
+
+#app { display: flex; flex-direction: column; height: 100%; }
+
+header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+}
+header h1 { margin: 0; font-size: 15px; font-weight: 600; }
+header .version { color: var(--fg-dim); font-size: 12px; }
+header .counts { margin-left: auto; display: flex; gap: 14px; color: var(--fg-dim); font-size: 12px; }
+header .counts b { color: var(--fg); font-weight: 600; }
+
+#main { flex: 1 1 auto; display: flex; min-height: 0; }
+
+#sidebar {
+    flex: 0 0 280px;
+    width: 280px;
+    overflow-y: auto;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    padding: 12px;
+}
+
+#canvas-wrap { flex: 1 1 auto; position: relative; min-width: 0; }
+#cy { position: absolute; inset: 0; }
+
+.section { margin-bottom: 18px; }
+.section > h2 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--fg-dim);
+    font-weight: 600;
+}
+
+input[type="search"], input[type="text"] {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--fg);
+    font: inherit;
+}
+input[type="search"]:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+label.check { display: flex; align-items: center; gap: 7px; padding: 3px 0; cursor: pointer; }
+label.check .swatch { width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
+label.check .count { margin-left: auto; color: var(--fg-dim); font-size: 11px; }
+
+button {
+    padding: 6px 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--fg);
+    font: inherit;
+    cursor: pointer;
+}
+button:hover { background: #2b3340; }
+.btn-row { display: flex; gap: 8px; }
+.btn-row button { flex: 1; }
+
+input[type="range"] { width: 100%; }
+.radio-row { display: flex; flex-direction: column; gap: 2px; }
+.radio-row label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.hint { color: var(--fg-dim); font-size: 11px; margin: 2px 0 0; }
+
+#details { border-top: 1px solid var(--line); padding-top: 12px; }
+#details dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
+#details dt { color: var(--fg-dim); font-size: 11px; }
+#details dd { margin: 0; word-break: break-word; }
+.path {
+    font-family: Consolas, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 4px 6px;
+    user-select: all;
+    display: block;
+}
+
+.legend { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--fg-dim); }
+.legend .row { display: flex; align-items: center; gap: 7px; }
+.legend .line { width: 22px; height: 0; border-top-width: 2px; flex: 0 0 auto; }
+.legend .ring { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
+
+#banner {
+    position: absolute;
+    top: 10px; left: 10px; right: 10px;
+    z-index: 10;
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 12px;
+    background: #3a3016;
+    border: 1px solid var(--warn);
+    border-radius: 4px;
+    color: #f8e7bd;
+    font-size: 12px;
+}
+#banner button { margin-left: auto; flex: 0 0 auto; background: transparent; border-color: transparent; color: inherit; }
+
+#template-notice {
+    margin: 40px auto;
+    max-width: 640px;
+    padding: 20px 24px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--warn);
+    border-radius: 4px;
+}
+#template-notice h2 { margin-top: 0; font-size: 15px; }
+#template-notice code { background: var(--panel-2); padding: 1px 5px; border-radius: 3px; }
+
+.fatal { margin: 60px auto; max-width: 620px; padding: 24px; background: var(--panel); border: 1px solid var(--danger); border-radius: 6px; }
+.fatal h2 { margin-top: 0; color: var(--danger); font-size: 16px; }
+</style>
 </head>
 <body>
-<h1>__PAGE_TITLE__</h1>
+
+<div id="app" hidden>
+    <header>
+        <h1 id="hdr-title">__PAGE_TITLE__</h1>
+        <span class="version" id="hdr-version"></span>
+        <div class="counts">
+            <span><b id="c-nodes">0</b> nodes</span>
+            <span><b id="c-edges">0</b> edges</span>
+            <span><b id="c-roots">0</b> roots</span>
+        </div>
+    </header>
+    <div id="main">
+        <aside id="sidebar">
+            <div class="section">
+                <h2>Search</h2>
+                <input type="search" id="search" placeholder="Filter by name" autocomplete="off">
+            </div>
+            <div class="section">
+                <h2>Kinds</h2>
+                <div id="kind-filters"></div>
+            </div>
+            <div class="section">
+                <h2>Filters</h2>
+                <label class="check"><input type="checkbox" id="exported-only"> Exported only</label>
+                <div id="unresolved-wrap" hidden>
+                    <label class="check"><input type="checkbox" id="show-unresolved"> Show unresolved</label>
+                </div>
+            </div>
+            <div class="section" id="focus-section">
+                <h2>Focus</h2>
+                <p class="hint" id="focus-hint">Select a node to focus its neighbourhood.</p>
+                <div id="focus-controls" hidden>
+                    <label for="depth">Depth: <b id="depth-val">2</b></label>
+                    <input type="range" id="depth" min="1" max="5" step="1" value="2">
+                    <div class="radio-row">
+                        <label><input type="radio" name="dir" value="dependents" checked> Dependents <span class="hint">(what breaks)</span></label>
+                        <label><input type="radio" name="dir" value="dependencies"> Dependencies <span class="hint">(what it needs)</span></label>
+                        <label><input type="radio" name="dir" value="both"> Both</label>
+                    </div>
+                </div>
+            </div>
+            <div class="section btn-row">
+                <button type="button" id="clear-focus">Clear focus</button>
+                <button type="button" id="fit">Fit</button>
+            </div>
+            <div class="section">
+                <h2>Legend</h2>
+                <div class="legend" id="legend"></div>
+            </div>
+            <div class="section" id="details">
+                <h2>Details</h2>
+                <p class="hint" id="details-empty">Click a node.</p>
+                <dl id="details-list" hidden></dl>
+            </div>
+        </aside>
+        <div id="canvas-wrap">
+            <div id="banner">
+                <span id="banner-text"></span>
+                <button type="button" id="banner-close" aria-label="Dismiss">&times;</button>
+            </div>
+            <div id="cy"></div>
+        </div>
+    </div>
+</div>
+
+<div id="template-notice" hidden>
+    <h2>Raw template</h2>
+    <p>This is the unpopulated <code>graph.html</code> template from PSModuleGraph, opened directly.
+       It has no graph data in it.</p>
+    <p>To generate a real report:</p>
+    <p><code>Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;Export-PSModuleDependencyGraph -Format Html -Show</code></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.34.2/dist/cytoscape.min.js"
+        integrity="sha384-BSWdCKSCDnBW0jqCFJdI+wvv6v62CWMcVb9LSwnq973ykOGAzHY5tQMOjvOTJNpj"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@4.0.0/dist/cytoscape-dagre.min.js"
+        integrity="sha384-ZB0G8+HSDcFhSFvwJP3rhJhh2sU/lJrfRrhqis4Gg7pP/CQ2IUzl86Gdlu3S17UF"
+        crossorigin="anonymous"></script>
+<script>
+// Runs immediately after the CDN tags. A blank white page is the worst failure
+// mode here and it is exactly what happens offline, so say so plainly instead.
+if (typeof cytoscape === 'undefined') {
+    document.body.innerHTML =
+        '<div class="fatal">' +
+        '<h2>Could not load the graph library</h2>' +
+        '<p>This page renders with Cytoscape, loaded from a CDN, so it needs internet access ' +
+        'the first time it is opened. Your browser could not fetch it.</p>' +
+        '<p>Reconnect and reload. Once cached, the page works offline. If you are behind a proxy ' +
+        'that blocks jsdelivr.net, the data is still readable: use ' +
+        '<code>Export-PSModuleDependencyGraph -Format Json</code> instead.</p>' +
+        '</div>';
+}
+</script>
+
 <script>
 const GRAPH_DATA = /*__GRAPH_DATA__*/ null;
 const GRAPH_META = /*__GRAPH_META__*/ null;
+
+(function () {
+    'use strict';
+
+    if (typeof cytoscape === 'undefined') { return; }
+
+    // Opened as a raw template rather than a generated report.
+    if (!GRAPH_DATA) {
+        document.getElementById('template-notice').hidden = false;
+        return;
+    }
+
+    document.getElementById('app').hidden = false;
+
+    var NODE_LIMIT = 400;
+    var KIND_COLOR = {
+        Function: 'var(--fn)', Class: 'var(--cls)', Enum: 'var(--enum)',
+        Script: 'var(--script)', External: 'var(--ext)'
+    };
+    var KIND_HEX = {
+        Function: '#4da3ff', Class: '#f2c14e', Enum: '#6ddf6d',
+        Script: '#9b8cff', External: '#ff7043'
+    };
+
+    var meta = GRAPH_META || {};
+    var nodes = GRAPH_DATA.nodes || [];
+    var links = GRAPH_DATA.links || [];
+    var unresolved = GRAPH_DATA.unresolved || [];
+
+    // ---- header ----------------------------------------------------------
+    document.getElementById('hdr-version').textContent =
+        (meta.moduleVersion ? 'v' + meta.moduleVersion : '') +
+        (meta.generatedAt ? '  ·  generated ' + meta.generatedAt : '');
+    document.getElementById('c-nodes').textContent = nodes.length;
+    document.getElementById('c-edges').textContent = links.length;
+    document.getElementById('c-roots').textContent = (GRAPH_DATA.roots || []).length;
+
+    // ---- inbound counts drive node size ----------------------------------
+    var inbound = {};
+    nodes.forEach(function (n) { inbound[n.id] = 0; });
+    links.forEach(function (l) {
+        if (inbound[l.target] !== undefined) { inbound[l.target] += 1; }
+    });
+    var maxIn = 1;
+    Object.keys(inbound).forEach(function (k) { if (inbound[k] > maxIn) { maxIn = inbound[k]; } });
+
+    function sizeFor(id) {
+        // Clamped so one hot node cannot dominate the canvas.
+        var t = maxIn > 0 ? (inbound[id] || 0) / maxIn : 0;
+        return 20 + Math.round(Math.sqrt(t) * 34);
+    }
+
+    // ---- build elements --------------------------------------------------
+    var els = [];
+    nodes.forEach(function (n) {
+        els.push({
+            data: {
+                id: n.id, name: n.name, kind: n.kind,
+                isExported: !!n.isExported, path: n.path || '',
+                startLine: n.startLine, size: sizeFor(n.id),
+                color: KIND_HEX[n.kind] || '#8895a7',
+                inbound: inbound[n.id] || 0
+            }
+        });
+    });
+    links.forEach(function (l, i) {
+        els.push({
+            data: {
+                id: 'e' + i, source: l.source, target: l.target,
+                kind: l.kind || 'CommandReference'
+            }
+        });
+    });
+
+    // Unresolved targets become External nodes. Edges whose origin is not a real
+    // node (module:manifest, using:module) are shown as isolated nodes rather
+    // than dropped, matching the "report, never discard" rule.
+    var realIds = {};
+    nodes.forEach(function (n) { realIds[n.id] = true; });
+    var extSeen = {};
+    unresolved.forEach(function (u, i) {
+        var extId = 'external:' + u.targetName;
+        if (!extSeen[extId]) {
+            extSeen[extId] = true;
+            els.push({
+                data: {
+                    id: extId, name: u.targetName, kind: 'External',
+                    isExported: false, path: u.path || '', startLine: u.startLine,
+                    size: 20, color: KIND_HEX.External, inbound: 0, unresolved: true
+                },
+                classes: 'unresolved'
+            });
+        }
+        if (u.source && realIds[u.source]) {
+            els.push({
+                data: { id: 'u' + i, source: u.source, target: extId, kind: 'Unresolved' },
+                classes: 'unresolved'
+            });
+        }
+    });
+
+    // ---- cytoscape -------------------------------------------------------
+    if (typeof cytoscapeDagre !== 'undefined' && cytoscape.use) {
+        try { cytoscape.use(cytoscapeDagre); } catch (e) { /* already registered */ }
+    }
+
+    var cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: els,
+        wheelSensitivity: 0.2,
+        style: [
+            {
+                selector: 'node',
+                style: {
+                    'background-color': 'data(color)',
+                    'label': 'data(name)',
+                    'color': '#e6edf6',
+                    'font-size': 10,
+                    'text-valign': 'bottom',
+                    'text-margin-y': 4,
+                    'text-outline-color': '#12161c',
+                    'text-outline-width': 2,
+                    'width': 'data(size)',
+                    'height': 'data(size)',
+                    'border-width': 1,
+                    'border-color': '#12161c'
+                }
+            },
+            {
+                // Export status is a border, not a fill, so it survives greyscale
+                // and colourblindness.
+                selector: 'node[?isExported]',
+                style: { 'border-width': 4, 'border-color': '#e6edf6' }
+            },
+            { selector: 'node.unresolved', style: { 'shape': 'diamond', 'border-style': 'dashed', 'border-width': 2, 'border-color': '#ff7043' } },
+            {
+                selector: 'edge',
+                style: {
+                    'width': 1.4,
+                    'line-color': '#6b7785',
+                    'target-arrow-color': '#6b7785',
+                    'target-arrow-shape': 'triangle',
+                    'arrow-scale': 0.8,
+                    'curve-style': 'bezier'
+                }
+            },
+            { selector: 'edge[kind = "Inherits"]', style: { 'line-color': '#f2c14e', 'target-arrow-color': '#f2c14e', 'line-style': 'dashed', 'width': 2 } },
+            { selector: 'edge[kind = "Unresolved"]', style: { 'line-color': '#ff7043', 'target-arrow-color': '#ff7043', 'line-style': 'dotted' } },
+            { selector: '.dimmed', style: { 'opacity': 0.15, 'text-opacity': 0.15 } },
+            { selector: 'node.selected-node', style: { 'border-color': '#4da3ff', 'border-width': 5 } },
+            { selector: '.hidden', style: { 'display': 'none' } }
+        ]
+    });
+
+    function runLayout() {
+        var name = 'dagre';
+        try {
+            cy.layout({ name: 'dagre', rankDir: 'LR', nodeSep: 26, rankSep: 70, animate: false }).run();
+        } catch (e) {
+            name = 'cose';
+            cy.layout({ name: 'cose', animate: false }).run();
+        }
+        return name;
+    }
+    runLayout();
+    cy.fit(undefined, 30);
+
+    // ---- kind checkboxes, generated from the data ------------------------
+    var kindCounts = {};
+    cy.nodes().forEach(function (n) {
+        var k = n.data('kind');
+        kindCounts[k] = (kindCounts[k] || 0) + 1;
+    });
+    var kinds = Object.keys(kindCounts).filter(function (k) { return k !== 'External'; }).sort();
+
+    var kindBox = document.getElementById('kind-filters');
+    kinds.forEach(function (k) {
+        var id = 'kind-' + k;
+        var label = document.createElement('label');
+        label.className = 'check';
+        label.innerHTML =
+            '<input type="checkbox" id="' + id + '" data-kind="' + k + '" checked>' +
+            '<span class="swatch" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' +
+            '<span>' + k + '</span><span class="count">' + kindCounts[k] + '</span>';
+        kindBox.appendChild(label);
+        label.querySelector('input').addEventListener('change', applyFilters);
+    });
+
+    if (unresolved.length > 0) {
+        document.getElementById('unresolved-wrap').hidden = false;
+    }
+
+    // ---- legend ----------------------------------------------------------
+    var legend = document.getElementById('legend');
+    var legendRows = kinds.map(function (k) {
+        return '<div class="row"><span class="ring" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' + k + '</div>';
+    });
+    legendRows.push('<div class="row"><span class="ring" style="background:#2b3340;border:3px solid #e6edf6"></span>exported</div>');
+    legendRows.push('<div class="row"><span class="line" style="border-top:2px solid #6b7785"></span>calls</div>');
+    legendRows.push('<div class="row"><span class="line" style="border-top:2px dashed #f2c14e"></span>inherits</div>');
+    if (unresolved.length > 0) {
+        legendRows.push('<div class="row"><span class="line" style="border-top:2px dotted #ff7043"></span>unresolved</div>');
+    }
+    legendRows.push('<div class="row"><span class="ring" style="background:#8895a7"></span>size = inbound edges</div>');
+    legend.innerHTML = legendRows.join('');
+
+    // ---- filtering -------------------------------------------------------
+    var searchEl = document.getElementById('search');
+    var exportedOnlyEl = document.getElementById('exported-only');
+    var showUnresolvedEl = document.getElementById('show-unresolved');
+
+    function applyFilters() {
+        var term = searchEl.value.trim().toLowerCase();
+        var exportedOnly = exportedOnlyEl.checked;
+        var showUnres = showUnresolvedEl.checked;
+        var enabled = {};
+        kinds.forEach(function (k) {
+            var box = document.getElementById('kind-' + k);
+            enabled[k] = !box || box.checked;
+        });
+
+        cy.batch(function () {
+            cy.nodes().forEach(function (n) {
+                var kind = n.data('kind');
+                var visible;
+                if (kind === 'External') {
+                    visible = showUnres;
+                } else {
+                    visible = !!enabled[kind];
+                    if (visible && exportedOnly && !n.data('isExported')) { visible = false; }
+                    if (visible && term && n.data('name').toLowerCase().indexOf(term) === -1) { visible = false; }
+                }
+                n.toggleClass('hidden', !visible);
+            });
+            cy.edges().forEach(function (e) {
+                var hide = e.source().hasClass('hidden') || e.target().hasClass('hidden');
+                e.toggleClass('hidden', hide);
+            });
+        });
+        reapplyFocus();
+    }
+
+    searchEl.addEventListener('input', applyFilters);
+    exportedOnlyEl.addEventListener('change', applyFilters);
+    showUnresolvedEl.addEventListener('change', applyFilters);
+
+    // ---- focus mode ------------------------------------------------------
+    var focused = null;
+    var depthEl = document.getElementById('depth');
+    var depthVal = document.getElementById('depth-val');
+
+    // Expands one hop at a time with incomers()/outgoers() and unions the result.
+    // Cytoscape collections dedupe, so a cycle between two private helpers
+    // terminates on its own without any visited-set bookkeeping.
+    function neighbourhood(node, depth, direction) {
+        var acc = node;
+        var frontier = node;
+        for (var i = 0; i < depth; i++) {
+            var next = cy.collection();
+            if (direction === 'dependents' || direction === 'both') {
+                next = next.union(frontier.incomers());
+            }
+            if (direction === 'dependencies' || direction === 'both') {
+                next = next.union(frontier.outgoers());
+            }
+            next = next.filter(function (e) { return !e.hasClass('hidden'); });
+            var fresh = next.nodes().difference(acc);
+            acc = acc.union(next);
+            if (fresh.empty()) { break; }
+            frontier = fresh;
+        }
+        return acc;
+    }
+
+    function currentDirection() {
+        var checked = document.querySelector('input[name="dir"]:checked');
+        return checked ? checked.value : 'dependents';
+    }
+
+    function reapplyFocus() {
+        if (!focused || focused.removed() || focused.hasClass('hidden')) {
+            cy.elements().removeClass('dimmed');
+            return;
+        }
+        var keep = neighbourhood(focused, parseInt(depthEl.value, 10), currentDirection());
+        cy.batch(function () {
+            cy.elements().addClass('dimmed');
+            keep.removeClass('dimmed');
+            keep.connectedEdges().filter(function (e) {
+                return keep.contains(e.source()) && keep.contains(e.target());
+            }).removeClass('dimmed');
+        });
+    }
+
+    function showDetails(n) {
+        var deps = n.outgoers().nodes().length;
+        var dependents = n.incomers().nodes().length;
+        var rows = [
+            ['Name', escapeHtml(n.data('name'))],
+            ['Kind', escapeHtml(n.data('kind'))],
+            ['Exported', n.data('kind') === 'External' ? 'n/a' : (n.data('isExported') ? 'yes' : 'no')],
+            ['Dependents', String(dependents)],
+            ['Dependencies', String(deps)]
+        ];
+        if (n.data('startLine')) { rows.push(['Line', String(n.data('startLine'))]); }
+        var html = rows.map(function (r) {
+            return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>';
+        }).join('');
+        if (n.data('path')) {
+            // Plain selectable text, deliberately not a link: a file:// href to a
+            // local path does not reliably open from a browser, and a dead link
+            // is worse than text you can copy.
+            html += '<dt>Path</dt><dd><span class="path">' + escapeHtml(n.data('path')) + '</span></dd>';
+        }
+        var list = document.getElementById('details-list');
+        list.innerHTML = html;
+        list.hidden = false;
+        document.getElementById('details-empty').hidden = true;
+    }
+
+    function escapeHtml(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    cy.on('tap', 'node', function (evt) {
+        cy.nodes().removeClass('selected-node');
+        focused = evt.target;
+        focused.addClass('selected-node');
+        document.getElementById('focus-controls').hidden = false;
+        document.getElementById('focus-hint').textContent = 'Focused: ' + focused.data('name');
+        showDetails(focused);
+        reapplyFocus();
+    });
+
+    cy.on('tap', function (evt) {
+        if (evt.target === cy) { clearFocus(); }
+    });
+
+    function clearFocus() {
+        focused = null;
+        cy.elements().removeClass('dimmed');
+        cy.nodes().removeClass('selected-node');
+        document.getElementById('focus-controls').hidden = true;
+        document.getElementById('focus-hint').textContent = 'Select a node to focus its neighbourhood.';
+        document.getElementById('details-list').hidden = true;
+        document.getElementById('details-empty').hidden = false;
+    }
+
+    depthEl.addEventListener('input', function () {
+        depthVal.textContent = depthEl.value;
+        reapplyFocus();
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="dir"]'), function (r) {
+        r.addEventListener('change', reapplyFocus);
+    });
+    document.getElementById('clear-focus').addEventListener('click', clearFocus);
+    document.getElementById('fit').addEventListener('click', function () {
+        runLayout();
+        cy.fit(undefined, 30);
+    });
+
+    // ---- scale guard -----------------------------------------------------
+    var banner = document.getElementById('banner');
+    document.getElementById('banner-close').addEventListener('click', function () {
+        banner.style.display = 'none';
+    });
+    if (nodes.length > NODE_LIMIT) {
+        exportedOnlyEl.checked = true;
+        document.getElementById('banner-text').textContent =
+            'This module has ' + nodes.length + ' nodes. Above ~' + NODE_LIMIT +
+            ' the layout stops being readable, so the view starts filtered to exported functions. ' +
+            'Uncheck "Exported only" to see everything.';
+        banner.style.display = 'flex';
+        applyFilters();
+        runLayout();
+        cy.fit(undefined, 30);
+    }
+}());
 </script>
 </body>
 </html>
