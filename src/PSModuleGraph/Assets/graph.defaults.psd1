@@ -48,6 +48,13 @@
     FocusShadeStep  = 0.2
     FocusShadeMax   = 0.6
 
+    # Nodes connected the OTHER way round from the chosen direction - a
+    # dependency when asking about dependents. They keep their kind colour,
+    # darkened past the chain so the two tiers stay distinguishable, rather
+    # than dropping into the grey used for unconnected nodes.
+    RelatedShadeBase = 0.62
+    RelatedShadeMax  = 0.78
+
     # Above this many nodes the page opens filtered to exported functions,
     # behind a dismissible banner, because the layout stops being readable.
     NodeLimit       = 400

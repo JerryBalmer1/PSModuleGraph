@@ -186,6 +186,18 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "focusBlacken: 0"
     }
 
+    It 'gives the opposite direction its own tier rather than the unrelated grey' {
+        # Asking "what breaks if I change this" left the node's own dependencies
+        # in the same grey as things with no connection at all. Verified in
+        # Chrome focusing Show-GraphDocument: Get-VSCodeLauncher, a dependency,
+        # comes back class 'related' at blacken 0.62 rather than dimmed.
+        $script:Html | Should-MatchString "selector: 'node\.related'"
+        $script:Html | Should-MatchString "selector: 'edge\.related-edge'"
+        $script:Html | Should-MatchString 'function oppositeDirection'
+        # Applied after related, so an edge in both sets ends up highlighted.
+        $script:Html | Should-MatchString "removeClass\('related-edge'\)\.addClass\('focus-edge'\)"
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Connections the other way round from the chosen direction get their own
+  tier.** Asking *Dependents* ("what breaks if I change this") used to leave the
+  node's own dependencies in the same grey as things with no connection at all.
+  They now keep their kind colour, darkened past the focused chain, with a
+  legible label - related, but plainly not the answer to the question asked.
+  `RelatedShadeBase` and `RelatedShadeMax` are settable in
+  `graph.defaults.psd1`. *Both* has no opposite, so nothing changes there.
 - **Focused nodes shade by hop distance.** The selected node keeps its full
   colour and each hop away is a step darker, so a focused chain reads as a
   sequence instead of one flat block of blue. Shading darkens each node through

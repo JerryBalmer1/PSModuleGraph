@@ -75,7 +75,9 @@ first, then the one it points at"; in **Call flow** it points caller to callee.
 Selecting a node dims everything outside its neighbourhood rather than hiding
 it, so the names around it stay readable. Inside the neighbourhood the
 connections are drawn bright and thick, and each node shades one step darker
-per hop from the one you clicked, so the chain reads as a sequence.
+per hop from the one you clicked, so the chain reads as a sequence. Nodes
+connected the other way round - a dependency when you asked about dependents -
+keep their colour too, darker still: related, but not the answer.
 
 #### Changing the page defaults
 

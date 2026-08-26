@@ -51,6 +51,8 @@ function Get-GraphPageDefault {
         FocusEdgeWidth  = @{ Default = 2.6; Min = 0.2; Max = 30 }
         FocusShadeStep  = @{ Default = 0.2; Min = 0; Max = 1 }
         FocusShadeMax   = @{ Default = 0.6; Min = 0; Max = 1 }
+        RelatedShadeBase = @{ Default = 0.62; Min = 0; Max = 1 }
+        RelatedShadeMax  = @{ Default = 0.78; Min = 0; Max = 1 }
         NodeLimit       = @{ Default = 400; Min = 1; Max = 100000 }
         SidebarWidth    = @{ Default = 300; Min = 120; Max = 2000 }
         SidebarMinWidth = @{ Default = 200; Min = 80; Max = 2000 }
