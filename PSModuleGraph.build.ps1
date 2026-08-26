@@ -10,6 +10,7 @@ $script:SrcRoot = Join-Path (Join-Path $BuildRoot 'src') $ModuleName
 $script:OutRoot = Join-Path (Join-Path $BuildRoot 'output') $ModuleName
 $script:ManifestPath = Join-Path $SrcRoot "$ModuleName.psd1"
 $script:TestsRoot = Join-Path $BuildRoot 'tests'
+$script:AnalyzerSettings = Join-Path $BuildRoot 'PSScriptAnalyzerSettings.psd1'
 
 task Clean {
     if (Test-Path -LiteralPath (Join-Path $BuildRoot 'output')) {
@@ -18,16 +19,9 @@ task Clean {
 }
 
 task Lint {
-    $results = @(Invoke-ScriptAnalyzer -Path $SrcRoot -Recurse -Severity @('Error', 'Warning') -ExcludeRule @(
-            'PSUseShouldProcessForStateChangingFunctions'
-        ))
-    # Export helpers live in Public files but are not exported by the manifest
-    $results = @($results | Where-Object {
-            -not (
-                $_.RuleName -eq 'PSUseSingularNouns' -and
-                $_.ScriptName -match 'Get-PSModule(SourceFile|CommandReference|UsingStatement)'
-            )
-        })
+    # Rule configuration lives in PSScriptAnalyzerSettings.psd1 so editors and
+    # CI lint identically to this task.
+    $results = @(Invoke-ScriptAnalyzer -Path $SrcRoot -Recurse -Settings $AnalyzerSettings)
     if ($results) {
         $results | Format-Table -AutoSize | Out-String | Write-Host
         throw "PSScriptAnalyzer reported $($results.Count) issue(s)."
@@ -98,22 +92,42 @@ task Test Build, {
 
     Import-Module -Name $pesterModule.Path -Force
 
+    $outputParent = Join-Path $BuildRoot 'output'
+
     $config = New-PesterConfiguration
     $config.Run.Path = $TestsRoot
-    $config.Run.Exit = $true
+    # Throw, not Exit: Run.Exit makes Pester call exit, which can terminate the
+    # host process running the build. Throw raises inside InvokeBuild, which
+    # fails the task properly and lets the rest of the build react.
+    $config.Run.Throw = $true
     $config.Run.PassThru = $true
     $config.Output.Verbosity = 'Detailed'
+
+    # Classic 'Should -Be' throws, so the suite cannot drift back to v5 style.
+    $config.Should.DisableV5 = $true
+
     $config.TestResult.Enabled = $true
-    $config.TestResult.OutputPath = Join-Path (Join-Path $BuildRoot 'output') 'testResults.xml'
+    $config.TestResult.OutputPath = Join-Path $outputParent 'testResults.xml'
     $config.TestResult.OutputFormat = 'NUnitXml'
 
+    # Cover the built module, which is what the tests actually import.
+    # CoverageGutters was removed in Pester 6 - do not add it back.
+    $config.CodeCoverage.Enabled = $true
+    $config.CodeCoverage.Path = Join-Path $OutRoot "$ModuleName.psm1"
+    $config.CodeCoverage.OutputFormat = 'JaCoCo'
+    $config.CodeCoverage.OutputPath = Join-Path $outputParent 'coverage.xml'
+    $config.CodeCoverage.CoveragePercentTarget = 75
+
     # Ensure built module is preferred on PSModulePath for tests that Import-Module by name
-    $outputParent = Join-Path $BuildRoot 'output'
     $env:PSModulePath = $outputParent + [System.IO.Path]::PathSeparator + $env:PSModulePath
 
     $result = Invoke-Pester -Configuration $config
-    if ($result.FailedCount -gt 0) {
-        throw "$($result.FailedCount) test(s) failed."
+
+    $coverage = $result.CodeCoverage
+    if ($coverage) {
+        $percent = [math]::Round($coverage.CoveragePercent, 2)
+        $target = $coverage.CoveragePercentTarget
+        Write-Build Green "Line coverage: $percent% (target $target%)"
     }
 }
 
