@@ -453,7 +453,7 @@ input[type="range"] { width: 100%; }
             </div>
             <div class="section">
                 <h2>View</h2>
-                <!-- Config/settings.psd1 in this template set is the source of truth for
+                <!-- Assets/Html/Config/settings.psd1 is the source of truth for the
                      value, range, and step; the attributes below are
                      placeholders the script overwrites at init. -->
                 <label for="zoom-speed">Zoom speed: <b id="zoom-speed-val">1.25x</b></label>
@@ -535,7 +535,10 @@ if (typeof cytoscape === 'undefined') {
 </script>
 
 <script>
-const DATA = {
+const GRAPH_DATA = {
+  "moduleName": "SampleModule",
+  "moduleVersion": "1.2.3",
+  "moduleBase": "C:\\Users\\jlbal\\AppData\\Local\\Temp\\claude\\c----Code-PSGraphRender\\5220d798-0b97-4be6-a214-7261d7779c8e\\scratchpad\\pmg-pre\\tests\\fixtures\\SampleModule",
   "stats": {
     "NodeCount": 9,
     "EdgeCount": 5,
@@ -742,12 +745,11 @@ const DATA = {
     "script:toplevel"
   ]
 };
-const META = {
-  "contractVersion": "1.0.0",
-  "title": "SampleModule",
-  "version": "1.2.3",
-  "generatedAt": "2026-08-26T16:36:47.4929655-07:00",
-  "rootPath": "C:\\__Code\\PSModuleGraph\\tests\\fixtures\\SampleModule",
+const GRAPH_META = {
+  "moduleName": "SampleModule",
+  "moduleVersion": "1.2.3",
+  "generatedAt": "2026-08-26T14:04:26.0137680-07:00",
+  "moduleRoot": "C:\\Users\\jlbal\\AppData\\Local\\Temp\\claude\\c----Code-PSGraphRender\\5220d798-0b97-4be6-a214-7261d7779c8e\\scratchpad\\pmg-pre\\tests\\fixtures\\SampleModule",
   "stats": {
     "NodeCount": 9,
     "EdgeCount": 5,
@@ -759,11 +761,10 @@ const META = {
     "EnumCount": 1
   }
 };
-const CONFIG = {
+const GRAPH_CONFIG = {
   "CanvasMinWidth": 320.0,
   "ColorBy": "structure",
   "DefaultFlow": "foundation",
-  "EdgeColor": "#6b7785",
   "EdgeWidth": 1.4,
   "FocusDepth": 2,
   "FocusEdgeWidth": 2.6,
@@ -777,16 +778,6 @@ const CONFIG = {
     "#f05340",
     "#ff3b2f"
   ],
-  "KindColor": {
-    "Class": "#f2c14e",
-    "Enum": "#6ddf6d",
-    "Function": "#4da3ff",
-    "Script": "#9b8cff"
-  },
-  "KindColorFallback": "#8895a7",
-  "LinkColor": {
-    "Inherits": "#f2c14e"
-  },
   "MinReadableZoom": 0.45,
   "NodeFontSize": 10.0,
   "NodeHeight": 24.0,
@@ -799,13 +790,12 @@ const CONFIG = {
   "RelatedShadeMax": 0.78,
   "SidebarMinWidth": 200.0,
   "SidebarWidth": 300.0,
-  "UnresolvedColor": "#ff7043",
   "ZoomSpeed": 1.25,
   "ZoomSpeedMax": 5.0,
   "ZoomSpeedMin": 0.25,
   "ZoomSpeedStep": 0.25
 };
-const STRINGS = {
+const GRAPH_STRINGS = {
   "BannerCopyLabel": "Copy command",
   "BannerCopyUrlLabel": "Copy URL",
   "ColorByHeading": "Colour by",
@@ -837,7 +827,7 @@ const STRINGS = {
   "LegendExported": "exported",
   "LegendHeatRank": "shaded by rank, not by size - the number is in Details",
   "LegendHeatScale": "{metric}: {low} to {high}",
-  "LegendLinkInherits": "inherits",
+  "LegendInherits": "inherits",
   "LegendUnresolved": "unresolved",
   "MenuCopyEditorLink": "Copy Editor Link",
   "MenuCopyPath": "Copy Path",
@@ -858,7 +848,7 @@ const STRINGS = {
   "OrderIntro": "Test step 1 first. Nothing in a step depends on anything in a later step, so the first failure is the cause rather than an echo of it.",
   "ReasonEmbedded": "not available in an embedded viewer, open the report in a browser",
   "ReasonNoFile": "no file recorded",
-  "ReasonNoRootPath": "root path unknown",
+  "ReasonNoModuleRoot": "module root unknown",
   "ScaleGuard": "This module has {count} nodes. Above ~{limit} the layout stops being readable, so the view starts filtered to exported functions. Uncheck \"Exported only\" to see everything.",
   "SelectionActionClear": "Clear selection",
   "SelectionActionCopyLinks": "Copy editor links",
@@ -889,20 +879,20 @@ const STRINGS = {
     if (typeof cytoscape === 'undefined') { return; }
 
     // Opened as a raw template rather than a generated report.
-    if (!DATA) {
+    if (!GRAPH_DATA) {
         document.getElementById('template-notice').hidden = false;
         return;
     }
 
     document.getElementById('app').hidden = false;
 
-    // Starting values come from this template set's Config/, substituted above.
+    // Starting values come from Assets/Html/Config, substituted above.
     // PowerShell validates and fills every key before it gets here, so the
     // fallbacks below are only ever reached by someone opening the raw
     // template - which bails out earlier anyway. They exist so a missing key
     // can never yield NaN and silently collapse the layout.
     function cfg(key, fallback) {
-        var v = CONFIG ? CONFIG[key] : null;
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
         return (typeof v === 'number' && isFinite(v)) ? v : fallback;
     }
 
@@ -910,7 +900,7 @@ const STRINGS = {
     // a perfectly valid value would otherwise fail the isFinite test and fall
     // back to the default every time.
     function cfgText(key, fallback) {
-        var v = CONFIG ? CONFIG[key] : null;
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
         return (typeof v === 'string' && v.length) ? v : fallback;
     }
 
@@ -918,15 +908,15 @@ const STRINGS = {
     // is one entry rather than five numbered ones - which means a reader that
     // handles only scalars cannot see it.
     function cfgList(key, fallback) {
-        var v = CONFIG ? CONFIG[key] : null;
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
         return (Object.prototype.toString.call(v) === '[object Array]' && v.length) ? v : fallback;
     }
 
-    // User-visible text comes from this set's Config/strings.psd1, substituted
+    // User-visible text comes from Assets/Html/Config/strings.psd1, substituted
     // above. A missing key renders as its own name in brackets rather than as
     // nothing: a silently blank label is the one failure mode nobody notices.
     function str(key) {
-        var v = STRINGS ? STRINGS[key] : null;
+        var v = GRAPH_STRINGS ? GRAPH_STRINGS[key] : null;
         return (typeof v === 'string' && v.length) ? v : '[' + key + ']';
     }
 
@@ -934,7 +924,7 @@ const STRINGS = {
     // the values the caller passes through config, which may legitimately be
     // absent - str() alone cannot tell absent from present-and-bracketed.
     function hasStr(key) {
-        var v = STRINGS ? STRINGS[key] : null;
+        var v = GRAPH_STRINGS ? GRAPH_STRINGS[key] : null;
         return typeof v === 'string' && v.length > 0;
     }
 
@@ -947,42 +937,19 @@ const STRINGS = {
         });
     }
 
-    // Same reason again for a map setting: a classification-to-colour map is
-    // one decision and one entry, and a reader that handles only scalars
-    // cannot see it.
-    function cfgMap(key) {
-        var v = CONFIG ? CONFIG[key] : null;
-        return (v && typeof v === 'object' && Object.prototype.toString.call(v) !== '[object Array]') ? v : {};
-    }
-
     var NODE_LIMIT = cfg('NodeLimit', 400);
     var ZOOM_SPEED_DEFAULT = cfg('ZoomSpeed', 1.25);
+    var KIND_HEX = {
+        Function: '#4da3ff', Class: '#f2c14e', Enum: '#6ddf6d',
+        Script: '#9b8cff', External: '#ff7043'
+    };
 
-    // From theme.psd1. This was a literal here until v0.3.0 -
-    //   KIND_HEX = { Function: ..., Class: ..., Enum: ..., Script: ... }
-    // which is a hardcoded list of one producer's node kinds inside a renderer
-    // that must not have one. There is no fallback map: an empty one and the
-    // fallback colour render every node in KIND_FALLBACK, which is visibly
-    // wrong rather than quietly PowerShell-shaped.
-    var KIND_HEX = cfgMap('KindColor');
-    var KIND_FALLBACK = cfgText('KindColorFallback', '#8895a7');
-
-    // The colour of a node this renderer invented, which is not a
-    // classification anything sent. See theme.psd1.
-    var UNRESOLVED_COLOR = cfgText('UnresolvedColor', '#ff7043');
-
-    // Link classifications, same story. render.js used to carry
-    //   edge[kind = "Inherits"]  with a literal colour
-    // which is a producer's word in a renderer that must not have one.
-    var LINK_HEX = cfgMap('LinkColor');
-    var EDGE_COLOR = cfgText('EdgeColor', '#6b7785');
-
-    var meta = META || {};
-    var data = DATA;
+    var meta = GRAPH_META || {};
+    var data = GRAPH_DATA;
     var COLOR_BY = cfgText('ColorBy', 'structure');
-    var nodes = DATA.nodes || [];
-    var links = DATA.links || [];
-    var unresolved = DATA.unresolved || [];
+    var nodes = GRAPH_DATA.nodes || [];
+    var links = GRAPH_DATA.links || [];
+    var unresolved = GRAPH_DATA.unresolved || [];
 
     function uniq(arr) {
         return arr.filter(function (v, i, a) { return a.indexOf(v) === i; });
@@ -1066,7 +1033,7 @@ const STRINGS = {
 
     // ---- header ----------------------------------------------------------
     document.getElementById('hdr-version').textContent =
-        (meta.version ? str('HeaderVersionPrefix') + meta.version : '') +
+        (meta.moduleVersion ? str('HeaderVersionPrefix') + meta.moduleVersion : '') +
         (meta.generatedAt ? str('HeaderGeneratedPrefix') + meta.generatedAt : '');
     document.getElementById('c-nodes').textContent = nodes.length;
     document.getElementById('c-edges').textContent = links.length;
@@ -1130,7 +1097,7 @@ const STRINGS = {
 
     function fillFor(node, colorBy) {
         if (METRIC_IDS.indexOf(colorBy) === -1) {
-            return KIND_HEX[node.kind] || KIND_FALLBACK;
+            return KIND_HEX[node.kind] || '#8895a7';
         }
         var scale = heatScale[colorBy] || {};
         return rampColor(scale[metricValue(node, colorBy)] || 0);
@@ -1181,22 +1148,11 @@ const STRINGS = {
         els.push({
             data: {
                 id: 'e' + i, source: l.source, target: l.target,
-                // No default. A link with no classification is unclassified,
-                // and the style rules fall through to the base edge rule, which
-                // is what unclassified should look like. The default used to be
-                // 'CommandReference' - one producer's word for one kind of
-                // link, applied to every producer's unlabelled edges.
-                kind: l.kind || ''
+                kind: l.kind || 'CommandReference'
             }
         });
     });
 
-    // 'External' is THIS RENDERER'S word, not a producer's, and no producer
-    // emits it - the nodes below are invented here for targets the payload
-    // names but does not contain. That is why the comparisons against it
-    // elsewhere in these scripts are not the hardcoded-kind-list problem that
-    // KIND_HEX was: the renderer is recognising something it made itself.
-    //
     // Unresolved targets become External nodes. Edges whose origin is not a real
     // node (module:manifest, using:module) are shown as isolated nodes rather
     // than dropped, matching the "report, never discard" rule.
@@ -1215,7 +1171,7 @@ const STRINGS = {
                     // here was measured about it. Zero is honest: it is not a
                     // cold node, it is an unmeasured one, and the dashed border
                     // is what says so.
-                    metrics: {}, color: UNRESOLVED_COLOR, border: 2, level: null,
+                    metrics: {}, color: KIND_HEX.External, border: 2, level: null,
                     dependents: 0, dependencies: 0, focusBlacken: 0
                 },
                 classes: 'unresolved'
@@ -1287,29 +1243,11 @@ const STRINGS = {
         try { cytoscape.use(cytoscapeDagre); } catch (e) { /* already registered */ }
     }
 
-    // One rule pair per link classification the theme names, generated rather
-    // than written. WHICH kinds exist is the payload's business; that a named
-    // kind is drawn dashed is the renderer's, and that stays here.
-    //
-    // Spliced in below rather than appended: these must lose to .dimmed and
-    // .focus-edge, which are declared after them and win by declaration order.
-    var LINK_KIND_STYLE = [];
-    Object.keys(LINK_HEX).forEach(function (kind) {
-        var colour = LINK_HEX[kind];
-        LINK_KIND_STYLE.push({
-            selector: 'edge[kind = "' + kind + '"]',
-            style: {
-                'line-color': colour, 'target-arrow-color': colour,
-                'line-style': 'dashed', 'width': 2
-            }
-        });
-        LINK_KIND_STYLE.push({
-            selector: 'edge[kind = "' + kind + '"].flip',
-            style: { 'source-arrow-color': colour }
-        });
-    });
-
-    var STYLE = [
+    var cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: els,
+        wheelSensitivity: ZOOM_SPEED_DEFAULT,
+        style: [
             {
                 // The name sits inside the box. A circle with the label
                 // underneath cost roughly double the space and put the text
@@ -1357,26 +1295,23 @@ const STRINGS = {
                 selector: 'edge',
                 style: {
                     'width': EDGE_WIDTH,
-                    'line-color': EDGE_COLOR,
-                    'target-arrow-color': EDGE_COLOR,
+                    'line-color': '#6b7785',
+                    'target-arrow-color': '#6b7785',
                     'target-arrow-shape': 'triangle',
                     'arrow-scale': 0.9,
                     'curve-style': 'bezier'
                 }
             },
-            // 'Unresolved' is this renderer's own word for an edge it
-            // invented; no producer sends it. See elements.js.
-            { selector: 'edge[kind = "Unresolved"]', style: { 'line-color': UNRESOLVED_COLOR, 'target-arrow-color': UNRESOLVED_COLOR, 'line-style': 'dotted' } },
+            { selector: 'edge[kind = "Inherits"]', style: { 'line-color': '#f2c14e', 'target-arrow-color': '#f2c14e', 'line-style': 'dashed', 'width': 2 } },
+            { selector: 'edge[kind = "Unresolved"]', style: { 'line-color': '#ff7043', 'target-arrow-color': '#ff7043', 'line-style': 'dotted' } },
             // Test order ranks right-to-left so the page reads left-to-right in
             // the order to test. The arrowhead has to follow: pointing at the
             // callee would point backwards through that reading order. Flipped
             // to the source end, an arrow means "test this one first, then the
             // one it points at". Call flow keeps the arrow on the callee.
-            { selector: 'edge.flip', style: { 'target-arrow-shape': 'none', 'source-arrow-shape': 'triangle', 'source-arrow-color': EDGE_COLOR } },
-            { selector: 'edge[kind = "Unresolved"].flip', style: { 'source-arrow-color': UNRESOLVED_COLOR } },
-            // LINK_KIND_STYLE is spliced in here, after the base edge rules and
-            // before .dimmed - see above.
-            ].concat(LINK_KIND_STYLE).concat([
+            { selector: 'edge.flip', style: { 'target-arrow-shape': 'none', 'source-arrow-shape': 'triangle', 'source-arrow-color': '#6b7785' } },
+            { selector: 'edge[kind = "Inherits"].flip', style: { 'source-arrow-color': '#f2c14e' } },
+            { selector: 'edge[kind = "Unresolved"].flip', style: { 'source-arrow-color': '#ff7043' } },
             // Out-of-focus nodes stay readable. Hiding them, or fading the
             // label to nothing, loses the context that makes a focused
             // neighbourhood mean anything - you cannot see what it sits among.
@@ -1430,13 +1365,7 @@ const STRINGS = {
             },
             { selector: 'node.selected-node', style: { 'border-color': '#4da3ff' } },
             { selector: '.hidden', style: { 'display': 'none' } }
-    ]);
-
-    var cy = cytoscape({
-        container: document.getElementById('cy'),
-        elements: els,
-        wheelSensitivity: ZOOM_SPEED_DEFAULT,
-        style: STYLE
+        ]
     });
 
     // Gravity. Edges point caller -> callee, and dagre gives a target a higher
@@ -1761,7 +1690,7 @@ const STRINGS = {
         label.className = 'check';
         label.innerHTML =
             '<input type="checkbox" id="' + id + '" data-kind="' + k + '" checked>' +
-            '<span class="swatch" style="background:' + (KIND_HEX[k] || KIND_FALLBACK) + '"></span>' +
+            '<span class="swatch" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' +
             '<span>' + k + '</span><span class="count">' + kindCounts[k] + '</span>';
         kindBox.appendChild(label);
         label.querySelector('input').addEventListener('change', applyFilters);
@@ -1850,7 +1779,7 @@ const STRINGS = {
         var legendRows;
         if (METRIC_IDS.indexOf(COLOR_BY) === -1) {
             legendRows = kinds.map(function (k) {
-                return '<div class="row"><span class="chip" style="background:' + (KIND_HEX[k] || KIND_FALLBACK) + '"></span>' + k + '</div>';
+                return '<div class="row"><span class="chip" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' + k + '</div>';
             });
         }
         else {
@@ -1858,21 +1787,10 @@ const STRINGS = {
         }
         legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:2px solid #fff"></span>' + escapeHtml(str('LegendExported')) + '</div>');
         legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:5px solid #0b0f14"></span>' + escapeHtml(str('LegendBorderWidth')) + '</div>');
-        legendRows.push('<div class="row"><span class="line" style="border-top:2px solid ' + EDGE_COLOR + '"></span>' + escapeHtml(str('LegendCalls')) + '</div>');
-
-        // One row per link classification the theme names, in the theme's
-        // order. The label comes from strings.psd1 under 'LegendLink' + kind
-        // and falls back to the kind itself, so a producer that ships neither
-        // still gets a legend that says something true.
-        Object.keys(LINK_HEX).forEach(function (kind) {
-            var key = 'LegendLink' + kind;
-            var label = hasStr(key) ? str(key) : kind;
-            legendRows.push('<div class="row"><span class="line" style="border-top:2px dashed ' +
-                LINK_HEX[kind] + '"></span>' + escapeHtml(label) + '</div>');
-        });
-
+        legendRows.push('<div class="row"><span class="line" style="border-top:2px solid #6b7785"></span>' + escapeHtml(str('LegendCalls')) + '</div>');
+        legendRows.push('<div class="row"><span class="line" style="border-top:2px dashed #f2c14e"></span>' + escapeHtml(str('LegendInherits')) + '</div>');
         if (unresolved.length > 0) {
-            legendRows.push('<div class="row"><span class="line" style="border-top:2px dotted ' + UNRESOLVED_COLOR + '"></span>' + escapeHtml(str('LegendUnresolved')) + '</div>');
+            legendRows.push('<div class="row"><span class="line" style="border-top:2px dotted #ff7043"></span>' + escapeHtml(str('LegendUnresolved')) + '</div>');
         }
         legend.innerHTML = legendRows.join('');
     }
@@ -2098,7 +2016,7 @@ const STRINGS = {
     function absolutePathFor(node) {
         var rel = node.data('path');
         if (!rel) { return null; }
-        var root = meta.rootPath;
+        var root = meta.moduleRoot;
         if (!root) { return null; }
         var joined = root.replace(/[\\/]+$/, '') + '/' + rel;
         return joined.replace(/\\/g, '/');
@@ -2177,7 +2095,7 @@ const STRINGS = {
     // the only thing that does.
     function editorLinkCheck(node) {
         if (!node.data('path')) { return str('ReasonNoFile'); }
-        if (!meta.rootPath) { return str('ReasonNoRootPath'); }
+        if (!meta.moduleRoot) { return str('ReasonNoModuleRoot'); }
         return null;
     }
     // Every input the launch depends on, in one copyable block. The point is
@@ -2185,7 +2103,7 @@ const STRINGS = {
     function diagnosticsFor(node) {
         var rows = [
             ['node.data(path)', node.data('path')],
-            ['meta.rootPath', meta.rootPath],
+            ['meta.moduleRoot', meta.moduleRoot],
             ['absolutePathFor', absolutePathFor(node)],
             ['vsCodeUriFor', vsCodeUriFor(node)],
             ['node.data(startLine)', node.data('startLine')],
@@ -2204,7 +2122,7 @@ const STRINGS = {
     // preformatted text, a list of label/value rows, and a row of actions.
     // Diagnostics uses the text; the selection panel uses rows and actions. A
     // third caller should need no markup either - see the kaizen note in
-    // docs/render-architecture.md.
+    // docs/html-architecture.md.
     var infoPanel = document.getElementById('info-panel');
     var infoBody = document.getElementById('info-body');
     var infoRows = document.getElementById('info-rows');
