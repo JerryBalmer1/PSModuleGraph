@@ -142,3 +142,30 @@ with one broken file still yields results for the others.
 turns a missing key or property into a terminating error. Reading manifest data
 with a plain property access will throw on any manifest that omits an optional
 key. Use the helper.
+
+## Tooling traps
+
+These cost a round each and are not discoverable from the error message.
+
+**The Bash tool collapses a doubled backslash to a single one inside a quoted
+heredoc.** A JSON Schema written that way reaches disk with `\.` where it needed
+`\\.`, which is not valid JSON. **Write JSON schemas with the Write tool, or with
+a short script, rather than with a heredoc.** This paragraph was itself mangled
+by the trap on its first attempt, which is the shortest available proof.
+
+**`Test-Json` will not tell you where.** A schema it cannot parse produces
+exactly `Cannot parse the JSON schema` - no line, no position, no field name.
+To find the actual fault, round-trip the file through `ConvertFrom-Json` first,
+which does report a path and a position. A validator that will not say *where*
+costs more than one that says nothing, because the first sends you looking at
+the document instead of the schema.
+
+**`Import-PowerShellDataFile` needs `-ErrorAction Stop`.** A `.psd1` that will
+not parse raises a **non-terminating** error, so without it the `catch` never
+runs and a broken config falls back in total silence.
+
+**Parameter shadowing is case-insensitive.** A local `$name` **is** the `$Name`
+parameter. Assigning to it re-runs the parameter's validation attributes, and
+`$name = $null` against a `[ValidateNotNullOrEmpty()]` parameter throws at that
+assignment. Name locals distinctly (`$usingName`, `$nestedName`).
+

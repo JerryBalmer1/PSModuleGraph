@@ -15,14 +15,14 @@ other is the accretion `instruction-prune` exists to stop.
 | [`iteration-close`](iteration-close/SKILL.md) | the end of any prompt cycle; `/iteration-close` | `meta-pattern`, `subsystem-charter`, `instruction-prune` |
 | [`meta-pattern`](meta-pattern/SKILL.md) | invoked by `iteration-close`; something feeling familiar at a different scale | — |
 | [`subsystem-charter`](subsystem-charter/SKILL.md) | a `Private/` directory reaching three files; any new top-level directory; the charter test failing | `meta-pattern` |
-| [`instruction-prune`](instruction-prune/SKILL.md) | invoked by `iteration-close`, every iteration | — |
+| [`instruction-prune`](instruction-prune/SKILL.md) | invoked by `iteration-close`, every iteration; the byte budget failing | — |
 
 ```mermaid
 graph TD
     IC["iteration-close<br/><i>end of prompt cycle</i>"]
     SC["subsystem-charter<br/><i>3 files under Private/</i>"]
     MP["meta-pattern<br/><i>leaf — runs when all else is broken</i>"]
-    IP["instruction-prune<br/><i>leaf — reads instructions, writes a proposal</i>"]
+    IP["instruction-prune<br/><i>leaf — moves text down a tier</i>"]
 
     IC -->|"step 4, before the ledger"| MP
     IC -->|"step 5, only if a child area appeared"| SC
@@ -64,26 +64,39 @@ none. When the next child area appears the same thing happens: nothing, until
 someone notices. `tests/Private/SubsystemCharter.Tests.ps1` turns the trigger
 into a red build, so noticing is no longer required.
 
-**`instruction-prune` — because `CLAUDE.md` only grew.** 835 lines,
-monotonically increasing across every version, with two sections both named
-Kaizen and a paragraph in each explaining that the other exists — the file
-apologising for its own structure. Every iteration added and none ever removed,
-and the whole file is read at the start of every session. This is the
-counter-force. It reports the line count as a number so the trend stops being a
-feeling, and it proposes rather than deletes, because a deletion decided and
-applied in the same turn is the one edit nobody reviews.
+**`instruction-prune` — because `CLAUDE.md` only grew, and the first version of
+this skill could not stop it.** 46,681 bytes at v0.3.0, monotonically
+increasing, read in full before every session does anything. The v0.3.0 version
+proposed *deletions* for a later iteration to apply, and idled: a counter-force
+one turn behind a force that acts every turn is a formality with a good
+conscience, and — the real reason — **deletion has a defender.** Every line was
+written because something went wrong, so the honest answer to "may I delete
+this" is almost always no. At v0.4.0 a prune became a **move down a tier**,
+which loses nothing and so needs no defending, and the tier is capped by the
+build. 46,681 → 18,544 bytes, nothing deleted.
 
-## Frontmatter
+## Frontmatter, and three traps in it
 
-These follow the Claude Code skill frontmatter schema: every field is optional,
-`description` is recommended, and `when_to_use` is appended to `description` in
-the skill listing. The command name comes from the **directory** name for
-personal and project skills — the `name` field only sets the display label — so
-renaming a skill means renaming its directory. See
-<https://code.claude.com/docs/en/skills>.
+These follow the Claude Code skill frontmatter schema — every field is optional
+and `description` is only recommended. See <https://code.claude.com/docs/en/skills>.
 
-None of the four declares `allowed-tools`. A project skill's `allowed-tools`
-grant applies in any session that invokes it, including in a folder that has
-never been trusted, so a checked-in skill that pre-approves `Bash(git *)` is a
-grant to every future clone. The prompts these skills produce go through the
-normal permission flow instead.
+**`name` does not name the command.** For a personal or project skill the
+command comes from the **directory**; `name` sets only the display label in
+listings. Renaming a skill means renaming its directory — edit the field alone
+and nothing changes, with no error to tell you so. (Plugin skills differ:
+there `name` does set the last segment.)
+
+**`when_to_use` is a hint, not a hook.** It is appended to `description` in the
+skill listing, under a shared 1,536-character cap, and a model reads it and
+decides. Nothing fires it. Where a rule must actually hold, back it with a test:
+`subsystem-charter` has `tests/Private/SubsystemCharter.Tests.ps1` and
+`instruction-prune` has `tests/Instructions.Tests.ps1`, and those are mechanisms.
+The trigger column in the table above is not.
+
+**None of the four declares `allowed-tools`, deliberately.** A project skill's
+`allowed-tools` grant applies in any session that invokes it, including in a
+folder that has never been trusted, so a checked-in skill pre-approving
+`Bash(git *)` is a grant to every future clone of this repository. Read the
+`allowed-tools` of any skill in a repo before running Claude Code there — and
+think twice before adding one here. The prompts these skills produce go through
+the normal permission flow instead.
