@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://psmodulegraph.invalid/knowledge/assignment.schema.json",
+  "title": "Assignment collection",
+  "description": "subject x facet -> path, with evidence. An assignment without provenance is an opinion, so evidence and provenance are required and confidence has no default. An inference from a module name is not the same fact as a declared tag, and this store must always be able to say which it holds.",
+  "type": "object",
+  "required": ["generated_by", "assignments"],
+  "additionalProperties": false,
+  "properties": {
+    "generated_by": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "prompt": { "type": "string", "pattern": "^ledger/[0-9]{4}$" },
+    "assignments": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/assignment" }
+    }
+  },
+  "definitions": {
+    "assignment": {
+      "type": "object",
+      "required": ["subject", "facet", "path", "confidence", "evidence", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*:[A-Za-z0-9._/-]+$"
+        },
+        "facet": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*([:.][a-z0-9][a-z0-9.-]*)*$"
+        },
+        "confidence": {
+          "description": "0 to 1. REQUIRED, and never defaulted to 1. A value of 1 asserts the fact was read directly off the artefact, not inferred from it. If you are tempted to write 1 because you have nothing better, the honest value is lower and the evidence block should say why.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence": {
+          "description": "At least one. What was observed that supports this assignment.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/evidence" }
+        },
+        "provenance": { "$ref": "#/definitions/provenance" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["kind", "value", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "What sort of observation this is. Deliberately not an enum: the set grows as sources do, and closing it here would mean a schema change to record a new kind of evidence.",
+          "type": "string",
+          "minLength": 1
+        },
+        "value": { "type": "string" },
+        "source": {
+          "description": "Which reader produced the observation.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["by", "at"],
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "description": "agent, human, or the name of a tool.",
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "description": "Ledger entry this assignment came from, so any row can be traced back to the implementation that wrote it.",
+          "type": "string",
+          "pattern": "^ledger/[0-9]{4}$"
+        },
+        "at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+      }
+    }
+  }
+}

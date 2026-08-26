@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://psmodulegraph.invalid/knowledge/facet.schema.json",
+  "title": "Facet",
+  "description": "A dimension. Kind generalised: open-ended rather than closed, hierarchical rather than flat, multi-valued rather than single, and able to classify anything addressable as a subject. This schema describes the YAML front matter of one file under knowledge/facets/ or knowledge/meta/. The prose body of that file is not described here and is not optional: it says what the facet is for and, more importantly, what does not belong on it.",
+  "type": "object",
+  "required": ["id", "version", "kind", "separator", "paths"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Stable identifier. Also addressable as the subject 'facet:<id>', which is how a facet is classified by another facet.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "description": "Semantic version of this facet's own definition, independent of the repository version.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "kind": {
+      "description": "hierarchical: paths nest and a parent implies its children. categorical: a flat closed-ish set. scalar: paths carry an ordered value. boolean: presence or absence.",
+      "type": "string",
+      "enum": ["hierarchical", "categorical", "scalar", "boolean"]
+    },
+    "separator": {
+      "description": "Segment separator for paths on this facet. Declared per facet rather than assumed, because a facet borrowed from another vocabulary may not use a colon.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2
+    },
+    "paths": {
+      "description": "Every path this facet currently defines. A path removed from this list without an alias somewhere is a broken promise; see NAMING.md.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/path" }
+    },
+    "supersedes": {
+      "description": "Facet ids this one replaced, by merge or rename. Empty for a facet that has never changed identity.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "default": []
+    },
+    "meta": {
+      "description": "True when this facet classifies facets rather than ordinary subjects. Such a file lives in knowledge/meta/. This is the recursion and it is load-bearing: a facet measuring evidence quality applies to facets themselves.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "definitions": {
+    "path": {
+      "type": "object",
+      "required": ["path", "since"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "The full path, including every ancestor segment. Written out rather than implied by nesting so that a line of this file is meaningful on its own.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*([:.][a-z0-9][a-z0-9.-]*)*$"
+        },
+        "aliases": {
+          "description": "Names that also resolve to this path. A rename never deletes: the old name lands here. See NAMING.md.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": []
+        },
+        "since": {
+          "description": "Facet version in which this path first resolved.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "description": {
+          "description": "One line. What belongs here and what does not.",
+          "type": "string"
+        },
+        "deprecated": {
+          "description": "Set when the path still resolves but should not be assigned to new subjects. It is never simply removed.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
+}
