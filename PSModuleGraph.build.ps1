@@ -149,10 +149,17 @@ task Test Build, {
 
     $result = Invoke-Pester -Configuration $config
 
+    # CoveragePercentTarget only REPORTS. It has never once failed a run, and a
+    # threshold nobody has seen fail is a threshold nobody knows works - this
+    # sat at 74.88% against a target of 75 through three green builds. The
+    # throw is the gate; the setting above is just the number it reads.
     $coverage = $result.CodeCoverage
     if ($coverage) {
         $percent = [math]::Round($coverage.CoveragePercent, 2)
         $target = $coverage.CoveragePercentTarget
+        if ($percent -lt $target) {
+            throw "Line coverage $percent% is below the target of $target%. Raise coverage, or lower the target deliberately and say so in the ledger."
+        }
         Write-Build Green "Line coverage: $percent% (target $target%)"
     }
 }
