@@ -481,6 +481,32 @@ rules on them are not negotiable and are not stylistic:
 asked. Collapsing `$null` into `$false` hides the only case where neither
 mechanism explains a link that does nothing.
 
+## Commit
+
+**Read `git status --short` before staging, and stage path by path.** Never
+`git add -A`. That is how `coverage.xml` — a file `.gitignore` names, written
+by an `Invoke-Pester` run that should not have happened — went into a commit
+titled `asdf`. If something unexpected is in the list, say so before staging it.
+
+One logical change per commit. If a file carries two unrelated changes, split
+them, reconstructing an intermediate state if that is what it takes; a commit
+that has to be described with "and" is two commits.
+
+**The message states the failure prevented, not the change made.** `Fail the
+build when coverage is below target`, not `Add coverage threshold check`. The
+body says why — a threshold nobody has watched fail is not a threshold.
+
+Every iteration ends pushed, with `--follow-tags`. A local tag is not a release
+marker; it is a note to one machine. The tag is annotated (`-a`) and is the last
+action, after the build is green.
+
+**No history rewriting on anything pushed.** No amend, no rebase, no force. The
+ledger's continuity depends on the tags staying where the entries say they are.
+
+The ritual that runs these — and what else closes an iteration — is
+`.claude/skills/iteration-close/SKILL.md`. **The skill holds the order of
+operations; this section holds the rules.** Do not restate either into the other.
+
 ## Kaizen
 
 **Every iteration leaves this repository slightly better shaped than it found
