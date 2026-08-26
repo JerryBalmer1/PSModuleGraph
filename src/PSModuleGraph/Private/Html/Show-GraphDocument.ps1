@@ -2,7 +2,7 @@ function Show-GraphDocument {
     <#
     .SYNOPSIS
         Opens a generated document with the OS default handler, which for .html is
-        the default browser.
+        the default browser - over http when a local server is serving it.
     .DESCRIPTION
         The report ALWAYS opens in the default browser, never in the editor, even
         when the session is running inside VS Code.
@@ -27,21 +27,68 @@ function Show-GraphDocument {
         On Linux, xdg-open is frequently absent in headless containers and in WSL.
         That is a warning with the path, not an error: the file is already written
         and the user can open it themselves.
+
+        THE DOCUMENT, NEVER THE DIRECTORY. Before falling back to the file, a
+        loopback probe works out whether a static server is already serving this
+        exact file and, if so, hands the browser that URL. Two things come from
+        it: the user lands on the report rather than on a directory listing they
+        then have to click through, and the page arrives on an origin a browser
+        policy can match - which is what makes its own vscode:// links able to
+        work at all. See Resolve-LoopbackDocumentUrl.
     .PARAMETER Path
         Path of the file to open.
+    .PARAMETER BaseUrl
+        Skip the port scan and use this origin.
+    .PARAMETER Port
+        Ports to probe on 127.0.0.1. Defaults to the candidate list in
+        Resolve-LoopbackDocumentUrl.
+    .PARAMETER NoServe
+        Skip the probe entirely and always open the file from disk.
+    .PARAMETER EditorLinkHelpCommand
+        Command to name when the report opened from disk and its editor links
+        may therefore be blocked. Supplied by the caller rather than known here:
+        it is vocabulary belonging to whatever program generated the report,
+        which is the same reason the renderer is handed editorLinkHelpCommand
+        instead of holding it. See docs/html-architecture.md.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string] $Path
+        [string] $Path,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string] $BaseUrl,
+
+        [Parameter()]
+        [int[]] $Port,
+
+        [Parameter()]
+        [switch] $NoServe,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string] $EditorLinkHelpCommand
     )
 
     if (-not (Test-Path -LiteralPath $Path)) {
         throw "Cannot open '$Path': file not found."
     }
 
-    if (-not $PSCmdlet.ShouldProcess($Path, 'Open in default application')) {
+    # Resolved before ShouldProcess so -WhatIf names the URL that would actually
+    # be opened rather than the file it was derived from.
+    $served = $null
+    if (-not $NoServe) {
+        $probe = @{ Path = $Path }
+        if ($BaseUrl) { $probe['BaseUrl'] = $BaseUrl }
+        if ($Port) { $probe['Port'] = $Port }
+        $served = Resolve-LoopbackDocumentUrl @probe
+    }
+
+    $target = if ($served) { $served.Url } else { $Path }
+
+    if (-not $PSCmdlet.ShouldProcess($target, 'Open in default application')) {
         return
     }
 
@@ -61,10 +108,10 @@ function Show-GraphDocument {
     # warning branches return without reaching it: nothing was opened, so there
     # is nothing to add a footnote to.
     if ($onWindows) {
-        Start-Process -FilePath $Path
+        Start-Process -FilePath $target
     }
     elseif ($onMacOS) {
-        & '/usr/bin/open' $Path
+        & '/usr/bin/open' $target
     }
     elseif ($onLinux) {
         $opener = Get-Command -Name 'xdg-open' -ErrorAction SilentlyContinue
@@ -73,11 +120,21 @@ function Show-GraphDocument {
                 "The report is at: $Path")
             return
         }
-        & $opener.Source $Path
+        & $opener.Source $target
     }
     else {
         Write-Warning "Unrecognised platform; could not open automatically. The report is at: $Path"
         return
+    }
+
+    # Which route was taken is invisible otherwise, and it decides whether the
+    # page's own editor links can work. Say it either way.
+    if ($served) {
+        Write-Verbose "Opened $($served.Url) - served over $($served.Origin) (editor links will work)."
+    }
+    else {
+        $hint = if ($EditorLinkHelpCommand) { " See $EditorLinkHelpCommand." } else { '' }
+        Write-Verbose "Opened $Path from disk (editor links may be blocked).$hint"
     }
 
     # Inside VS Code, name the command that opens the source - do not run it.

@@ -369,6 +369,35 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-NotMatchString 'inVSCodeWebview'
     }
 
+    It 'offers the command already scoped to the origin it was served from' {
+        # The page knows its own port. A generic command the reader has to edit
+        # is a step that did not need to exist.
+        $script:Html | Should-MatchString 'function servedOrigin'
+        $script:Html | Should-MatchString "location\.protocol !== 'http:'"
+        $script:Html | Should-MatchString 'EditorLinkNoLaunchOrigin'
+
+        # The command template reaches the page with {origin} still in it:
+        # caller tokens are filled in PowerShell, display-time tokens in the
+        # page, and only the browser knows the origin. See
+        # docs/html-architecture.md.
+        $script:Html | Should-MatchString "Enable-PSModuleGraphEditorLink -AllowedOrigin '\{origin\}'"
+    }
+
+    It 'shows the reader the URL an embedded viewer cannot use' {
+        # "Re-open this report in a real browser" left the reader to work out
+        # where. The page is sitting on the answer.
+        $script:Html | Should-MatchString 'EmbeddedViewerUrl'
+        $script:Html | Should-MatchString 'BannerCopyUrlLabel'
+        $script:Html | Should-MatchString 'Re-open this report at \{url\}'
+    }
+
+    It 'labels the banner copy button for what it copies' {
+        # One button, two possible payloads. A fixed 'Copy command' label on a
+        # button that copies a URL is a message that lies.
+        $script:Html | Should-MatchString 'function showBanner\(text, copyValue, copyLabelKey\)'
+        $script:Html | Should-MatchString "str\(copyLabelKey \|\| 'BannerCopyLabel'\)"
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'
@@ -402,53 +431,110 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
         }
     }
 
-    It 'writes to a temp file and opens it when no OutputPath is given' {
+    It 'writes under output/reports when no OutputPath is given' {
+        # NOT the system temp directory. A local static server serves a
+        # workspace, so a report in temp can never have an http origin - and
+        # without one, the page's own vscode:// links have nothing a browser
+        # policy can match. output/ is gitignored and wiped by Clean.
+        $sample = $script:Sample
+        Push-Location $TestDrive
+        try {
+            InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
+                param($Sample)
+
+                Mock Show-GraphDocument { }
+
+                $graph = Get-PSModuleDependencyGraph -Path $Sample
+                $item = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
+
+                $item | Should-HaveType ([System.IO.FileInfo])
+                $item.Extension | Should-Be '.html'
+                ($item.FullName -replace '\\', '/') | Should-MatchString 'output/reports/'
+                $item.Name | Should-MatchString '^SampleModule-\d{8}-\d{6}\.html$'
+                Test-Path -LiteralPath $item.FullName | Should-BeTrue
+
+                Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter {
+                    $Path -eq $item.FullName
+                }
+            }
+        }
+        finally { Pop-Location }
+    }
+
+    It 'names the command that diagnoses a blocked editor link' {
+        # Supplied by the caller rather than known below the seam - the same
+        # reason the renderer is handed editorLinkHelpCommand.
+        $sample = $script:Sample
+        Push-Location $TestDrive
+        try {
+            InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
+                param($Sample)
+
+                Mock Show-GraphDocument { }
+
+                $graph = Get-PSModuleDependencyGraph -Path $Sample
+                $null = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
+
+                Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter {
+                    $EditorLinkHelpCommand -eq 'Test-PSModuleGraphEditorLink'
+                }
+            }
+        }
+        finally { Pop-Location }
+    }
+
+    It 'passes -BaseUrl and -NoServe through to the opener' {
+        $sample = $script:Sample
+        Push-Location $TestDrive
+        try {
+            InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
+                param($Sample)
+
+                Mock Show-GraphDocument { }
+
+                $graph = Get-PSModuleDependencyGraph -Path $Sample
+                $null = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show -BaseUrl 'http://127.0.0.1:9999'
+                Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter {
+                    $BaseUrl -eq 'http://127.0.0.1:9999'
+                }
+
+                $null = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show -NoServe
+                Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter { $NoServe }
+            }
+        }
+        finally { Pop-Location }
+    }
+
+    It 'refuses -BaseUrl or -NoServe without -Show' {
+        # Silently ignoring either would let someone believe they had pinned an
+        # origin when nothing read it.
         $sample = $script:Sample
 
         InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
             param($Sample)
 
-            Mock Show-GraphDocument { }
-
             $graph = Get-PSModuleDependencyGraph -Path $Sample
-            $item = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
-
-            $item | Should-HaveType ([System.IO.FileInfo])
-            $item.FullName | Should-MatchString 'PSModuleGraph'
-            $item.Extension | Should-Be '.html'
-            Test-Path -LiteralPath $item.FullName | Should-BeTrue
-
-            Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter {
-                $Path -eq $item.FullName
-            }
+            { Export-PSModuleDependencyGraph -InputObject $graph -Format Html -BaseUrl 'http://127.0.0.1:5500' } |
+                Should-Throw -ExceptionMessage '*only valid with -Show*'
+            { Export-PSModuleDependencyGraph -InputObject $graph -Format Html -NoServe } |
+                Should-Throw -ExceptionMessage '*only valid with -Show*'
         }
     }
 
-    It 'reuses one stable temp path and overwrites it' {
+    It 'refuses -BaseUrl combined with -NoServe' {
         $sample = $script:Sample
+        Push-Location $TestDrive
+        try {
+            InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
+                param($Sample)
 
-        InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
-            param($Sample)
-
-            Mock Show-GraphDocument { }
-
-            $graph = Get-PSModuleDependencyGraph -Path $Sample
-            $first = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
-
-            # Count around the second call rather than globbing the directory:
-            # it is the real system temp, shared with other runs and with
-            # leftovers from previous naming schemes.
-            $dir = Split-Path $first.FullName -Parent
-            $before = @(Get-ChildItem -LiteralPath $dir -Filter '*.html' -File).Count
-            $second = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
-            $after = @(Get-ChildItem -LiteralPath $dir -Filter '*.html' -File).Count
-
-            # Same path both times, so an already-open browser tab only needs a
-            # refresh and the directory cannot grow without bound.
-            $second.FullName | Should-Be $first.FullName
-            $second.Name | Should-Be 'SampleModule.html'
-            $after | Should-Be $before
+                Mock Show-GraphDocument { }
+                $graph = Get-PSModuleDependencyGraph -Path $Sample
+                { Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show -BaseUrl 'http://x' -NoServe } |
+                    Should-Throw -ExceptionMessage '*cannot be combined*'
+            }
         }
+        finally { Pop-Location }
     }
 
     It 'does not open anything when -Show is absent' {
