@@ -21,6 +21,7 @@
         'Export-PSModuleDependencyGraph'
         'Test-PSModuleGraphEditorLink'
         'Enable-PSModuleGraphEditorLink'
+        'Update-KnowledgeStore'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

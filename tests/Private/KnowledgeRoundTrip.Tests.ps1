@@ -25,31 +25,71 @@ BeforeAll {
 }
 
 Describe 'The store is current' {
-    # Separate from the round-trip below, and failing for a different reason.
-    # Round-trip asks "is what was written what is read". Freshness asks "does
-    # the store still describe the source". Conflating them produces a failure
-    # that says the reader broke when the truth is that someone added a
-    # function - which happened on the first run of this suite.
+    # Regenerate into TestDrive and compare trees. The v0.1.0 version of this
+    # asserted counts against the live graph, which meant adding a private
+    # function turned the build red with a fix that lived outside the
+    # repository - the shape of test people delete.
     #
-    # WHEN THIS FAILS: regenerate the store. It does not mean the reader is
-    # broken. Regenerating is still a scratch script; see ledger 0001-t4.
+    # Comparing trees is the same guarantee with an actionable failure, and it
+    # catches what counting could not: a record whose CONTENT drifted while the
+    # count stayed the same.
 
-    It 'holds one subject per definition, plus the module itself' {
-        $expected = @($script:Graph.Nodes).Count + 1
-        $script:Subjects.Count | Should-Be $expected
-    }
+    It 'matches what the generator would write today' {
+        $stamp = $script:Assignments[0].ProvenanceAt
+        $prompt = $script:Assignments[0].ProvenancePrompt
 
-    It 'holds every assignment the facets imply' {
-        # structure for every definition, surface for functions only. A class,
-        # an enum or top-level script code has no export status.
-        $nodes = @($script:Graph.Nodes)
-        $functions = @($nodes | Where-Object { $_.Kind -eq 'Function' })
-        $expected = $nodes.Count + $functions.Count
+        $fresh = Join-Path $TestDrive 'knowledge'
+        New-Item -ItemType Directory -Path $fresh -Force | Out-Null
+        foreach ($area in 'SCHEMA', 'facets', 'meta') {
+            Copy-Item -LiteralPath (Join-Path $script:Knowledge $area) -Destination $fresh -Recurse -Force
+        }
 
-        $script:Assignments.Count | Should-Be $expected
+        foreach ($module in 'src/PSModuleGraph', 'tests/fixtures/SampleModule') {
+            Update-KnowledgeStore -Path (Join-Path $script:Repo $module) -StoreRoot $fresh `
+                -GeneratedAt $stamp -Prompt $prompt -Confirm:$false | Out-Null
+        }
+
+        # Compared by relative path and content, so the failure names the file
+        # rather than reporting that two directories differ.
+        function Get-Fingerprint {
+            param([string] $Root)
+            $map = @{}
+            foreach ($area in 'subjects', 'assignments') {
+                $base = Join-Path $Root $area
+                if (-not (Test-Path -LiteralPath $base)) { continue }
+                foreach ($file in (Get-ChildItem -LiteralPath $base -Filter *.md -File -Recurse)) {
+                    $relative = $file.FullName.Substring($Root.Length).TrimStart('\', '/').Replace('\', '/')
+                    $map[$relative] = (Get-Content -LiteralPath $file.FullName -Raw).Replace("`r`n", "`n")
+                }
+            }
+            $map
+        }
+
+        $committed = Get-Fingerprint -Root $script:Knowledge
+        $regenerated = Get-Fingerprint -Root $fresh
+
+        $stale = 'The knowledge store is stale. Run: ./build.ps1 -Task Knowledge'
+
+        # Naming five is actionable; naming ninety-five is a wall of text that
+        # hides the count, which is the part that tells you what happened.
+        function Format-Sample {
+            param([string[]] $Name)
+            if ($Name.Count -le 5) { return ($Name -join ', ') }
+            "$(($Name | Select-Object -First 5) -join ', ') and $($Name.Count - 5) more"
+        }
+
+        $missing = @($regenerated.Keys | Where-Object { -not $committed.ContainsKey($_) } | Sort-Object)
+        @($missing) | Should-BeCollection @() -Because "$stale Not committed: $(Format-Sample -Name $missing)"
+
+        $extra = @($committed.Keys | Where-Object { -not $regenerated.ContainsKey($_) } | Sort-Object)
+        @($extra) | Should-BeCollection @() -Because "$stale No longer generated: $(Format-Sample -Name $extra)"
+
+        $changed = @($committed.Keys | Where-Object {
+                $regenerated.ContainsKey($_) -and $regenerated[$_] -ne $committed[$_]
+            } | Sort-Object)
+        @($changed) | Should-BeCollection @() -Because "$stale Content differs: $(Format-Sample -Name $changed)"
     }
 }
-
 Describe 'The store reads itself back' {
     It 'read something at all' {
         # Guards the assertions below: every "foreach over an empty collection"
@@ -129,7 +169,9 @@ Describe 'The store reads itself back' {
 
     It 'points every assignment at a path its facet defines' {
         $facets = @{}
-        foreach ($file in (Get-ChildItem -Path (Join-Path $script:Knowledge 'facets') -Filter *.md -File)) {
+        $facetFiles = @(Get-ChildItem -Path (Join-Path $script:Knowledge 'facets') -Filter *.md -File) +
+                      @(Get-ChildItem -Path (Join-Path $script:Knowledge 'meta') -Filter *.md -File)
+        foreach ($file in $facetFiles) {
             $facet = InModuleScope PSModuleGraph -Parameters @{ Path = $file.FullName } {
                 param($Path)
                 Import-KnowledgeFacet -Path $Path

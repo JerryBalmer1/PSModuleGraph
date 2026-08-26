@@ -164,6 +164,28 @@ task Test Build, {
     }
 }
 
+task Knowledge Build, {
+    # The answer to a stale store, and it lives in the repository. Before
+    # v0.2.0 the generator was a scratch script, so the freshness test could
+    # turn the build red with a fix nobody could run - which is the shape of
+    # test people delete.
+    #
+    # Both populations, in a fixed order, with a fixed stamp. Generation is
+    # reproducible so staleness can be detected by comparing trees rather than
+    # by counting records, and a fixed stamp is what makes byte-comparison
+    # possible at all.
+    Import-Module -Name (Join-Path $OutRoot "$ModuleName.psd1") -Force
+
+    $stamp = $env:PSMODULEGRAPH_KNOWLEDGE_STAMP
+    if (-not $stamp) { $stamp = '2026-08-26' }
+    $store = Join-Path $BuildRoot 'knowledge'
+
+    foreach ($module in $SrcRoot, (Join-Path $TestsRoot 'fixtures/SampleModule')) {
+        $summary = Update-KnowledgeStore -Path $module -StoreRoot $store -GeneratedAt $stamp -Confirm:$false
+        Write-Build Green "  $($summary.ModuleName): $($summary.RecordsWritten) record(s), $($summary.FacetsGraded) facet grade(s)"
+    }
+}
+
 task Import Build, {
     $manifest = Join-Path $OutRoot "$ModuleName.psd1"
     Import-Module -Name $manifest -Force -Verbose

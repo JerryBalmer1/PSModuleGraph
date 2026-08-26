@@ -3,14 +3,13 @@ id: "psmodule:PSModuleGraph/function/Get-AutoLaunchPlan"
 namespace: "psmodule"
 name: "Get-AutoLaunchPlan"
 parent: "psmodule:PSModuleGraph"
-source: "src/PSModuleGraph/Private/EditorLink/Get-AutoLaunchPlan.ps1"
-generated_by: "PSModuleGraph Get-PSModuleDependencyGraph"
+source: "Private/EditorLink/Get-AutoLaunchPlan.ps1"
+generated_by: "PSModuleGraph Update-KnowledgeStore"
 generated_at: "2026-08-26"
-prompt: "ledger/0002"
+prompt: "ledger/0003"
 ---
 
 # Get-AutoLaunchPlan
 
-A `function` defined in `PSModuleGraph`. Assignments for this subject live
-under `knowledge/assignments/psmodule/PSModuleGraph/function/Get-AutoLaunchPlan/`, one file per
-facet, so changing one classification is a one-file diff.
+A `function` defined in `PSModuleGraph`. Its assignments live one per facet under
+`assignments/`, so changing one classification is a one-file diff.

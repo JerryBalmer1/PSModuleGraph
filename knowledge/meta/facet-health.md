@@ -1,7 +1,7 @@
 ---
 id: facet-health
-version: 0.0.1
-kind: scalar
+version: 0.1.0
+kind: categorical
 separator: ":"
 paths:
   - path: facet-health:coverage:none
@@ -74,24 +74,45 @@ shaped consistently. Nothing about what the facet means.
   category error. This facet's subjects are always in the `facet:` namespace, and
   a reader finding otherwise has found a bug.
 
-## Why it is scalar rather than hierarchical
+## Why it is categorical, and why it is one facet rather than three
 
-The paths are ordered within each axis: `none` < `partial` < `complete`, and
-`asserted` < `inferred` < `observed`. That ordering is the point — it is what
-lets a reader say the store got worse — and `scalar` is the `kind` that declares
-it. The colon-separated shape is not a hierarchy here; it is an axis name and a
-value on that axis.
+**Version 0.1.0 corrected `kind` from `scalar` to `categorical`.** Not a rename,
+so nothing aliases; the paths are unchanged and every one still resolves.
 
-**This is the weakest part of the design and is recorded as such in `ledger/0001`.**
-A facet carrying three independent axes in one path space is arguably three
-facets. It is left as one for v0.0.1 because splitting a facet nothing has yet
-assigned would be reorganising an empty room, and because the reflection pass is
-supposed to propose that split from evidence rather than from a hunch.
+`scalar` asserts that a facet's paths are *ordered*. These paths are ordered
+**within** each axis — `none` < `partial` < `complete`, `asserted` < `inferred`
+< `observed` — and **undefined across** them. There is no answer to whether
+`facet-health:coverage:complete` is greater than `facet-health:evidence:asserted`,
+and `scalar` was claiming there was. Ordering within an axis is not ordering
+across axes, and declaring the stronger property was simply wrong.
 
-## Not yet assigned
+That correction was proposed by the reflection pass in `ledger/0002` as an
+evidenced defect and applied by `ledger/0003`, which is the discipline working:
+reflection proposes, the next implementation disposes.
 
-No assignments exist for this facet. That is deliberate and is itself the finding:
-by its own scale it is `facet-health:coverage:none`, and writing that assignment
-in the same breath as defining the facet would be exactly the `evidence:asserted`
-failure it exists to detect. The first honest assignments come from the next
-implementation, computed from the store rather than declared alongside it.
+**Three axes, one facet — deliberately.** `ledger/0001` proposed splitting this
+into three facets and `ledger/0002` withdrew the proposal under the evidence
+rule, for a reason that is worth keeping written down here:
+
+> **Facets are multi-valued.** A subject can already carry
+> `facet-health:coverage:partial` *and* `facet-health:evidence:inferred`
+> simultaneously, as two paths on one facet. Three separate facets would hold
+> exactly the same information. Two subjects with identical assignments before
+> the split have identical assignments after it. **The split separates nothing.**
+
+A split that separates no two subjects is a rename that produces extra files.
+If someone later finds a pair of facets that three separate facets would
+distinguish and this one cannot, that is the evidence to reopen it — and naming
+the pair is the whole requirement.
+
+## Assignments
+
+Computed by `Update-KnowledgeStore`, never declared. Writing these by hand would
+be precisely the `facet-health:evidence:asserted` failure this facet exists to
+detect, which is why `v0.0.1` shipped it with no assignments rather than with
+flattering ones.
+
+Confidence differs by axis because the three are different kinds of claim.
+Coverage is counted; depth is measured; evidence quality is a judgement encoded
+as a rule, and carries the lowest confidence by some distance. **Read the
+evidence axis as a prompt to look, not as a finding.**

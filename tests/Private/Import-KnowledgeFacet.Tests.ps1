@@ -89,7 +89,9 @@ Describe 'Import-KnowledgeFacet' {
         }
 
         $facet.IsMeta | Should-BeTrue
-        $facet.Kind | Should-Be 'scalar'
+        # Corrected from scalar in v0.2.0: its paths are ordered within each
+        # axis and undefined across them, which is not what scalar claims.
+        $facet.Kind | Should-Be 'categorical'
     }
 
     It 'returns the prose body unparsed, because it is for a person' {
