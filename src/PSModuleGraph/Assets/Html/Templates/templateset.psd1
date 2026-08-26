@@ -1,7 +1,7 @@
 @{
     # Declared assembly order for one template set. A caller supplies its own
-    # directory containing a file like this one; nothing here is specific to
-    # PSModuleGraph. See docs/html-architecture.md.
+    # directory containing a file like this one; nothing here is specific to any
+    # one report. See docs/html-architecture.md.
     Layout = 'layout.html'
 
     # Slot name -> ordered list of files whose contents replace it. Slots may
