@@ -76,11 +76,12 @@ Describe 'Built module layout' {
         Test-Path -LiteralPath $help | Should-BeTrue
     }
 
-    It 'exports exactly the ten documented commands' {
+    It 'exports exactly the twelve documented commands' {
         Remove-Module -Name PSModuleGraph -Force -ErrorAction SilentlyContinue
         Import-Module -Name $script:BuiltManifest -Force -ErrorAction Stop
 
         $expected = @(
+            'Enable-PSModuleGraphEditorLink'
             'Export-PSModuleDependencyGraph'
             'Get-PSModuleAssembly'
             'Get-PSModuleClass'
@@ -91,11 +92,12 @@ Describe 'Built module layout' {
             'Get-PSModuleManifest'
             'Get-PSModuleSourceFile'
             'Get-PSModuleUsingStatement'
+            'Test-PSModuleGraphEditorLink'
         )
 
         $actual = @(Get-Command -Module PSModuleGraph | Select-Object -ExpandProperty Name | Sort-Object)
 
-        $actual.Count | Should-Be 10
+        $actual.Count | Should-Be 12
         $actual | Should-BeCollection $expected
     }
 
