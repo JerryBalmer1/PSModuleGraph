@@ -25,13 +25,14 @@
             // the page knows - the definition is exactly what static analysis
             // could not resolve.
             label: function (node) {
-                return node.data('kind') === 'External' ? 'Open Call Site' : 'Open File Location';
+                return node.data('kind') === 'External'
+                    ? str('MenuOpenCallSite') : str('MenuOpenFileLocation');
             },
             check: function (node) {
                 var reason = editorLinkCheck(node);
                 if (reason) { return reason; }
                 if (isEmbeddedContext()) {
-                    return 'not available in an embedded viewer, open the report in a browser';
+                    return str('ReasonEmbedded');
                 }
                 return null;
             },
@@ -44,7 +45,7 @@
         },
         {
             id: 'copy-editor-link',
-            label: 'Copy Editor Link',
+            label: str('MenuCopyEditorLink'),
             // Deliberately without the embedded check: pasting the URI into the
             // Run dialog, Spotlight or a terminal opens the file whatever the
             // browser is or is not willing to do.
@@ -55,9 +56,9 @@
         },
         {
             id: 'copy-path',
-            label: 'Copy Path',
+            label: str('MenuCopyPath'),
             check: function (node) {
-                if (!node.data('path')) { return 'no file recorded'; }
+                if (!node.data('path')) { return str('ReasonNoFile'); }
                 return null;
             },
             run: function (node) {
@@ -66,7 +67,7 @@
         },
         {
             id: 'diagnostics',
-            label: 'Diagnostics',
+            label: str('MenuDiagnostics'),
             check: function () { return null; },
             run: function (node) {
                 showInfoPanel('Diagnostics', diagnosticsFor(node));
@@ -124,7 +125,7 @@
             }
 
             item.setAttribute('role', 'menuitem');
-            item.textContent = reason ? label + ' \u2014 ' + reason : label;
+            item.textContent = reason ? label + str('MenuReasonSeparator') + reason : label;
             menuEl.appendChild(item);
         });
 

@@ -147,6 +147,35 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "cfg\('NodeLimit'"
     }
 
+    It 'embeds the strings from strings.psd1' {
+        # Every user-visible string in the scripts comes from the data file. A
+        # literal left behind in a script would still render, so this asserts
+        # the substitution happened rather than that any one string is present.
+        $script:Html | Should-MatchString 'const GRAPH_STRINGS = \{'
+        $script:Html | Should-MatchString '"MenuOpenFileLocation"'
+        $script:Html | Should-MatchString '"EditorLinkNoLaunch"'
+    }
+
+    It 'names the enabler command in the no-launch banner' {
+        # The renderer is handed the command; it does not know what a
+        # PSModuleGraph command is. This is the seam being exercised end to end.
+        $script:Html | Should-MatchString 'Enable-PSModuleGraphEditorLink'
+        $script:Html | Should-MatchString '"editorLinkHelpCommand"'
+        # And a button to copy it, because the link it replaces has just been
+        # shown not to work.
+        $script:Html | Should-MatchString 'id="banner-copy"'
+        $script:Html | Should-MatchString "showBanner\(str\('EditorLinkNoLaunch'\), str\('editorLinkHelpCommand'\)\)"
+    }
+
+    It 'keeps the command name out of the template set' {
+        # The substituted document carries it; the shipped assets must not.
+        $assets = Join-Path $PSScriptRoot '..\..\src\PSModuleGraph\Assets\Html\Templates'
+        $offenders = @(Get-ChildItem -Path $assets -File -Recurse |
+                Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match 'PSModuleGraphEditorLink' })
+
+        $offenders.Count | Should-Be 0
+    }
+
     It 'flips the arrowheads for test order' {
         # Test order ranks right-to-left so the page reads left-to-right in the
         # order to test. An arrow pointing at the callee would point backwards

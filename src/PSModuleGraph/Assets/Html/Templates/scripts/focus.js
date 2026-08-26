@@ -115,25 +115,30 @@
     function showDetails(n) {
         var lvl = n.data('level');
         var rows = [
-            ['Name', escapeHtml(n.data('name'))],
-            ['Kind', escapeHtml(n.data('kind'))],
-            ['Exported', n.data('kind') === 'External' ? 'n/a' : (n.data('isExported') ? 'yes' : 'no')]
+            [str('DetailName'), escapeHtml(n.data('name'))],
+            [str('DetailKind'), escapeHtml(n.data('kind'))],
+            [str('DetailExported'), n.data('kind') === 'External'
+                ? str('ValueNotApplicable')
+                : (n.data('isExported') ? str('ValueYes') : str('ValueNo'))]
         ];
         if (n.data('kind') !== 'External') {
-            rows.push(['Test step', lvl === null ? 'in a cycle' : (lvl + 1) + ' of ' + stepCount]);
-            rows.push(['Dependents', String(n.data('dependents'))]);
-            rows.push(['Dependencies', String(n.data('dependencies'))]);
+            rows.push([str('DetailTestStep'), lvl === null
+                ? str('ValueInCycle')
+                : fmt('DetailTestStepValue', { step: lvl + 1, total: stepCount })]);
+            rows.push([str('DetailDependents'), String(n.data('dependents'))]);
+            rows.push([str('DetailDependencies'), String(n.data('dependencies'))]);
         }
-        if (n.data('startLine')) { rows.push(['Line', String(n.data('startLine'))]); }
+        if (n.data('startLine')) { rows.push([str('DetailLine'), String(n.data('startLine'))]); }
 
         var html = rows.map(function (r) {
-            return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>';
+            return '<dt>' + escapeHtml(r[0]) + '</dt><dd>' + r[1] + '</dd>';
         }).join('');
         if (n.data('path')) {
             // Plain selectable text, deliberately not a link: a file:// href to a
             // local path does not reliably open from a browser, and a dead link
             // is worse than text you can copy.
-            html += '<dt>Path</dt><dd><span class="path">' + escapeHtml(n.data('path')) + '</span></dd>';
+            html += '<dt>' + escapeHtml(str('DetailPath')) + '</dt><dd><span class="path">' +
+                escapeHtml(n.data('path')) + '</span></dd>';
         }
         var list = document.getElementById('details-list');
         list.innerHTML = html;
@@ -146,7 +151,8 @@
         focused = evt.target;
         focused.addClass('selected-node');
         document.getElementById('focus-controls').hidden = false;
-        document.getElementById('focus-hint').textContent = 'Focused: ' + focused.data('name');
+        document.getElementById('focus-hint').textContent =
+            fmt('FocusHintSelected', { name: focused.data('name') });
         showDetails(focused);
         reapplyFocus();
     });

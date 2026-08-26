@@ -14,7 +14,7 @@
             ['navigator.userAgent', navigator.userAgent]
         ];
         return rows.map(function (r) {
-            return r[0] + ': ' + (r[1] === undefined ? '(undefined)' : r[1]);
+            return r[0] + ': ' + (r[1] === undefined ? str('DiagnosticsUndefined') : r[1]);
         }).join('\n');
     }
 
@@ -61,10 +61,21 @@
         }, LAUNCH_WATCH_MS);
     }
 
+    // The uri is part of the reporter contract and another reporter may want
+    // it; this one deliberately does not repeat it. What the user needs is the
+    // command that unblocks the link, on a button, because the link itself has
+    // just been shown not to work.
+    //
+    // The command name is supplied by whatever generated the report. Without
+    // one there is nothing to run, so the message says so rather than reading
+    // "Run  in PowerShell".
     function reportNoLaunch(uri) {
-        showBanner('Nothing opened. The link may be blocked by this browser, or VS Code may ' +
-            'not be registered for vscode:// on this machine. Use Copy Editor Link and paste ' +
-            'it into the Run dialog. The link was: ' + uri);
+        if (hasStr('editorLinkHelpCommand')) {
+            showBanner(str('EditorLinkNoLaunch'), str('editorLinkHelpCommand'));
+        }
+        else {
+            showBanner(str('EditorLinkNoLaunchNoCommand'));
+        }
     }
 
     function copyText(text) {

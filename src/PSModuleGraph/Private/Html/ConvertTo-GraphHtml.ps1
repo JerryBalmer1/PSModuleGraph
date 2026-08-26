@@ -52,6 +52,14 @@ function ConvertTo-GraphHtml {
     $config = Resolve-HtmlConfiguration
     $configJson = ConvertTo-EscapedHtmlJson -InputObject $config
 
+    # The seam. Nothing below it may know what a PSModuleGraph command is, so
+    # the name of the one that fixes a blocked editor link is handed down as a
+    # generic value and interpolated into a string the renderer was given.
+    $strings = Resolve-HtmlString -Value @{
+        editorLinkHelpCommand = 'Enable-PSModuleGraphEditorLink'
+    }
+    $stringsJson = ConvertTo-EscapedHtmlJson -InputObject $strings
+
     $dataJson = ConvertTo-EscapedHtmlJson -InputObject $data
     $metaJson = ConvertTo-EscapedHtmlJson -InputObject $meta
 
@@ -64,6 +72,7 @@ function ConvertTo-GraphHtml {
     $document = $template.Replace('/*__GRAPH_DATA__*/ null', $dataJson)
     $document = $document.Replace('/*__GRAPH_META__*/ null', $metaJson)
     $document = $document.Replace('/*__GRAPH_CONFIG__*/ null', $configJson)
+    $document = $document.Replace('/*__GRAPH_STRINGS__*/ null', $stringsJson)
     $document = $document.Replace('__PAGE_TITLE__', (ConvertTo-EscapedHtmlText -Text $Title))
 
     $document

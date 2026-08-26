@@ -149,7 +149,9 @@ input[type="range"] { width: 100%; }
     color: #f8e7bd;
     font-size: 12px;
 }
-#banner button { margin-left: auto; flex: 0 0 auto; background: transparent; border-color: transparent; color: inherit; }
+#banner #banner-text { margin-right: auto; }
+#banner button { flex: 0 0 auto; background: transparent; border-color: transparent; color: inherit; }
+#banner #banner-copy { border-color: var(--warn); border-radius: 3px; padding: 1px 8px; }
 
 #template-notice {
     max-height: 100%;

@@ -68,7 +68,7 @@
     // on top; copying works in an embedded viewer, which is exactly when it is
     // the only thing that does.
     function editorLinkCheck(node) {
-        if (!node.data('path')) { return 'no file recorded'; }
-        if (!meta.moduleRoot) { return 'module root unknown'; }
+        if (!node.data('path')) { return str('ReasonNoFile'); }
+        if (!meta.moduleRoot) { return str('ReasonNoModuleRoot'); }
         return null;
     }

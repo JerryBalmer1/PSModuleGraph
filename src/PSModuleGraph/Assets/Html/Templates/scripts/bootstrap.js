@@ -1,6 +1,7 @@
 const GRAPH_DATA = /*__GRAPH_DATA__*/ null;
 const GRAPH_META = /*__GRAPH_META__*/ null;
 const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
+const GRAPH_STRINGS = /*__GRAPH_STRINGS__*/ null;
 
 (function () {
     'use strict';
@@ -23,6 +24,31 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     function cfg(key, fallback) {
         var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
         return (typeof v === 'number' && isFinite(v)) ? v : fallback;
+    }
+
+    // User-visible text comes from Assets/Html/Config/strings.psd1, substituted
+    // above. A missing key renders as its own name in brackets rather than as
+    // nothing: a silently blank label is the one failure mode nobody notices.
+    function str(key) {
+        var v = GRAPH_STRINGS ? GRAPH_STRINGS[key] : null;
+        return (typeof v === 'string' && v.length) ? v : '[' + key + ']';
+    }
+
+    // Whether a key was actually supplied, as opposed to defaulting. Used for
+    // the values the caller passes through config, which may legitimately be
+    // absent - str() alone cannot tell absent from present-and-bracketed.
+    function hasStr(key) {
+        var v = GRAPH_STRINGS ? GRAPH_STRINGS[key] : null;
+        return typeof v === 'string' && v.length > 0;
+    }
+
+    // {token} substitution for the values only the browser knows at display
+    // time. Deliberately not a template language: an unfilled token is left as
+    // written, so it shows up rather than disappearing.
+    function fmt(key, values) {
+        return str(key).replace(/\{(\w+)\}/g, function (match, name) {
+            return Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : match;
+        });
     }
 
     var NODE_LIMIT = cfg('NodeLimit', 400);
@@ -50,8 +76,8 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
 /*__SLOT_SCRIPT_ORDER__*/
     // ---- header ----------------------------------------------------------
     document.getElementById('hdr-version').textContent =
-        (meta.moduleVersion ? 'v' + meta.moduleVersion : '') +
-        (meta.generatedAt ? '  ·  generated ' + meta.generatedAt : '');
+        (meta.moduleVersion ? str('HeaderVersionPrefix') + meta.moduleVersion : '') +
+        (meta.generatedAt ? str('HeaderGeneratedPrefix') + meta.generatedAt : '');
     document.getElementById('c-nodes').textContent = nodes.length;
     document.getElementById('c-edges').textContent = links.length;
     document.getElementById('c-steps').textContent = stepCount;
@@ -144,30 +170,41 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     // guard ran last was the only one the user ever saw.
     var banner = document.getElementById('banner');
     var bannerMessages = [];
+    var bannerCopyEl = document.getElementById('banner-copy');
+    var bannerCopyValue = null;
+    bannerCopyEl.textContent = str('BannerCopyLabel');
+    bannerCopyEl.addEventListener('click', function () {
+        if (bannerCopyValue) { copyText(bannerCopyValue); }
+    });
     document.getElementById('banner-close').addEventListener('click', function () {
         banner.style.display = 'none';
     });
 
-    function showBanner(text) {
+    // copyValue is optional: a message that names something worth pasting
+    // elsewhere gets a button, and the rest do not. The button is the whole
+    // point of the no-launch message - a user reading it cannot click a link
+    // that has just been shown not to work.
+    function showBanner(text, copyValue) {
         bannerMessages.push(text);
         document.getElementById('banner-text').textContent = bannerMessages.join(' ');
+        if (copyValue) {
+            bannerCopyValue = copyValue;
+            bannerCopyEl.hidden = false;
+        }
         banner.style.display = 'flex';
     }
 
     // ---- scale guard -----------------------------------------------------
     if (nodes.length > NODE_LIMIT) {
         exportedOnlyEl.checked = true;
-        showBanner('This module has ' + nodes.length + ' nodes. Above ~' + NODE_LIMIT +
-            ' the layout stops being readable, so the view starts filtered to exported functions. ' +
-            'Uncheck "Exported only" to see everything.');
+        showBanner(fmt('ScaleGuard', { count: nodes.length, limit: NODE_LIMIT }));
     }
 
     // ---- embedded viewer guard -------------------------------------------
     // Said on load, not only in the context menu: a user who never right-clicks
     // would otherwise never learn the page is running degraded.
     if (isEmbeddedContext()) {
-        showBanner('Opened in an embedded viewer. Open File Location is disabled - ' +
-            'open this file in a browser to jump to source.');
+        showBanner(str('EmbeddedViewer'));
     }
 
     // First paint. Filters run before the first layout, so nodes that start

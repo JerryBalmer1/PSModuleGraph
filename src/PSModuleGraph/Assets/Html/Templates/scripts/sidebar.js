@@ -21,17 +21,18 @@
         }).join('');
 
         document.getElementById('order-list').innerHTML = html;
-        document.getElementById('order-intro').textContent =
-            'Test step 1 first. Nothing in a step depends on anything in a later step, ' +
-            'so the first failure is the cause rather than an echo of it.';
+        document.getElementById('order-intro').textContent = str('OrderIntro');
 
         var cycleBox = document.getElementById('order-cycle');
         if (order.cyclic.length > 0) {
             var byId = {};
             internal.forEach(function (n) { byId[n.id] = n.name; });
             var names = order.cyclic.map(function (id) { return byId[id] || id; }).sort().join(', ');
-            cycleBox.innerHTML = '<b>' + order.cyclic.length + ' in a dependency cycle.</b> ' +
-                'These have no valid order, because each waits on the other: ' + escapeHtml(names);
+            // The emphasis is the page's, not the string's: strings.psd1 holds
+            // no markup, so a message can never inject an element.
+            cycleBox.innerHTML = '<b>' +
+                escapeHtml(fmt('OrderCycleHeading', { count: order.cyclic.length })) + '</b> ' +
+                escapeHtml(fmt('OrderCycleBody', { names: names }));
             cycleBox.hidden = false;
         } else {
             cycleBox.hidden = true;
@@ -68,11 +69,11 @@
     var legendRows = kinds.map(function (k) {
         return '<div class="row"><span class="chip" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' + k + '</div>';
     });
-    legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:2px solid #fff"></span>exported</div>');
-    legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:5px solid #0b0f14"></span>thicker border = more dependents</div>');
-    legendRows.push('<div class="row"><span class="line" style="border-top:2px solid #6b7785"></span>calls</div>');
-    legendRows.push('<div class="row"><span class="line" style="border-top:2px dashed #f2c14e"></span>inherits</div>');
+    legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:2px solid #fff"></span>' + escapeHtml(str('LegendExported')) + '</div>');
+    legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:5px solid #0b0f14"></span>' + escapeHtml(str('LegendBorderWidth')) + '</div>');
+    legendRows.push('<div class="row"><span class="line" style="border-top:2px solid #6b7785"></span>' + escapeHtml(str('LegendCalls')) + '</div>');
+    legendRows.push('<div class="row"><span class="line" style="border-top:2px dashed #f2c14e"></span>' + escapeHtml(str('LegendInherits')) + '</div>');
     if (unresolved.length > 0) {
-        legendRows.push('<div class="row"><span class="line" style="border-top:2px dotted #ff7043"></span>unresolved</div>');
+        legendRows.push('<div class="row"><span class="line" style="border-top:2px dotted #ff7043"></span>' + escapeHtml(str('LegendUnresolved')) + '</div>');
     }
     legend.innerHTML = legendRows.join('');

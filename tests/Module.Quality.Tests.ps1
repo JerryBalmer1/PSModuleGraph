@@ -41,13 +41,13 @@ Describe 'Built module layout' {
         }
     }
 
-    It 'ships the three config data files and they still parse' {
+    It 'ships the four config data files and they still parse' {
         # If the build stops copying these, every export warns and falls back to
         # the schema defaults - a change the user made would just stop taking
         # effect.
         $config = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'Html/Config'
 
-        foreach ($file in 'settings.schema.psd1', 'settings.psd1', 'theme.psd1') {
+        foreach ($file in 'settings.schema.psd1', 'settings.psd1', 'theme.psd1', 'strings.psd1') {
             $full = Join-Path $config $file
             Test-Path -LiteralPath $full | Should-BeTrue
             Import-PowerShellDataFile -LiteralPath $full | Should-NotBeNull

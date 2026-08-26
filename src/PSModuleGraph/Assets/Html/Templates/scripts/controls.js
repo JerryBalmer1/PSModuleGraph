@@ -3,7 +3,7 @@
         clearFocusStyling();
         cy.nodes().removeClass('selected-node');
         document.getElementById('focus-controls').hidden = true;
-        document.getElementById('focus-hint').textContent = 'Select a node to focus its neighbourhood.';
+        document.getElementById('focus-hint').textContent = str('FocusHintEmpty');
         document.getElementById('details-list').hidden = true;
         document.getElementById('details-empty').hidden = false;
     }
@@ -36,7 +36,7 @@
     function applyZoomSpeed() {
         var value = parseFloat(zoomSpeedEl.value);
         if (isNaN(value)) { return; }
-        zoomSpeedVal.textContent = value + 'x';
+        zoomSpeedVal.textContent = value + str('ZoomSpeedSuffix');
         var renderer = cy._private && cy._private.renderer;
         if (renderer && 'wheelSensitivity' in renderer) {
             renderer.wheelSensitivity = value;

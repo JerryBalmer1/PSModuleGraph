@@ -40,6 +40,7 @@ src/PSModuleGraph/
   Private/Html/                 <- moves out at extraction, minus the seam
     Get-HtmlTemplateSet.ps1
     Resolve-HtmlConfiguration.ps1
+    Resolve-HtmlString.ps1
     ConvertTo-EscapedHtml*.ps1
     Show-GraphDocument.ps1
     ConvertTo-GraphHtml.ps1     <- STAYS. This is the seam.
@@ -72,9 +73,9 @@ Each has one validator, dispatched from the entry's `Type`.
 
 ## Extraction checklist
 
-- [ ] No graph vocabulary below the seam  (setting names, template ids, GRAPH_* tokens)
+- [ ] No graph vocabulary below the seam  (setting names, template ids, GRAPH_* tokens, partials/template-notice.html)
 - [x] Schema is data, not a hashtable in a `.ps1`
-- [ ] All user-visible strings externalised to `strings.psd1`
+- [ ] All user-visible strings externalised to `strings.psd1`  (scripts done; partial markup still carries its own text)
 - [ ] All colours externalised to `theme.psd1`
 - [x] No partial over 250 lines
 - [x] Template set resolvable from a caller-supplied directory
@@ -136,3 +137,32 @@ option nobody asked for is a behaviour change.
 them is a checklist item and belongs in one deliberate pass. A half-rename -
 `NodeLimit` to `ItemLimit` while `NodeFontSize` and `NodeSep` stay - is worse
 than either end state.
+
+**2026-08-25 - `strings.psd1` sits outside `settings.schema.psd1`.** The schema
+exists to type and range-check values, and a schema entry per string would hold
+a `Default` that is a second copy of the string itself. The schema covers the
+two value files; strings are the third kind and are resolved separately by
+`Resolve-HtmlString`.
+
+**2026-08-25 - A string the page asks for and cannot find renders as its own
+key in brackets.** Every call site carrying its own fallback would put each
+string in the script as well as the data file, which defeats externalising
+them. A visible `[MenuCopyPath]` is diagnosable; a silently blank label is the
+one failure mode nobody notices.
+
+**2026-08-25 - Caller tokens are filled in PowerShell, display-time tokens in
+the page.** `{editorLinkHelpCommand}` is configuration and is substituted at
+render time; `{count}` and `{name}` are only known in the browser and are left
+for `fmt()`. A token nobody fills stays as written rather than collapsing to
+nothing, so the gap shows up.
+
+**2026-08-25 - `editorLinkHelpCommand` has no default in `strings.psd1`.** It
+is vocabulary belonging to whatever program generated the report, and giving
+the renderer a default would be the renderer knowing it. When nothing supplies
+one the page uses a second message that does not mention a command, rather than
+rendering "Run  in PowerShell".
+
+**2026-08-25 - Emphasis in a message belongs to the page, not the string.**
+`strings.psd1` holds no markup, so the dependency-cycle notice is two strings
+that the page wraps and escapes. A string that could carry an element would be
+an injection point wherever the page assigns `innerHTML`.
