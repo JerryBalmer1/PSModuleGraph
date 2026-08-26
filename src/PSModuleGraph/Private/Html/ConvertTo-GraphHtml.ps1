@@ -48,9 +48,8 @@ function ConvertTo-GraphHtml {
         stats         = $Graph.Stats
     }
 
-    # Page starting values come from Assets/graph.defaults.psd1 so they are
-    # editable without touching the template. Validated and defaulted there.
-    $config = Get-GraphPageDefault
+    # See docs/html-architecture.md.
+    $config = Resolve-HtmlConfiguration
     $configJson = ConvertTo-EscapedHtmlJson -InputObject $config
 
     $dataJson = ConvertTo-EscapedHtmlJson -InputObject $data

@@ -41,15 +41,34 @@ Describe 'Built module layout' {
         }
     }
 
-    It 'ships Assets/graph.defaults.psd1 and it still parses' {
-        # The page's starting values live here. If the build stops copying it,
-        # every export warns and silently falls back to the built-in defaults -
-        # a change the user made would just stop taking effect.
-        $asset = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'graph.defaults.psd1'
+    It 'ships the three config data files and they still parse' {
+        # If the build stops copying these, every export warns and falls back to
+        # the schema defaults - a change the user made would just stop taking
+        # effect.
+        $config = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'Html/Config'
 
-        Test-Path -LiteralPath $asset | Should-BeTrue
-        $data = Import-PowerShellDataFile -LiteralPath $asset
-        $data.ZoomSpeed | Should-Be 1.25
+        foreach ($file in 'settings.schema.psd1', 'settings.psd1', 'theme.psd1') {
+            $full = Join-Path $config $file
+            Test-Path -LiteralPath $full | Should-BeTrue
+            Import-PowerShellDataFile -LiteralPath $full | Should-NotBeNull
+        }
+
+        (Import-PowerShellDataFile -LiteralPath (Join-Path $config 'settings.psd1')).ZoomSpeed |
+            Should-Be 1.25
+    }
+
+    It 'declares every shipped value in the schema' {
+        # The rule that pays for this design: a setting is added by editing data
+        # only. A value with no schema entry would warn at every user.
+        $config = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'Html/Config'
+        $schema = Import-PowerShellDataFile -LiteralPath (Join-Path $config 'settings.schema.psd1')
+
+        foreach ($file in 'settings.psd1', 'theme.psd1') {
+            $values = Import-PowerShellDataFile -LiteralPath (Join-Path $config $file)
+            foreach ($key in $values.Keys) {
+                $schema.Entries.ContainsKey($key) | Should-BeTrue
+            }
+        }
     }
 
     It 'ships the about_ help topic' {

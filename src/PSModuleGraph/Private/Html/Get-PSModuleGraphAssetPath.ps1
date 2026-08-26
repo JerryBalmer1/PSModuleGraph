@@ -9,11 +9,11 @@ function Get-PSModuleGraphAssetPath {
         module root in the built module. One of those would silently be wrong.
 
         Split out from Get-PSModuleGraphAsset so that assets which are parsed
-        rather than read as text - graph.defaults.psd1 goes through
+        rather than read as text - the .psd1 config files go through
         Import-PowerShellDataFile, which needs a path - share exactly one copy
         of this resolution and one error message.
     .PARAMETER Name
-        Asset path relative to the Assets directory, e.g. 'graph.defaults.psd1'
+        Asset path relative to the Assets directory, e.g. 'Html/Config/theme.psd1'
         or 'Html/Templates'.
     .PARAMETER PathType
         Whether Name is expected to be a file or a directory. Template sets are

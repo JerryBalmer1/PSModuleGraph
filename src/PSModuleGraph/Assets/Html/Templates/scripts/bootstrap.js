@@ -15,7 +15,7 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
 
     document.getElementById('app').hidden = false;
 
-    // Starting values come from Assets/graph.defaults.psd1, substituted above.
+    // Starting values come from Assets/Html/Config, substituted above.
     // PowerShell validates and fills every key before it gets here, so the
     // fallbacks below are only ever reached by someone opening the raw
     // template - which bails out earlier anyway. They exist so a missing key

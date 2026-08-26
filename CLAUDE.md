@@ -60,7 +60,7 @@ src/PSModuleGraph/
   Public/                        one exported function per file; NOT recursive
   Private/                       helpers; not exported; enumerated recursively
     Html/                        everything behind -Format Html
-  Assets/                        static files shipped as-is (graph.html)
+  Assets/Html/                   the report renderer - see docs/html-architecture.md
   en-US/                         about_ help topic
 tests/
   Public/  Private/              mirror the src layout
@@ -191,25 +191,24 @@ Rules that are easy to violate:
 - Embedded JSON escapes `<` as `\u003c`, so a `</script>` in a path or extent
   cannot terminate the script block. HTML is written UTF-8 **without** a BOM; a
   BOM ahead of `<!DOCTYPE html>` can trigger quirks mode.
-- **Page defaults live in `src/PSModuleGraph/Assets/graph.defaults.psd1`**, not
-  in the template. `Get-GraphPageDefault` reads it with
-  `Import-PowerShellDataFile` — the same restricted-data exception the module
-  already makes for manifests — validates every key against a range, and warns
-  and falls back rather than throwing. Adding a setting means: a key in the
-  `.psd1`, a row in that function's `$schema` (a key absent from `$schema` is
-  not a setting, whatever the file says), and a `cfg('Key', fallback)` in the
-  template. The JS fallbacks are unreachable in a generated report — the page
+- **Configuration is four data files under `Assets/Html/Config/`**, resolved by
+  `Resolve-HtmlConfiguration`. Adding a setting is a data change: an entry in
+  `settings.schema.psd1`, a value in `settings.psd1` or `theme.psd1`, and a
+  `cfg('Key', fallback)` in the template. Needing to edit a `.ps1` means the
+  design has broken — report it. See `docs/html-architecture.md`.
+
+  The JS fallbacks in `cfg()` are unreachable in a generated report — the page
   bails out earlier when `GRAPH_DATA` is null — and exist only so a missing key
   cannot become `NaN` in a layout calculation.
 
-  `Import-PowerShellDataFile` needs `-ErrorAction Stop` there. A `.psd1` that
-  will not parse raises a **non-terminating** error, so without it the `catch`
-  never runs and a broken config falls back in total silence.
+  `Import-PowerShellDataFile` needs `-ErrorAction Stop`. A `.psd1` that will not
+  parse raises a **non-terminating** error, so without it the `catch` never runs
+  and a broken config falls back in total silence.
 - Paths in the HTML payload are module-relative. Generated reports get attached
   to PRs and tickets, where absolute paths leak usernames. The JSON export keeps
   them absolute.
 - **Node context-menu actions live in the `NODE_ACTIONS` registry** in
-  `graph.html`, not in markup. An entry is `{ id, label, check, href, run }`, where
+  `scripts/menu.js`, not in markup. An entry is `{ id, label, check, href, run }`, where
   `label` may be a function of the node and `check` returns `null` when the
   action applies or the reason it does not — an inapplicable action greys out
   with that reason rather than disappearing. Adding an action means adding one
@@ -233,9 +232,10 @@ Rules that are easy to violate:
   the user is sitting in it — but it now only gates a `-Verbose` hint. The CLI
   has no `--command` and no `--uri` flag, so an extension's preview pane cannot
   be opened from PowerShell - do not add code that pretends otherwise.
-- `tests/Module.Quality.Tests.ps1` asserts `Assets/graph.html` reaches the built
-  module. That is the only thing standing between a build change and a runtime
-  failure in the export.
+- `tests/Module.Quality.Tests.ps1` asserts that every file the template set
+  manifest names, and all three config files, reach the built module. That is
+  the only thing standing between a build change and a runtime failure in the
+  export.
 
 Watch for parameter shadowing: PowerShell variable names are case-insensitive,
 so a local `$name` **is** the `$Name` parameter. Assigning to it re-runs the

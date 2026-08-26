@@ -72,14 +72,14 @@ Each has one validator, dispatched from the entry's `Type`.
 
 ## Extraction checklist
 
-- [ ] No graph vocabulary below the seam
-- [ ] Schema is data, not a hashtable in a `.ps1`
+- [ ] No graph vocabulary below the seam  (setting names, template ids, GRAPH_* tokens)
+- [x] Schema is data, not a hashtable in a `.ps1`
 - [ ] All user-visible strings externalised to `strings.psd1`
 - [ ] All colours externalised to `theme.psd1`
-- [ ] No partial over 250 lines
-- [ ] Template set resolvable from a caller-supplied directory
+- [x] No partial over 250 lines
+- [x] Template set resolvable from a caller-supplied directory
 - [ ] Token contract named generically (not `__GRAPH_*__`)
-- [ ] Renderer functions named without `Graph` or `PSModule`
+- [ ] Renderer functions named without `Graph` or `PSModule`  (Get-PSModuleGraphAsset, Get-PSModuleGraphAssetPath, Show-GraphDocument remain)
 - [ ] Tests for the subsystem run without building a dependency graph
 
 ## Decisions made and why
@@ -111,3 +111,28 @@ doing both at once would make the "behaviour unchanged" verification impossible.
 Those markers already record how the author divided the concerns; inventing a
 different division during a pure move would hide behaviour changes inside a
 refactor.
+
+**2026-08-25 — The script split produced nine files, not the five first
+sketched.** The 250-line ceiling forced it: a five-way split left `menu.js` and
+`render.js` over. `bootstrap.js` carries slots for the others rather than being
+split into head and tail fragments, so it stays a single readable entry point.
+
+**2026-08-25 — Template parts are read verbatim and must not end with a
+trailing newline.** Stripping one on read is indistinguishable from deleting a
+deliberately blank last line, and ten of the original slices have one. Verified
+by reassembling to a byte-identical document.
+
+**2026-08-25 — One schema covers both value files; each entry declares `In`.**
+A value in the wrong file still applies but is reported. Two schemas would let
+the two halves drift; no placement rule at all would make the settings/theme
+split decorative.
+
+**2026-08-25 — `Boolean`, `String`, `Color` and `Enum` validators exist with no
+shipped setting using them.** They are tested directly rather than by inventing
+settings to exercise them: the type machinery is the deliverable, and a new
+option nobody asked for is a behaviour change.
+
+**2026-08-25 — Setting names keep `Node`, `Edge` and `Rank` for now.** Renaming
+them is a checklist item and belongs in one deliberate pass. A half-rename -
+`NodeLimit` to `ItemLimit` while `NodeFontSize` and `NodeSep` stay - is worse
+than either end state.
