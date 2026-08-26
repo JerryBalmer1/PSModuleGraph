@@ -168,6 +168,39 @@ that a reader only needs if it is resolving paths.
 
 ---
 
+## The contract lives in two places, deliberately
+
+**JSON Schema enforces the fields. A test enforces the flatness. Neither alone
+is sufficient, and that seam is a decision rather than an oversight.**
+
+| Enforced by | What it catches |
+| --- | --- |
+| `SCHEMA/*.json` | required keys, types, patterns, ranges, unknown keys |
+| a test over the raw front matter | any value that is not a scalar or a list of scalars |
+
+JSON Schema cannot say *"no value anywhere may be a mapping"*. It can only say
+so key by key, which means an exhaustive list of every scalar-typed field and a
+schema edit for every new one. That is a worse failure than a documented seam:
+a contract that must be edited to add a field will eventually not be edited.
+
+**The consequence, which is real and worth knowing.** The flatness test works on
+raw text — it rejects a line beginning with `-`, and a line whose value is
+empty. An *inline* mapping slips past it:
+
+```yaml
+parent: { id: "psmodule:X" }     # flatness test: passes. schema: rejects.
+```
+
+The schema rejects that because `parent` is declared `type: string`. So the two
+together are sound and **either alone is not**. A change that weakens one must
+check what the other still covers.
+
+There is a third enforcement point on the write side:
+`ConvertTo-FlatKnowledgeYaml` throws rather than rendering a nested value, so a
+malformed record cannot reach a file in the first place. That is a belt, not a
+replacement — it only guards records this module writes, and the store is meant
+to be written by other things too.
+
 ## Versioning below 1.0.0
 
 **Decision, 2026-08-26 (ledger `0002`).** The original rule — patch for a normal
