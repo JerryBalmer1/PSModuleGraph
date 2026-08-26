@@ -1520,18 +1520,36 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
 
     setSidebarWidth(SIDEBAR_DEFAULT);
 
-    // ---- scale guard -----------------------------------------------------
+    // ---- banner ----------------------------------------------------------
+    // One banner, several possible messages. Appending rather than assigning is
+    // the point: a second condition used to overwrite the first, so whichever
+    // guard ran last was the only one the user ever saw.
     var banner = document.getElementById('banner');
+    var bannerMessages = [];
     document.getElementById('banner-close').addEventListener('click', function () {
         banner.style.display = 'none';
     });
+
+    function showBanner(text) {
+        bannerMessages.push(text);
+        document.getElementById('banner-text').textContent = bannerMessages.join(' ');
+        banner.style.display = 'flex';
+    }
+
+    // ---- scale guard -----------------------------------------------------
     if (nodes.length > NODE_LIMIT) {
         exportedOnlyEl.checked = true;
-        document.getElementById('banner-text').textContent =
-            'This module has ' + nodes.length + ' nodes. Above ~' + NODE_LIMIT +
+        showBanner('This module has ' + nodes.length + ' nodes. Above ~' + NODE_LIMIT +
             ' the layout stops being readable, so the view starts filtered to exported functions. ' +
-            'Uncheck "Exported only" to see everything.';
-        banner.style.display = 'flex';
+            'Uncheck "Exported only" to see everything.');
+    }
+
+    // ---- embedded viewer guard -------------------------------------------
+    // Said on load, not only in the context menu: a user who never right-clicks
+    // would otherwise never learn the page is running degraded.
+    if (isEmbeddedContext()) {
+        showBanner('Opened in an embedded viewer. Open File Location is disabled - ' +
+            'open this file in a browser to jump to source.');
     }
 
     // First paint. Filters run before the first layout, so nodes that start
