@@ -87,6 +87,11 @@ page has for one is where it is called from. **Copy Path** sits below it: a
 browser that refuses the `vscode://` scheme reports nothing back, so the page
 cannot tell you it was blocked.
 
+Note that a VS Code preview pane cannot follow a `vscode://` link — a webview
+sandboxes the page, so the URI never reaches the OS. The menu detects that and
+greys the item out with the reason. Open the report in a real browser for it to
+work.
+
 #### Changing the page defaults
 
 The page's starting values live in `Assets/graph.defaults.psd1` inside the

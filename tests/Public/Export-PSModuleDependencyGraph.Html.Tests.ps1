@@ -242,6 +242,17 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "document\.execCommand\('copy'\)"
     }
 
+
+    It 'explains itself when the page is inside a VS Code webview' {
+        # A webview sandboxes the page, so vscode:// never reaches the OS - the
+        # link would sit there doing nothing when clicked, with no error
+        # anywhere. Nothing in the page can fix that; it can say so.
+        $script:Html | Should-MatchString 'function inVSCodeWebview'
+        $script:Html | Should-MatchString "location\.protocol === 'vscode-webview:'"
+        $script:Html | Should-MatchString 'ancestorOrigins'
+        $script:Html | Should-MatchString 'blocked in this preview'
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

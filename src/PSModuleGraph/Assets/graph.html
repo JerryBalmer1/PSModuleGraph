@@ -1188,6 +1188,25 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
         return joined.replace(/\\/g, '/');
     }
 
+    // A VS Code webview - Simple Browser, or an HTML preview extension - serves
+    // the page from vscode-webview: and sandboxes it, so a custom scheme never
+    // reaches the OS. Nothing in the page can change that. It can at least say
+    // so, rather than presenting a link that does nothing when clicked.
+    function inVSCodeWebview() {
+        if (location.protocol === 'vscode-webview:') { return true; }
+        try {
+            // Set when the page is framed, which is how Simple Browser hosts it.
+            var origins = location.ancestorOrigins;
+            for (var i = 0; origins && i < origins.length; i++) {
+                if (origins[i].indexOf('vscode-webview') === 0) { return true; }
+            }
+        }
+        catch (err) {
+            // ancestorOrigins is Chromium-only; absence is not evidence either way.
+        }
+        return false;
+    }
+
     // vscode://file/{path}:{line}:{column}. Kept separate from the action that
     // navigates to it, so the construction can be exercised without handing the
     // browser a URI and launching an editor.
@@ -1217,6 +1236,7 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
             check: function (node) {
                 if (!node.data('path')) { return 'no file recorded'; }
                 if (!meta.moduleRoot) { return 'module root unknown'; }
+                if (inVSCodeWebview()) { return 'blocked in this preview, open the report in a browser'; }
                 return null;
             },
             // The browser shows its own "open external application" prompt, and

@@ -154,6 +154,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Open File Location now says why it cannot work inside a VS Code preview.**
+  A webview sandboxes the page, so a `vscode://` URI never reaches the OS and
+  the link does nothing at all — no prompt, no error. The page detects that
+  context and greys the item out with the reason, pointing at Copy Path. Opened
+  in a real browser it is unaffected.
 - **Open File Location did nothing when clicked.** The action assigned
   `window.location.href` to the `vscode://` URI, which Chrome discards in
   silence — no navigation, no error, nothing in the console. Menu actions that
