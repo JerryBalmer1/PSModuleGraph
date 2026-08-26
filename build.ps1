@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Bootstrap and invoke the PSModuleAst build.
+    Bootstrap and invoke the PSModuleGraph build.
 .PARAMETER Task
     InvokeBuild task name(s). Default: .
 .PARAMETER Bootstrap
@@ -91,7 +91,7 @@ if ($missing) {
     throw "Missing build modules: $($missing -join ', '). Re-run with -Bootstrap."
 }
 
-$buildFile = Join-Path $PSScriptRoot 'PSModuleAst.build.ps1'
+$buildFile = Join-Path $PSScriptRoot 'PSModuleGraph.build.ps1'
 if (-not (Test-Path -LiteralPath $buildFile)) {
     throw "Build file not found: $buildFile"
 }

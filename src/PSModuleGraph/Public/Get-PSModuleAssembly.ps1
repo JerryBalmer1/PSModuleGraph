@@ -44,7 +44,7 @@ function Get-PSModuleAssembly {
             $seen[$key] = $true
 
             $results.Add([pscustomobject]@{
-                    PSTypeName    = 'PSModuleAst.AssemblyInfo'
+                    PSTypeName    = 'PSModuleGraph.AssemblyInfo'
                     ModuleName    = $target.Name
                     ModuleVersion = $target.Version
                     Name          = $AssemblyName

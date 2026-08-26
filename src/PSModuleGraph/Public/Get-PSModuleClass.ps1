@@ -84,7 +84,7 @@ function Get-PSModuleClass {
                 }
 
                 [pscustomobject]@{
-                    PSTypeName    = 'PSModuleAst.ClassInfo'
+                    PSTypeName    = 'PSModuleGraph.ClassInfo'
                     ModuleName    = $target.Name
                     ModuleVersion = $target.Version
                     Name          = $type.Name

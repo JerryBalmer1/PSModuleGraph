@@ -47,7 +47,7 @@ function Get-PSModuleDependencyGraph {
         foreach ($fn in $functions) {
             $id = "function:$($fn.Name)"
             $node = [pscustomobject]@{
-                PSTypeName  = 'PSModuleAst.GraphNode'
+                PSTypeName  = 'PSModuleGraph.GraphNode'
                 Id          = $id
                 Name        = $fn.Name
                 Kind        = 'Function'
@@ -62,7 +62,7 @@ function Get-PSModuleDependencyGraph {
         foreach ($c in $classes) {
             $id = "class:$($c.Name)"
             $nodes.Add([pscustomobject]@{
-                    PSTypeName = 'PSModuleAst.GraphNode'
+                    PSTypeName = 'PSModuleGraph.GraphNode'
                     Id         = $id
                     Name       = $c.Name
                     Kind       = 'Class'
@@ -76,7 +76,7 @@ function Get-PSModuleDependencyGraph {
         foreach ($e in $enums) {
             $id = "enum:$($e.Name)"
             $nodes.Add([pscustomobject]@{
-                    PSTypeName = 'PSModuleAst.GraphNode'
+                    PSTypeName = 'PSModuleGraph.GraphNode'
                     Id         = $id
                     Name       = $e.Name
                     Kind       = 'Enum'
@@ -108,7 +108,7 @@ function Get-PSModuleDependencyGraph {
                 $fromId = 'script:toplevel'
                 if (-not $nodeIndex.ContainsKey('__toplevel__')) {
                     $nodes.Add([pscustomobject]@{
-                            PSTypeName = 'PSModuleAst.GraphNode'
+                            PSTypeName = 'PSModuleGraph.GraphNode'
                             Id         = $fromId
                             Name       = '<script>'
                             Kind       = 'Script'
@@ -147,7 +147,7 @@ function Get-PSModuleDependencyGraph {
                 if (-not $edgeSeen.ContainsKey($edgeKey)) {
                     $edgeSeen[$edgeKey] = $true
                     $edges.Add([pscustomobject]@{
-                            PSTypeName = 'PSModuleAst.GraphEdge'
+                            PSTypeName = 'PSModuleGraph.GraphEdge'
                             From       = $fromId
                             To         = $toId
                             FromName   = if ($fromName) { $fromName } else { '<script>' }
@@ -163,7 +163,7 @@ function Get-PSModuleDependencyGraph {
                 if (-not $unresolvedSeen.ContainsKey($uKey)) {
                     $unresolvedSeen[$uKey] = $true
                     $unresolved.Add([pscustomobject]@{
-                            PSTypeName        = 'PSModuleAst.UnresolvedReference'
+                            PSTypeName        = 'PSModuleGraph.UnresolvedReference'
                             From              = $fromId
                             FromName          = if ($fromName) { $fromName } else { '<script>' }
                             TargetName        = $toName
@@ -189,7 +189,7 @@ function Get-PSModuleDependencyGraph {
                     if (-not $edgeSeen.ContainsKey($edgeKey)) {
                         $edgeSeen[$edgeKey] = $true
                         $edges.Add([pscustomobject]@{
-                                PSTypeName = 'PSModuleAst.GraphEdge'
+                                PSTypeName = 'PSModuleGraph.GraphEdge'
                                 From       = $fromId
                                 To         = $toId
                                 FromName   = $c.Name
@@ -207,7 +207,7 @@ function Get-PSModuleDependencyGraph {
         foreach ($rm in @($manifest.RequiredModules)) {
             if (-not $rm -or -not $rm.Name) { continue }
             $unresolved.Add([pscustomobject]@{
-                    PSTypeName      = 'PSModuleAst.UnresolvedReference'
+                    PSTypeName      = 'PSModuleGraph.UnresolvedReference'
                     From            = 'module:manifest'
                     FromName        = $target.Name
                     TargetName      = $rm.Name
@@ -222,7 +222,7 @@ function Get-PSModuleDependencyGraph {
         foreach ($u in $usings) {
             if ($u.Kind -eq 'Module' -and $u.Name) {
                 $unresolved.Add([pscustomobject]@{
-                        PSTypeName      = 'PSModuleAst.UnresolvedReference'
+                        PSTypeName      = 'PSModuleGraph.UnresolvedReference'
                         From            = 'using:module'
                         FromName        = '<using>'
                         TargetName      = $u.Name
@@ -251,7 +251,7 @@ function Get-PSModuleDependencyGraph {
         $leaves = @($nodes | Where-Object { $outbound[$_.Id] -eq 0 })
 
         [pscustomobject]@{
-            PSTypeName      = 'PSModuleAst.DependencyGraph'
+            PSTypeName      = 'PSModuleGraph.DependencyGraph'
             ModuleName      = $target.Name
             ModuleVersion   = $target.Version
             ModuleBase      = $target.ModuleBase

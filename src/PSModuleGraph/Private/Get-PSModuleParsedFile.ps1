@@ -22,7 +22,7 @@ function Get-PSModuleParsedFile {
         $ast = [System.Management.Automation.Language.Parser]::ParseFile($full, [ref]$tokens, [ref]$errors)
 
         [pscustomobject]@{
-            PSTypeName  = 'PSModuleAst.ParsedFile'
+            PSTypeName  = 'PSModuleGraph.ParsedFile'
             Path        = $full
             Ast         = $ast
             Tokens      = $tokens
@@ -56,7 +56,7 @@ function Get-PSModuleScriptAstFile {
         }
         catch {
             [pscustomobject]@{
-                PSTypeName  = 'PSModuleAst.ParsedFile'
+                PSTypeName  = 'PSModuleGraph.ParsedFile'
                 Path        = $file.Path
                 Ast         = $null
                 Tokens      = @()

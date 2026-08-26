@@ -1,4 +1,4 @@
-# PSModuleAst
+# PSModuleGraph
 
 Static inspection of PowerShell modules through the AST. Nothing is imported,
 dot-sourced, or executed — every result traces back to a file and a line number.
@@ -6,8 +6,8 @@ dot-sourced, or executed — every result traces back to a file and a line numbe
 ## Quick start
 
 ```powershell
-git clone https://github.com/JerryBalmer1/PS.Module.Dependency.Analyzer.git
-cd PS.Module.Dependency.Analyzer
+git clone https://github.com/JerryBalmer1/PSModuleGraph.git
+cd PSModuleGraph
 ./build.ps1 -Bootstrap          # installs InvokeBuild, Pester 6.1.0, PSScriptAnalyzer
 ./build.ps1                     # Clean, Lint, Build, Test
 ./build.ps1 -Task Import        # load the built module into the current session
@@ -35,14 +35,14 @@ Every command accepts the same three:
 ```powershell
 Get-PSModuleFunction -Name PSReadLine                    # loaded first, then PSModulePath
 Get-PSModuleFunction -Name PSReadLine -RequiredVersion 2.3.4
-Get-PSModuleFunction -Path ./src/PSModuleAst             # dir, .psd1, or .psm1
+Get-PSModuleFunction -Path ./src/PSModuleGraph             # dir, .psd1, or .psm1
 Get-Module PSReadLine | Get-PSModuleFunction             # PSModuleInfo from the pipeline
 ```
 
 ## Graph output
 
 ```powershell
-Get-PSModuleDependencyGraph -Path ./src/PSModuleAst |
+Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
     Export-PSModuleDependencyGraph -Format Dot -OutputPath ./output/graph.dot
 dot -Tsvg ./output/graph.dot -o graph.svg
 ```

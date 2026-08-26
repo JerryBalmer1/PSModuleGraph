@@ -72,7 +72,7 @@ function Get-PSModuleFunction {
             }
 
             [pscustomobject]@{
-                PSTypeName      = 'PSModuleAst.FunctionInfo'
+                PSTypeName      = 'PSModuleGraph.FunctionInfo'
                 ModuleName      = $target.Name
                 ModuleVersion   = $target.Version
                 Name            = $fn.Name

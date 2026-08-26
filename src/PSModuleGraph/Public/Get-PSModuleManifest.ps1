@@ -27,7 +27,7 @@ function Get-PSModuleManifest {
 
         if (-not $target.ManifestPath) {
             [pscustomobject]@{
-                PSTypeName       = 'PSModuleAst.ManifestInfo'
+                PSTypeName       = 'PSModuleGraph.ManifestInfo'
                 ModuleName       = $target.Name
                 ModuleVersion    = $target.Version
                 ModuleBase       = $target.ModuleBase
@@ -99,7 +99,7 @@ function Get-PSModuleManifest {
 
         $moduleVersionRaw = Get-HashtableValue -InputObject $data -Key 'ModuleVersion'
         [pscustomobject]@{
-            PSTypeName           = 'PSModuleAst.ManifestInfo'
+            PSTypeName           = 'PSModuleGraph.ManifestInfo'
             ModuleName           = $target.Name
             ModuleVersion        = if ($moduleVersionRaw) { [version]$moduleVersionRaw } else { $target.Version }
             ModuleBase           = $target.ModuleBase

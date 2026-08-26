@@ -75,7 +75,7 @@ function Get-PSModuleUsingStatement {
                 }
 
                 [pscustomobject]@{
-                    PSTypeName    = 'PSModuleAst.UsingStatementInfo'
+                    PSTypeName    = 'PSModuleGraph.UsingStatementInfo'
                     ModuleName    = $target.Name
                     ModuleVersion = $target.Version
                     Kind          = $kind

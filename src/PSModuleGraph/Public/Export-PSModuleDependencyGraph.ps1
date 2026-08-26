@@ -30,9 +30,9 @@ function Export-PSModuleDependencyGraph {
     )
 
     process {
-        if ($InputObject.PSObject.TypeNames -notcontains 'PSModuleAst.DependencyGraph' -and
+        if ($InputObject.PSObject.TypeNames -notcontains 'PSModuleGraph.DependencyGraph' -and
             -not ($InputObject.PSObject.Properties['Nodes'] -and $InputObject.PSObject.Properties['Edges'])) {
-            throw 'InputObject must be a PSModuleAst dependency graph (from Get-PSModuleDependencyGraph).'
+            throw 'InputObject must be a PSModuleGraph dependency graph (from Get-PSModuleDependencyGraph).'
         }
 
         $document = switch ($Format) {

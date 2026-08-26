@@ -2,7 +2,7 @@
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\TestHelpers.ps1')
-    Import-PSModuleAstUnderTest
+    Import-PSModuleGraphUnderTest
     $script:Sample = Get-SampleModulePath
 }
 

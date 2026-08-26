@@ -81,7 +81,7 @@ function Get-PSModuleCommandReference {
                 $enclosing = Get-EnclosingFunctionName -AstElement $cmd
 
                 [pscustomobject]@{
-                    PSTypeName       = 'PSModuleAst.CommandReference'
+                    PSTypeName       = 'PSModuleGraph.CommandReference'
                     ModuleName       = $target.Name
                     ModuleVersion    = $target.Version
                     CommandName      = $cmdName

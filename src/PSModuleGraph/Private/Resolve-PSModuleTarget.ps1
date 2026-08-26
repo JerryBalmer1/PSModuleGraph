@@ -176,7 +176,7 @@ function Resolve-PSModuleTarget {
         }
 
         [pscustomobject]@{
-            PSTypeName       = 'PSModuleAst.ModuleTarget'
+            PSTypeName       = 'PSModuleGraph.ModuleTarget'
             Name             = $moduleName
             Version          = $moduleVersion
             ModuleBase       = $moduleBase

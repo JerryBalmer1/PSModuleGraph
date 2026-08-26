@@ -1,5 +1,5 @@
 @{
-    RootModule           = 'PSModuleAst.psm1'
+    RootModule           = 'PSModuleGraph.psm1'
     ModuleVersion        = '0.1.0'
     GUID                 = 'a7c3e8f1-4b2d-4e9a-9c1f-6d8e5a0b3f72'
     Author               = 'Jerry Balmer'
@@ -27,7 +27,7 @@
         PSData = @{
             Tags         = @('AST', 'Module', 'Dependency', 'StaticAnalysis', 'Graph', 'PowerShell')
             LicenseUri   = 'https://opensource.org/licenses/MIT'
-            ProjectUri   = 'https://github.com/JerryBalmer1/PS.Module.Dependency.Analyzer'
+            ProjectUri   = 'https://github.com/JerryBalmer1/PSModuleGraph'
             ReleaseNotes = 'Initial release: static AST inspection and dependency graph export.'
         }
     }

@@ -1,13 +1,13 @@
 $script:RepoRoot = Split-Path -Path $PSScriptRoot -Parent
 $script:FixturePath = Join-Path $PSScriptRoot 'fixtures\SampleModule'
-$script:BuiltModulePath = Join-Path $RepoRoot 'output\PSModuleAst\PSModuleAst.psd1'
-$script:SrcModulePath = Join-Path $RepoRoot 'src\PSModuleAst\PSModuleAst.psd1'
+$script:BuiltModulePath = Join-Path $RepoRoot 'output\PSModuleGraph\PSModuleGraph.psd1'
+$script:SrcModulePath = Join-Path $RepoRoot 'src\PSModuleGraph\PSModuleGraph.psd1'
 
-function Import-PSModuleAstUnderTest {
+function Import-PSModuleGraphUnderTest {
     [CmdletBinding()]
     param()
 
-    Remove-Module -Name PSModuleAst -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name PSModuleGraph -Force -ErrorAction SilentlyContinue
 
     if (Test-Path -LiteralPath $script:BuiltModulePath) {
         Import-Module -Name $script:BuiltModulePath -Force -ErrorAction Stop

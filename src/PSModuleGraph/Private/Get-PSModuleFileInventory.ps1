@@ -43,7 +43,7 @@ function Get-PSModuleFileInventory {
         if (-not $item -or $item.PSIsContainer) { return }
 
         $files.Add([pscustomobject]@{
-                PSTypeName     = 'PSModuleAst.SourceFile'
+                PSTypeName     = 'PSModuleGraph.SourceFile'
                 Path           = $full
                 RelativePath   = Get-RelativePathSafe -BasePath $moduleBase -TargetPath $full
                 Extension      = $item.Extension.ToLowerInvariant()

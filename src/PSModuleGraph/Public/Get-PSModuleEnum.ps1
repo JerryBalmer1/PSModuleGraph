@@ -82,7 +82,7 @@ function Get-PSModuleEnum {
                 }
 
                 [pscustomobject]@{
-                    PSTypeName       = 'PSModuleAst.EnumInfo'
+                    PSTypeName       = 'PSModuleGraph.EnumInfo'
                     ModuleName       = $target.Name
                     ModuleVersion    = $target.Version
                     Name             = $enum.Name

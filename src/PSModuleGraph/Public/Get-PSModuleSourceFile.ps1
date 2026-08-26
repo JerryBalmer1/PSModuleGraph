@@ -60,7 +60,7 @@ function Get-PSModuleSourceFile {
             }
 
             [pscustomobject]@{
-                PSTypeName     = 'PSModuleAst.SourceFileInfo'
+                PSTypeName     = 'PSModuleGraph.SourceFileInfo'
                 ModuleName     = $target.Name
                 ModuleVersion  = $target.Version
                 ModuleBase     = $target.ModuleBase

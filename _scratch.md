@@ -1,6 +1,6 @@
-I'm creating a new module: PS.Module.Dependency.Analyzer
+I'm creating a new module: PSModuleGraph
 
-https://github.com/JerryBalmer1/PS.Module.Dependency.Analyzer.git
+https://github.com/JerryBalmer1/PSModuleGraph.git
 
 
 Functions needed (that I know of right now. also, if you can come up with better names, do it) :
