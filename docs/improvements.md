@@ -78,6 +78,14 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Medium
 
+- **Hot and external are nearly the same colour.** `External` fill and
+  unresolved edges are `#ff7043`; the hot end of `HeatRamp` is `#ff3b2f`.
+  Colouring by a metric makes a heavily depended-on internal function look like
+  an unresolved external one. Both are data, so the fix is a data change - but
+  which one moves is a design call. *Ledger `0007-t1`.*
+- **The heat scale was compared against linear and nothing else.** Square-root
+  or log would keep some proportionality while still spreading the skewed tail.
+  Rank is better than linear; whether it is best is untested. *Ledger `0007`.*
 - **Skill descriptions are always-loaded and outside the budget.** Every skill's
   `description` and `when_to_use` sit in the listing in every session whether or
   not the skill runs - about 800 bytes across four. `tests/Instructions.Tests.ps1`
@@ -142,6 +150,16 @@ the next change to this cheaper**. Three concrete tests:
   `strings.psd1`, so wording is a data change.
 - **The starting view was a `checked` attribute in markup.** Now `DefaultFlow`
   in `settings.psd1`, so the setting is not decorative.
+- **The graph showed magnitude and could not colour it.** Some nodes obviously
+  matter more - the foundation view puts them at the bottom - and nothing said
+  so in the fill. A facet classifies and a metric measures; `ColorBy` now takes
+  either, and `blastRadius` paints what everything rests on. The options are
+  built from the payload, so a facet joins the same registry when one exists -
+  which is the seam `0001-t7` was waiting for. *Noticed by the owner looking at
+  five screenshots and saying "there's something of a heat map in there".*
+- **`borderFor` claimed to be the blast radius and counted direct callers.** The
+  label was wrong, and the gap is where the interesting nodes live. Border now
+  says direct callers; fill carries the transitive measure. *Ledger `0007`.*
 - **`instruction-prune` could not win.** It proposed deletions for a later
   iteration to apply, while every iteration also added - one turn behind, and
   worse, proposing the one move that is almost always correctly refused. A prune

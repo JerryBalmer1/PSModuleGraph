@@ -1,5 +1,5 @@
 ---
-subject: "psmodule:PSModuleGraph/function/New-GraphTempDocumentPath"
+subject: "psmodule:PSModuleGraph/function/New-GraphReportPath"
 facet: "surface"
 path: "surface:internal"
 confidence: 0.9

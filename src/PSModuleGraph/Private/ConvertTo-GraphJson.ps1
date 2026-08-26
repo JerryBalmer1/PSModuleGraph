@@ -10,11 +10,14 @@ function ConvertTo-GraphJson {
     #>
     param($Graph, [switch]$IncludeUnresolved)
 
+    $metric = Get-GraphNodeMetric -Graph $Graph
+
     $payload = [ordered]@{
         moduleName    = $Graph.ModuleName
         moduleVersion = [string]$Graph.ModuleVersion
         moduleBase    = $Graph.ModuleBase
         stats         = $Graph.Stats
+        metrics       = [string[]](Get-GraphMetricName)
         nodes         = @($Graph.Nodes | ForEach-Object {
                 [ordered]@{
                     id         = $_.Id
@@ -23,6 +26,7 @@ function ConvertTo-GraphJson {
                     isExported = [bool]$_.IsExported
                     path       = $_.Path
                     startLine  = $_.StartLine
+                    metrics    = $metric[$_.Id]
                 }
             })
         links         = @($Graph.Edges | ForEach-Object {

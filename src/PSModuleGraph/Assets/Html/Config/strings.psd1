@@ -43,9 +43,27 @@
     OrderCycleHeading             = '{count} in a dependency cycle.'
     OrderCycleBody                = 'These have no valid order, because each waits on the other: {names}'
 
+    # -- Colour by ---------------------------------------------------------
+    # A facet classifies and a metric measures. Metric labels are keyed
+    # 'Metric' + the id the payload carries, so adding a metric adds strings
+    # here and nothing in a script.
+    ColorByHeading                = 'Colour by'
+    ColorByStructure              = 'Kind'
+    ColorByStructureHint          = 'one colour per kind'
+    MetricDependents              = 'Dependents'
+    MetricDependentsHint          = 'things that call this directly'
+    MetricBlastRadius             = 'Blast radius'
+    MetricBlastRadiusHint         = 'everything that breaks if this changes'
+    MetricDependencies            = 'Dependencies'
+    MetricDependenciesHint        = 'things this calls directly'
+    MetricReach                   = 'Reach'
+    MetricReachHint               = 'everything this rests on, transitively'
+
     # -- Legend ------------------------------------------------------------
     LegendExported                = 'exported'
-    LegendBorderWidth             = 'thicker border = more dependents'
+    LegendBorderWidth             = 'thicker border = more direct callers'
+    LegendHeatScale               = '{metric}: {low} to {high}'
+    LegendHeatRank                = 'shaded by rank, not by size - the number is in Details'
     LegendCalls                   = 'calls'
     LegendInherits                = 'inherits'
     LegendUnresolved              = 'unresolved'
@@ -60,6 +78,8 @@
     DetailTestStepValue           = '{step} of {total}'
     DetailDependents              = 'Dependents'
     DetailDependencies            = 'Dependencies'
+    DetailBlastRadius             = 'Blast radius'
+    DetailReach                   = 'Reach'
     DetailLine                    = 'Line'
     DetailPath                    = 'Path'
     ValueNotApplicable            = 'n/a'

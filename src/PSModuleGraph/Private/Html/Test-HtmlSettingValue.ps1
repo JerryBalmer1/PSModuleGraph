@@ -71,6 +71,29 @@ function Test-HtmlSettingValue {
             return New-Result $false $null "'$Value' is not a hex colour such as #4da3ff"
         }
 
+        'ColorList' {
+            # A ramp is one decision, not five, so it is one entry. Adding a
+            # TYPE is a schema extension and needs a validator here; adding a
+            # SETTING must not, and still does not. The distinction matters:
+            # the rule in docs/html-architecture.md is that a new value is a
+            # data change, and every type in this switch was added the same way.
+            #
+            # MinCount rather than an exact length: a two-stop ramp and a
+            # nine-stop ramp are both legitimate, and pinning the count would
+            # make the number of colours a code change.
+            $minCount = Get-HashtableValue -InputObject $Entry -Key 'MinCount' -Default 2
+            $items = @($Value)
+            if ($items.Count -lt $minCount) {
+                return New-Result $false $null "expected at least $minCount colours, got $($items.Count)"
+            }
+            foreach ($item in $items) {
+                if (-not ($item -is [string] -and $item -match '^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$')) {
+                    return New-Result $false $null "'$item' is not a hex colour such as #4da3ff"
+                }
+            }
+            return New-Result $true ([string[]]$items) ''
+        }
+
         'Enum' {
             $allowed = @(Get-HashtableValue -InputObject $Entry -Key 'Values' -Default @())
             if ($allowed -contains $Value) { return New-Result $true $Value '' }

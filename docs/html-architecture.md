@@ -101,6 +101,15 @@ facet, which is a data change under the existing rule. The colours then belong
 to the facet's paths rather than to a `KIND_HEX` literal, which also closes the
 open "all colours externalised" checklist item rather than working around it.
 
+**A metric is the other half of this, and it shipped first.** A facet
+CLASSIFIES - a set of paths a subject carries. A metric MEASURES - one number on
+a scale. `ColorBy` takes either: `structure` gives today's one-colour-per-kind,
+and any metric id in the payload gives a heat ramp. The registry that renders
+the choices is built from the ids the payload carries, so when facets arrive
+they join it as entries rather than as a second control. **That is the seam
+`0001-t7` needs, and it now exists** - what is still missing is a facet to put
+through it.
+
 **A heatmap is two facets crossed with a count.** Rows are the paths of one
 facet, columns the paths of another, cells the number of subjects carrying both.
 That is the whole definition and it needs no new data beyond what a `facets`
@@ -540,3 +549,43 @@ write that followed - which has no ShouldProcess - went ahead and failed on a
 missing path. Gating half of a two-step operation turns a preview into a hard
 error. The open is the step `-WhatIf` is actually asking about, and it is still
 gated.
+
+**2026-08-26 - Node fill carries either a facet or a metric, and the options are
+built from the payload.** A facet classifies and a metric measures; both are
+ways of saying something about a subject, and both belong on the same channel.
+`colorByOptions` is derived from the metric ids the payload carries, so adding a
+metric is a change in `Get-GraphNodeMetric`, a value in the `ColorBy` enum and
+two strings - and no branch in any script. Same test as `NODE_ACTIONS` and
+`FLOW_LAYOUT`.
+
+**2026-08-26 - Heat is ranked, not scaled.** Blast radius is heavily skewed: on
+this module one node scores 30 and 73% of nodes score three or less, so a linear
+ramp paints almost everything the coldest colour and answers no question. Rank
+spreads the ramp across the values that actually occur. The cost is real -
+colour stops being proportional, and two adjacent ranks can look far apart -
+which is why the raw number is in the Details panel and why the legend labels
+its ends with actual values rather than "low" and "high".
+
+**2026-08-26 - The ramp is five discrete bands, not an interpolation.** A
+continuous blend across a dark canvas mostly reads as noise, and a reader
+comparing two nodes wants "hotter", not "3% hotter". Every stop stays light
+enough to carry the near-black node label: a ramp that reaches unreadable at the
+top hides the thing it exists to point at.
+
+**2026-08-26 - `ColorList` is a new schema TYPE, which is not the same as a new
+setting.** The rule is that adding a SETTING must require editing data files
+only, and it still does. A ramp is one decision so it is one entry, and an
+entry whose value is a list needs a validator - as every other type in that
+switch did when it was added. `MinCount` rather than a fixed length, so the
+number of colours stays a data change.
+
+**2026-08-26 - Border width stays DIRECT dependents while fill carries blast
+radius.** Two channels saying the same thing is one wasted channel. The comment
+on `borderFor` used to claim it was the blast radius while counting direct
+callers; it was the label that was wrong, and the real measure now exists beside
+it.
+
+**2026-08-26 - `ColorBy` ships as `structure`.** Changing which state a report
+opens in is a deliberate decision, the same class as `DefaultFlow`, and this one
+has not been made. The control is in the sidebar and the default is one line in
+`settings.psd1`.

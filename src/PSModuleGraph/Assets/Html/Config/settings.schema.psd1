@@ -4,10 +4,11 @@
     # a value in settings.psd1 or theme.psd1, and nothing else.
     #
     # Entry fields:
-    #   Type        Number | Integer | Boolean | String | Color | Enum
+    #   Type        Number | Integer | Boolean | String | Color | ColorList | Enum
     #   Default     used when the value is absent, wrong, or out of range
     #   Min / Max   Number and Integer only
     #   Values      Enum only
+    #   MinCount    ColorList only; defaults to 2
     #   In          Settings (behaviour) or Theme (appearance) - which file the
     #               value belongs in. A value in the wrong file still applies,
     #               but is reported.
@@ -49,6 +50,20 @@
             Values = @('foundation', 'testorder', 'callflow')
             In = 'Settings'; Group = 'Layout'
             Description = 'View the report opens in. foundation is vertical and sinks what everything rests on to the bottom.'
+        }
+
+        ColorBy          = @{
+            Type = 'Enum'; Default = 'structure'
+            Values = @('structure', 'dependents', 'blastRadius', 'dependencies', 'reach')
+            In = 'Settings'; Group = 'Layout'
+            Description = 'What node fill means. structure is one colour per kind; a metric id is a heat scale over that measure.'
+        }
+
+        HeatRamp         = @{
+            Type = 'ColorList'; MinCount = 2
+            Default = @('#6e7d8c', '#a8756e', '#d1665a', '#f05340', '#ff3b2f')
+            In = 'Theme'; Group = 'Appearance'
+            Description = 'Node fill from coldest to hottest when ColorBy names a metric. Any number of stops from two up.'
         }
 
         FoundationLayerCapacity = @{

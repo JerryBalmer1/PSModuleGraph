@@ -127,6 +127,15 @@
                 : fmt('DetailTestStepValue', { step: lvl + 1, total: stepCount })]);
             rows.push([str('DetailDependents'), String(n.data('dependents'))]);
             rows.push([str('DetailDependencies'), String(n.data('dependencies'))]);
+            // The transitive pair. Colour is ranked rather than proportional,
+            // so the raw number has to be readable somewhere - this is where.
+            var m = n.data('metrics') || {};
+            if (typeof m.blastRadius === 'number') {
+                rows.push([str('DetailBlastRadius'), String(m.blastRadius)]);
+            }
+            if (typeof m.reach === 'number') {
+                rows.push([str('DetailReach'), String(m.reach)]);
+            }
         }
         if (n.data('startLine')) { rows.push([str('DetailLine'), String(n.data('startLine'))]); }
 

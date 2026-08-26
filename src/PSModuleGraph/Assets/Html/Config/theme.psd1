@@ -21,6 +21,11 @@
     RelatedShadeBase = 0.62
     RelatedShadeMax  = 0.78
 
+    # Cold to hot, in order. Every stop stays light enough to carry the
+    # near-black node label - a heat ramp that reaches unreadable at the top is
+    # a ramp that hides the thing it exists to point at.
+    HeatRamp         = @('#6e7d8c', '#a8756e', '#d1665a', '#f05340', '#ff3b2f')
+
     SidebarWidth     = 300
     SidebarMinWidth  = 200
     CanvasMinWidth   = 320

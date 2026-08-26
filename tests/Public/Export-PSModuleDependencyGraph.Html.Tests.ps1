@@ -398,6 +398,48 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "str\(copyLabelKey \|\| 'BannerCopyLabel'\)"
     }
 
+    It 'colours by a metric as readily as by a kind' {
+        # A facet classifies and a metric measures, and ColorBy takes either.
+        # The options are built from the metric ids the PAYLOAD carries, so
+        # adding a metric is a change in Get-GraphNodeMetric and two strings,
+        # with no branch in any script.
+        $script:Html | Should-MatchString 'function fillFor'
+        $script:Html | Should-MatchString 'var METRIC_IDS = \(data\.metrics'
+        $script:Html | Should-MatchString 'colorby-options'
+        $script:Html | Should-NotMatchString "colorByOptions = \[\{ id: 'blastRadius'"
+    }
+
+    It 'embeds the heat ramp from theme.psd1 rather than a literal' {
+        # Colours are a decision, so they are data. This one also advances the
+        # extraction checklist rather than working around it.
+        $theme = Import-PowerShellDataFile -Path (Join-Path (Get-BuiltModuleRoot) 'Assets/Html/Config/theme.psd1') -ErrorAction Stop
+        @($theme.HeatRamp).Count | Should-BeGreaterThan 1
+        foreach ($stop in $theme.HeatRamp) {
+            $script:Html | Should-MatchString ([regex]::Escape($stop))
+        }
+    }
+
+    It 'ranks the heat rather than scaling it linearly' {
+        # Blast radius is heavily skewed - one node scores 30 on this module
+        # and most score 0 to 3 - so a linear scale paints nearly everything
+        # the coldest colour and answers no question. The cost is that colour
+        # stops being proportional, which is why the raw number is in Details
+        # and why the legend labels its ends with real values.
+        $script:Html | Should-MatchString 'function rankScale'
+        $script:Html | Should-MatchString 'DetailBlastRadius'
+        $script:Html | Should-MatchString 'LegendHeatScale'
+    }
+
+    It 'carries a measurement for every node in the payload' {
+        $data = Get-EmbeddedGraphData -Html $script:Html | ConvertFrom-Json
+
+        @($data.metrics) | Should-ContainCollection 'blastRadius'
+        foreach ($node in $data.nodes) {
+            ($null -eq $node.metrics) | Should-BeFalse -Because "$($node.name) carries no metrics"
+            $node.metrics.blastRadius | Should-BeGreaterThanOrEqual $node.metrics.dependents
+        }
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

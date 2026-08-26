@@ -24,5 +24,11 @@
     # this the opening view stops shrinking and the reader pans instead.
     MinReadableZoom = 0.45
 
+    # 'structure' is today's behaviour: one colour per kind. Any metric id in
+    # the payload colours by heat instead. Changing which state a report OPENS
+    # in is a deliberate decision and this one has not been made - the control
+    # is in the sidebar, and flipping the default is this one line.
+    ColorBy       = 'structure'
+
     NodeLimit     = 400
 }

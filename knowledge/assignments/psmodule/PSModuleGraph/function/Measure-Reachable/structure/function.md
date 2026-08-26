@@ -1,5 +1,5 @@
 ---
-subject: "psmodule:PSModuleGraph/function/New-GraphTempDocumentPath"
+subject: "psmodule:PSModuleGraph/function/Measure-Reachable"
 facet: "structure"
 path: "structure:function"
 confidence: 1

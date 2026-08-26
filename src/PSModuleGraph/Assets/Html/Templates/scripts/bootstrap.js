@@ -34,6 +34,14 @@ const GRAPH_STRINGS = /*__GRAPH_STRINGS__*/ null;
         return (typeof v === 'string' && v.length) ? v : fallback;
     }
 
+    // Same reason again for a list setting. A heat ramp is one decision, so it
+    // is one entry rather than five numbered ones - which means a reader that
+    // handles only scalars cannot see it.
+    function cfgList(key, fallback) {
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
+        return (Object.prototype.toString.call(v) === '[object Array]' && v.length) ? v : fallback;
+    }
+
     // User-visible text comes from Assets/Html/Config/strings.psd1, substituted
     // above. A missing key renders as its own name in brackets rather than as
     // nothing: a silently blank label is the one failure mode nobody notices.
@@ -67,6 +75,8 @@ const GRAPH_STRINGS = /*__GRAPH_STRINGS__*/ null;
     };
 
     var meta = GRAPH_META || {};
+    var data = GRAPH_DATA;
+    var COLOR_BY = cfgText('ColorBy', 'structure');
     var nodes = GRAPH_DATA.nodes || [];
     var links = GRAPH_DATA.links || [];
     var unresolved = GRAPH_DATA.unresolved || [];
