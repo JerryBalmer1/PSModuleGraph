@@ -31,6 +31,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # PSGraphRender holds the renderer and is a RequiredModules entry, so
+      # nothing here imports without it. It is not published, so the build
+      # resolves a sibling checkout - see the Dependencies task. Checking it out
+      # beside this repository is what makes that path the same locally and in
+      # CI.
+      - name: Checkout PSGraphRender
+        uses: actions/checkout@v4
+        with:
+          repository: JerryBalmer1/PSGraphRender
+          path: PSGraphRender-checkout
+
       - name: Cache PowerShell modules
         uses: actions/cache@v4
         with:
@@ -44,8 +55,18 @@ jobs:
 
       # -Bootstrap installs any missing dependency and then runs the default
       # task (Clean, Lint, Build, Test), so one invocation is enough.
+      - name: Build PSGraphRender
+        shell: ${{ matrix.powershell }} {0}
+        working-directory: PSGraphRender-checkout
+        run: ./build.ps1 -Bootstrap -Task Build
+
       - name: Bootstrap and test
         shell: ${{ matrix.powershell }} {0}
+        env:
+          # The sibling layout the Dependencies task looks for does not exist
+          # here - actions/checkout puts the second repository inside the first.
+          # Naming the path explicitly is the documented alternative.
+          PSGRAPHRENDER_MODULE_PATH: ${{ github.workspace }}/PSGraphRender-checkout/output
         run: ./build.ps1 -Bootstrap
 
       - name: Publish test results and coverage
