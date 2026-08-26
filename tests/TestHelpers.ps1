@@ -20,3 +20,17 @@ function Import-PSModuleGraphUnderTest {
 function Get-SampleModulePath {
     $script:FixturePath
 }
+
+function Get-BuiltModulePath {
+    <#
+    .SYNOPSIS
+        Path to the built manifest under output/. Tests that must exercise the
+        built artifact (asset copying, for instance) use this rather than the
+        fallback in Import-PSModuleGraphUnderTest.
+    #>
+    $script:BuiltModulePath
+}
+
+function Get-BuiltModuleRoot {
+    Split-Path -Path $script:BuiltModulePath -Parent
+}
