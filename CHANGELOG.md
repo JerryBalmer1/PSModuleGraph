@@ -9,6 +9,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`Test-PSModuleGraphEditorLink`** — says why **Open File Location** does or
+  does not open VS Code. Read-only, with no `ShouldProcess`, because there is
+  nothing to confirm: it reports whether the `vscode` scheme is registered, what
+  command is behind it, the default browser, and per browser the policy path,
+  whether the scheme is granted and from which origins, whether a machine policy
+  would override the user one, and whether the browser has remembered a decision.
+
+  `SchemeExclusionState` is tri-state and the third state is the useful one.
+  **Declined** means a prompt was shown once, refused, and will never be shown
+  again. **NeverAsked** means the key was never written, so a prompt *should*
+  still be appearing — if none is, neither mechanism explains the silence.
+  **Allowed** means the scheme is not blocked in that profile. It also reports
+  `ExternalProtocolDialogShowAlwaysOpenCheckbox` from both the user and machine
+  policy keys: it does not suppress the prompt, but when it is disabled the user
+  cannot grant a per-site exemption either.
+
+  On macOS and Linux it returns the object with the platform set and warns, since
+  automatic configuration is Windows-only. Firefox has no equivalent policy and
+  is reported as unsupported rather than half-handled.
+- **`Enable-PSModuleGraphEditorLink`** — the opt-in fix. It and its `-Revert` are
+  the only things in the module that change machine state, and it is built to be
+  boring about it: `ConfirmImpact = 'High'` so it prompts by default, `-WhatIf`
+  prints the registry path, value name, old value and new value, `HKCU` only with
+  no elevation, and a machine-wide policy that would win is reported rather than
+  worked around.
+
+  It **merges**: a policy value already granting Teams or Zoom is carried through
+  untouched, because clobbering it would break that software with no symptom
+  pointing back here. `-Revert` restores exactly what was there, including
+  removing the value entirely when there was none before.
+
+  A refusal remembered in the browser's `Local State` is cleared only with the
+  browser closed and your confirmation, and the file is backed up alongside
+  itself first. Chrome and Edge rewrite `Local State` from memory on exit, so the
+  command detects the running process, names it and asks — it never kills it.
+  `ConvertFrom-Json -AsHashtable` is PowerShell 7 only; on 5.1 it reports the file
+  and key for you to edit by hand.
+
+  `-AllowedOrigin` takes the origin list. The scoped default is `file:///*` and
+  `http://127.0.0.1:*` — but Microsoft's Edge policy reference states that this
+  policy does not work as expected with `file://` wildcards, while Chrome accepts
+  `file:///*` as valid syntax. The entry may therefore apply cleanly and be
+  ignored, so which pattern works is a parameter rather than a constant.
+  `-AllowAnyOrigin` grants the protocol from every origin and never engages on
+  its own; passing it together with `-AllowedOrigin` is refused rather than one
+  of them silently winning.
+- **The no-launch banner names the command that fixes it**, with a button that
+  copies the command to the clipboard. A browser that refuses a custom scheme
+  reports nothing back, so the page watches for focus loss and, when none comes,
+  says what to run. Another link would be no use — the one it replaces has just
+  been shown not to work.
+- **Every user-visible string in the report now lives in
+  `Assets/Html/Config/strings.psd1`**, the fourth data file, resolved by
+  `Resolve-HtmlString`. Wording is a data change. The command name in the banner
+  is passed down through config as a generic `editorLinkHelpCommand`, so the
+  renderer interpolates a string it was handed and still knows nothing about
+  PSModuleGraph. A string the page asks for and cannot find renders as its own
+  key in brackets rather than as nothing.
+
 - **Right-click a node for a context menu**, starting with **Open File
   Location** — hands the file and line to VS Code over a `vscode://file/` URI.
   Actions come from a registry in the template rather than from markup, so a
@@ -154,6 +213,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A stray coverage report was tracked at the repository root.** The build has
+  always written coverage under `output/`; the root copy came from a bare
+  `Invoke-Pester`, which defaults to the working directory. That is what the
+  "never call `Invoke-Pester` directly" rule exists to prevent. The file is
+  removed from tracking and `.gitignore` now names it, so a future stray one
+  stays untracked rather than being swept up by a wildcard `git add`.
+
+  It reached the repository in commit `34a4193`, whose message is `asdf`. That
+  commit is pushed and is not being rewritten. What it carried that matters is
+  `tests/Public/EditorLink.Tests.ps1` - the suite covering the two editor-link
+  commands, which runs entirely against `TestRegistry:` and `TestDrive:` and
+  touches no real registry key or browser profile. Noted here because the commit
+  message records none of it.
 - **`Open File Location` did nothing when clicked, and the page did not say
   why.** Two compounding causes, both fixed.
 

@@ -29,6 +29,8 @@ cd PSModuleGraph
 | `Get-PSModuleCommandReference` | Raw call sites attributed to the enclosing function |
 | `Get-PSModuleDependencyGraph` | Node/edge model with roots, leaves, unresolved targets |
 | `Export-PSModuleDependencyGraph` | JSON, Graphviz DOT, Mermaid, or CSV edge list |
+| `Test-PSModuleGraphEditorLink` | Why `vscode://` links do or do not open from a browser. Read-only |
+| `Enable-PSModuleGraphEditorLink` | Grants Chrome or Edge permission to open them. Prompts; `-Revert` undoes it |
 
 ## Parameter sets
 
@@ -92,6 +94,40 @@ Browser, a notebook output cell — because the page is sandboxed and the URI ne
 reaches the OS. The page detects any embedding, says so in a banner on load, and
 greys the menu item with the reason. Open the report in a real browser for it to
 work, which is what `-Show` does.
+
+#### If Open File Location does nothing
+
+Nothing opening is the expected failure, not an unexpected one: a browser that
+refuses a custom scheme reports nothing back to the page. Two things suppress it,
+and they are independent - fixing one does not fix the other.
+
+```powershell
+Test-PSModuleGraphEditorLink            # read-only; says which of the two it is
+Enable-PSModuleGraphEditorLink          # prompts before changing anything
+```
+
+Read `SchemeExclusionState` first. **Declined** means a prompt was shown once,
+you said no, and the browser has remembered: no prompt will ever appear again.
+**NeverAsked** means the key was never written, so a prompt *should* still be
+appearing. **Allowed** means the scheme is not blocked in that profile.
+
+`Enable-PSModuleGraphEditorLink` grants the `AutoLaunchProtocolsFromOrigins`
+policy under `HKCU` and, with the browser closed and your confirmation, clears a
+remembered refusal. It merges rather than replacing, so a grant already there for
+Teams or Zoom survives. It never writes `HKLM` and never elevates. `-Revert`
+puts back exactly what was there, including removing the value when there was
+none.
+
+**Restart the browser completely afterwards** - every window, not just the tab.
+
+Note on origins: the default grant is scoped to `file:///*` and
+`http://127.0.0.1:*`. Microsoft's Edge policy reference states that this policy
+does not work as expected with `file://` wildcards, so the scoped default may
+apply cleanly and still not be honoured. `-AllowedOrigin` takes whatever pattern
+turns out to work for your setup; `-AllowAnyOrigin` grants the protocol from
+every origin and is deliberately opt-in.
+
+Either way, **Copy Editor Link** always works: paste the URI into the Run dialog.
 
 #### Changing the page defaults
 

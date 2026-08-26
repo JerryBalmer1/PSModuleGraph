@@ -97,6 +97,13 @@ LONG DESCRIPTION
     Export-PSModuleDependencyGraph
         Serialises a graph as JSON, Graphviz DOT, Mermaid, or a CSV edge list.
 
+    Test-PSModuleGraphEditorLink
+        Reports why vscode:// links do or do not open from a browser. Reads
+        only; changes nothing on any code path.
+
+    Enable-PSModuleGraphEditorLink
+        Grants Chrome or Edge permission to open them. See EDITOR LINKS below.
+
     THE DEPENDENCY GRAPH
 
     Nodes are the functions, classes, and enums the module defines. Edges are
@@ -117,6 +124,45 @@ LONG DESCRIPTION
             Export-PSModuleDependencyGraph -Format Dot -OutputPath ./graph.dot
         dot -Tsvg ./graph.dot -o graph.svg
 
+    EDITOR LINKS
+
+    The HTML report can hand a file and line to VS Code over a vscode:// URI.
+    Browsers gate custom-scheme launches, and a refusal is reported to nobody:
+    the link simply does nothing.
+
+    Test-PSModuleGraphEditorLink says which of two independent things is in the
+    way. A browser remembers a declined prompt in its profile and never prompts
+    again; separately, the AutoLaunchProtocolsFromOrigins policy can grant the
+    scheme so no prompt is needed at all. Fixing one does not fix the other.
+
+        Test-PSModuleGraphEditorLink
+        (Test-PSModuleGraphEditorLink).Browsers |
+            Format-Table Name, AutoLaunchConfigured, SchemeExclusionState
+
+    SchemeExclusionState is tri-state. Declined means prompts are suppressed;
+    NeverAsked means the key was never written and a prompt should still appear;
+    Allowed means the scheme is not blocked in that profile.
+
+    Enable-PSModuleGraphEditorLink applies the fix. It and its -Revert are the
+    only commands in this module that change machine state:
+
+      - HKCU only. It never writes HKLM and never elevates. A machine policy
+        that would override the user one is reported, and the command stops.
+      - It prompts. ConfirmImpact is High, and -WhatIf prints the registry path,
+        the value name, the old value and the new one before anything is done.
+      - It merges. A policy value already granting Teams or Zoom is kept.
+      - -Revert restores exactly what was there, including removing the value
+        when there was none before.
+      - It refuses to edit a browser's Local State while that browser is
+        running - the file is rewritten from memory on exit and the edit would
+        be discarded. It names the process and asks; it never kills it.
+
+    Restart the browser completely afterwards: every window, not just the tab.
+
+    Windows only. On macOS and Linux both commands return an object with the
+    platform set and a warning, rather than throwing. Firefox has no equivalent
+    policy and is reported as unsupported rather than half-handled.
+
     REQUIREMENTS
 
     Windows PowerShell 5.1 or PowerShell 7.4 and later.
@@ -132,5 +178,7 @@ SEE ALSO
     Get-PSModuleCommandReference
     Get-PSModuleDependencyGraph
     Export-PSModuleDependencyGraph
+    Test-PSModuleGraphEditorLink
+    Enable-PSModuleGraphEditorLink
     about_Modules
     https://github.com/JerryBalmer1/PSModuleGraph

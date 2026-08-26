@@ -339,6 +339,38 @@ parameter's validation attributes, and `$name = $null` against a
 `[ValidateNotNullOrEmpty()]` parameter throws at that assignment. Name locals
 distinctly (`$usingName`, `$nestedName`).
 
+## The two commands that write
+
+`Test-PSModuleGraphEditorLink` and `Enable-PSModuleGraphEditorLink` are the only
+commands in the module that touch machine state. Everything else reads. The
+rules on them are not negotiable and are not stylistic:
+
+- **`Enable-` keeps `ConfirmImpact = 'High'`.** It prompts by default. Do not
+  lower the impact to make a test or an example quieter; pass `-Confirm:$false`
+  at the call site instead.
+- **`HKCU` only.** Never `HKLM`, never elevate, never add an admin requirement.
+  `Get-BrowserDwordPolicy` reads `HKLM` to report that a machine policy would
+  win. That is the only `HKLM` access in the module and it is read-only.
+- **Merge, never overwrite.** `AutoLaunchProtocolsFromOrigins` may already grant
+  Teams or Zoom. `Get-AutoLaunchPlan` handles this and is correct; leave it
+  alone.
+- **`-Revert` restores exactly**, including removing the value when there was
+  none. The backup is written once and never overwritten, so a second `Enable-`
+  run cannot record its own output as the thing to revert to.
+- **Never edit `Local State` while the browser runs.** Chrome and Edge rewrite it
+  from memory on exit and the edit is discarded in silence. Detect, name the
+  process, ask. Never kill it.
+- **No test may write to the real `HKCU:\SOFTWARE\Policies` tree or touch a real
+  `Local State`.** Both commands take `-PolicyRoot`, `-LocalStateRoot` and
+  `-BackupRoot` for exactly this reason, and the tests point them at
+  `TestRegistry:` and `TestDrive:`. Those parameters are not a convenience and
+  are not to be removed.
+
+`SchemeExcluded` is **tri-state** and the third state carries the information.
+`$true` is a declined prompt, `$false` an explicit allow, `$null` nobody was ever
+asked. Collapsing `$null` into `$false` hides the only case where neither
+mechanism explains a link that does nothing.
+
 ## Report, do not drop
 
 Anything that cannot be resolved statically is **surfaced**, never silently
@@ -406,6 +438,25 @@ routing the report into the editor disables the feature most worth having.
 been optimised in both directions already; do not do it a third time. If the
 editor path looks like an obvious improvement, it is the same one that was
 removed.
+
+**The scoped `file:///*` origin default is a hypothesis, not a fact.** Chrome's
+URL pattern reference accepts `file:///*` as the only valid file wildcard, so it
+parses and the policy applies cleanly. Microsoft's Edge policy reference states
+separately that `AutoLaunchProtocolsFromOrigins` does not work as expected with
+`file://` wildcards. Both can be true: the entry is accepted and then ignored,
+which looks exactly like a successful configuration that changed nothing.
+
+Do not "fix" this by widening the default to `*`. That grants the protocol from
+every website the user visits and is a security decision belonging to the
+repository owner, which is why it is behind `-AllowAnyOrigin` and why that switch
+never engages on its own. Do not remove the doubt from the comment either, and do
+not re-derive it: it is written down here so the next reader does not have to
+find the documentation again.
+
+The two mechanisms are **independent**. The policy has no effect on a refusal a
+user has already remembered, and clearing that refusal grants no policy. If a
+link does nothing and nothing prompts either, `excluded_schemes` is the
+hypothesis the evidence supports; test it first and alone.
 
 `tests/fixtures/SampleModule` is a deliberately imperfect module. It is input
 data, not a module anyone maintains. **It is never imported and never executed**
