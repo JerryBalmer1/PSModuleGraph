@@ -13,14 +13,22 @@ function Get-PSModuleGraphAssetPath {
         Import-PowerShellDataFile, which needs a path - share exactly one copy
         of this resolution and one error message.
     .PARAMETER Name
-        Asset file name relative to the Assets directory, e.g. 'graph.html'.
+        Asset path relative to the Assets directory, e.g. 'graph.defaults.psd1'
+        or 'Html/Templates'.
+    .PARAMETER PathType
+        Whether Name is expected to be a file or a directory. Template sets are
+        directories, so both are legitimate here.
     #>
     [CmdletBinding()]
     [OutputType([string])]
     param(
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string] $Name
+        [string] $Name,
+
+        [Parameter()]
+        [ValidateSet('Leaf', 'Container')]
+        [string] $PathType = 'Leaf'
     )
 
     if (-not (Get-Variable -Name ModuleRoot -Scope Script -ErrorAction SilentlyContinue) -or
@@ -30,7 +38,7 @@ function Get-PSModuleGraphAssetPath {
 
     $assetPath = Join-Path (Join-Path $script:ModuleRoot 'Assets') $Name
 
-    if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) {
+    if (-not (Test-Path -LiteralPath $assetPath -PathType $PathType)) {
         throw ("Asset '$Name' not found at '$assetPath'. " +
             'The most likely cause is a stale or incomplete build that did not copy the Assets ' +
             'directory into the module output. Re-run ./build.ps1.')

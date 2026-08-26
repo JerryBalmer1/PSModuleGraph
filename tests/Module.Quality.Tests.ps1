@@ -13,13 +13,32 @@ Describe 'Built module layout' {
         }
     }
 
-    It 'ships Assets/graph.html' {
+    It 'ships the HTML template set' {
         # Guards against a future build change silently dropping the asset copy.
-        # Without the template the Html export fails at runtime, not at build time.
-        $asset = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'graph.html'
+        # Without the template set the Html export fails at runtime, not at
+        # build time. Asserting the manifest and one file of each kind rather
+        # than a fixed list: partials get split as they grow, and a test that
+        # names every one of them fails for the wrong reason.
+        $templates = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'Html/Templates'
 
-        Test-Path -LiteralPath $asset | Should-BeTrue
-        (Get-Item -LiteralPath $asset).Length | Should-BeGreaterThan 0
+        foreach ($part in 'templateset.psd1', 'layout.html', 'partials/sidebar.html',
+            'styles/base.css', 'scripts/bootstrap.js') {
+            $full = Join-Path $templates $part
+            Test-Path -LiteralPath $full | Should-BeTrue
+            (Get-Item -LiteralPath $full).Length | Should-BeGreaterThan 0
+        }
+    }
+
+    It 'ships every file the template set manifest names' {
+        # The manifest is the contract. A part added to it but not copied by the
+        # build would fail only when someone exported a report.
+        $templates = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'Html/Templates'
+        $manifest = Import-PowerShellDataFile -LiteralPath (Join-Path $templates 'templateset.psd1')
+
+        $declared = @($manifest.Layout) + @($manifest.Slots.Values | ForEach-Object { $_ })
+        foreach ($part in $declared) {
+            Test-Path -LiteralPath (Join-Path $templates $part) | Should-BeTrue
+        }
     }
 
     It 'ships Assets/graph.defaults.psd1 and it still parses' {

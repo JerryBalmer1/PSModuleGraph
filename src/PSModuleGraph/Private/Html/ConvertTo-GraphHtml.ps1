@@ -56,7 +56,7 @@ function ConvertTo-GraphHtml {
     $dataJson = ConvertTo-EscapedHtmlJson -InputObject $data
     $metaJson = ConvertTo-EscapedHtmlJson -InputObject $meta
 
-    $template = Get-PSModuleGraphAsset -Name 'graph.html'
+    $template = Get-HtmlTemplateSet
 
     # [string]::Replace, never the -replace operator. -replace is regex: the JSON
     # and the CSS both contain '$' and '\', which the regex engine treats as

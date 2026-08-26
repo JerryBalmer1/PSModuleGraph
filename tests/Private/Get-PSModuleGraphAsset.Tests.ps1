@@ -19,15 +19,15 @@ Describe 'Get-PSModuleGraphAsset' {
         Import-Module -Name $script:BuiltManifest -Force -ErrorAction Stop
     }
 
-    It 'resolves the graph template from the built module' {
-        $content = & (Get-Module PSModuleGraph) { Get-PSModuleGraphAsset -Name 'graph.html' }
+    It 'resolves a template part from the built module' {
+        $content = & (Get-Module PSModuleGraph) { Get-PSModuleGraphAsset -Name 'Html/Templates/layout.html' }
 
         $content | Should-HaveType ([string])
         $content.Length | Should-BeGreaterThan 0
     }
 
     It 'resolves assets from the built module root, not the source tree' {
-        $assetPath = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'graph.html'
+        $assetPath = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'Html/Templates/layout.html'
         $assetPath | Should-BeLikeString "*output*"
         Test-Path -LiteralPath $assetPath | Should-BeTrue
     }

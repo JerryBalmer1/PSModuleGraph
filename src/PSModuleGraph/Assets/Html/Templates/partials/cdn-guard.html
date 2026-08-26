@@ -1,0 +1,15 @@
+<script>
+// Runs immediately after the CDN tags. A blank white page is the worst failure
+// mode here and it is exactly what happens offline, so say so plainly instead.
+if (typeof cytoscape === 'undefined') {
+    document.body.innerHTML =
+        '<div class="fatal">' +
+        '<h2>Could not load the graph library</h2>' +
+        '<p>This page renders with Cytoscape, loaded from a CDN, so it needs internet access ' +
+        'the first time it is opened. Your browser could not fetch it.</p>' +
+        '<p>Reconnect and reload. Once cached, the page works offline. If you are behind a proxy ' +
+        'that blocks jsdelivr.net, the data is still readable: use ' +
+        '<code>Export-PSModuleDependencyGraph -Format Json</code> instead.</p>' +
+        '</div>';
+}
+</script>

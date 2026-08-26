@@ -8,7 +8,7 @@ function Get-PSModuleGraphAsset {
 
         Assets are UTF-8 and are read verbatim with -Raw.
     .PARAMETER Name
-        Asset file name relative to the Assets directory, e.g. 'graph.html'.
+        Asset path relative to the Assets directory, e.g. 'Html/Templates/layout.html'.
     #>
     [CmdletBinding()]
     [OutputType([string])]
