@@ -172,12 +172,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whether the page is framed at all, which catches every embedded viewer without
   sniffing for any one of them, and says so in a banner on load rather than only
   in the context menu.
-- **Open File Location now says why it cannot work inside a VS Code preview.**
-  A webview sandboxes the page, so a `vscode://` URI never reaches the OS and
-  the link does nothing at all — no prompt, no error. The page detects that
-  context and greys the item out with the reason, pointing at Copy Path. Opened
-  in a real browser it is unaffected.
-- **Open File Location did nothing when clicked.** The action assigned
+- **Menu actions that hand a URI to another application are real links.** The
+  first version of `Open File Location` assigned
   `window.location.href` to the `vscode://` URI, which Chrome discards in
   silence — no navigation, no error, nothing in the console. Menu actions that
   hand a URI to another application now render as real links, which is the
