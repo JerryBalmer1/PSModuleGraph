@@ -243,14 +243,14 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
     }
 
 
-    It 'explains itself when the page is inside a VS Code webview' {
-        # A webview sandboxes the page, so vscode:// never reaches the OS - the
-        # link would sit there doing nothing when clicked, with no error
-        # anywhere. Nothing in the page can fix that; it can say so.
-        $script:Html | Should-MatchString 'function inVSCodeWebview'
+    It 'explains itself when the page is in an embedded viewer' {
+        # An embedded viewer sandboxes the page, so vscode:// never reaches the
+        # OS - the link would sit there doing nothing when clicked, with no
+        # error anywhere. Nothing in the page can fix that; it can say so.
+        $script:Html | Should-MatchString 'function isEmbeddedContext'
         $script:Html | Should-MatchString "location\.protocol === 'vscode-webview:'"
         $script:Html | Should-MatchString 'ancestorOrigins'
-        $script:Html | Should-MatchString 'blocked in this preview'
+        $script:Html | Should-MatchString 'not available in an embedded viewer'
     }
 
     It 'uses the supplied title' {
