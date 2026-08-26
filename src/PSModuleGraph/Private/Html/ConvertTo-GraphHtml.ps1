@@ -48,37 +48,19 @@ function ConvertTo-GraphHtml {
         stats         = $Graph.Stats
     }
 
-    # See docs/html-architecture.md.
-    $config = Resolve-RenderConfiguration
-    $configJson = ConvertTo-EscapedHtmlJson -InputObject $config
-
-    # The seam. Nothing below it may know what a PSModuleGraph command is, so
-    # the name of the one that fixes a blocked editor link is handed down as a
-    # generic value and interpolated into a string the renderer was given.
-    # {origin} is deliberately left unfilled here. Caller tokens are substituted
-    # in PowerShell and display-time tokens in the page - only the browser knows
-    # what origin the report ended up on, so the page fills it. The renderer
-    # still learns nothing: it interpolates a string it was handed.
-    $strings = Resolve-RenderString -Value @{
-        editorLinkHelpCommand         = 'Enable-PSModuleGraphEditorLink'
+    # THE SEAM, and it is one call. Everything below it - escaping, the
+    # substitution markers, which backend, where its configuration lives - is
+    # the renderer's business and none of it is repeated here.
+    #
+    # The name of the command that fixes a blocked editor link is handed down as
+    # a value. Nothing below the seam may know what a PSModuleGraph command is,
+    # so it arrives as a string the renderer interpolates and learns nothing
+    # from. {origin} is deliberately left unfilled: only the browser knows what
+    # origin the report ended up on, so the page fills that one.
+    $strings = @{
+        editorLinkHelpCommand          = 'Enable-PSModuleGraphEditorLink'
         editorLinkHelpCommandForOrigin = "Enable-PSModuleGraphEditorLink -AllowedOrigin '{origin}'"
     }
-    $stringsJson = ConvertTo-EscapedHtmlJson -InputObject $strings
 
-    $dataJson = ConvertTo-EscapedHtmlJson -InputObject $data
-    $metaJson = ConvertTo-EscapedHtmlJson -InputObject $meta
-
-    $template = Get-RenderTemplateSet
-
-    # [string]::Replace, never the -replace operator. -replace is regex: the JSON
-    # and the CSS both contain '$' and '\', which the regex engine treats as
-    # substitution patterns and silently eats. The result would be corrupted
-    # output rather than an error.
-    $document = $template.Replace('/*__DATA__*/ null', $dataJson)
-    $document = $document.Replace('/*__META__*/ null', $metaJson)
-    $document = $document.Replace('/*__CONFIG__*/ null', $configJson)
-    $document = $document.Replace('/*__STRINGS__*/ null', $stringsJson)
-    $document = $document.Replace('__PAGE_TITLE__', (ConvertTo-EscapedHtmlText -Text $Title))
-
-    $document
+    New-RenderDocument -ViewModel $data -Meta $meta -Strings $strings -Title $Title
 }
