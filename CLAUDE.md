@@ -28,6 +28,102 @@ The one deliberate exception is `Import-PowerShellDataFile`, which parses
 not import. `Resolve-PSModuleTarget` uses it for path discovery only — never
 call `Import-Module` to "just check" something.
 
+## Working with the machine owner
+
+This repository is developed on the owner's own desktop. Some work needs their
+screen, keyboard, mouse or focus, and taking those without warning corrupts both
+the measurement and their afternoon. This protocol is permanent.
+
+### Status line
+
+**Every response begins with one of these, on its own line, before anything
+else.** No exceptions — including one-line responses and responses that are only
+a question.
+
+```
+🟢 MACHINE FREE — nothing I'm doing needs your screen, keyboard, or mouse.
+🔴 HANDS OFF — I need exclusive control. Details below.
+🙋 YOUR TURN — I need you to do something. Details below.
+❓ BLOCKED — I need an answer before I can continue.
+```
+
+A response that ends a hands-off period uses 🟢 and says so in its first
+sentence: *"Done with the machine — it's yours."*
+
+### Gates
+
+A gate is a full stop. Post it and **wait for a reply.** Never post a gate and
+keep working underneath it.
+
+**🔴 HANDS OFF** — exclusive control of focus, the foreground window, the
+clipboard, or the browser. State:
+
+- what is about to run, in one sentence
+- **exactly what not to do** — not "please avoid interacting" but "do not click
+  anything, do not switch windows, do not type, do not move the mouse over the
+  browser window"
+- how long, as a number: "about 90 seconds", never "a short while"
+- what breaks on a slip, so the cost of touching it is known
+- to reply `go` when ready
+
+**🙋 YOUR TURN** — something physical only they can do. Numbered steps, one
+action each, in order, and what to report back. Recurring cases here: closing
+every browser window so `Local State` can be written, clicking a link and
+describing a dialog that cannot be screenshotted, reading back what an OS prompt
+said.
+
+**❓ BLOCKED** — exactly one question. Not a list. Three questions means the one
+that actually blocks has not been identified yet.
+
+**✅ RELEASE** — every 🔴 HANDS OFF is closed by an explicit release. If a run
+ends while one is notionally open, close it before anything else in the
+response. Never leave the owner guessing whether they can use their computer.
+
+### Classify before running
+
+Before executing anything, ask whether it depends on any of:
+
+- window focus or blur events
+- which window is in the foreground
+- the clipboard
+- launching, or being able to see, another application
+- a browser being open, or being closed
+- an OS or browser dialog appearing
+- screenshot timing
+
+If yes it is focus-sensitive and goes behind 🔴 HANDS OFF. **When in doubt,
+gate.** An unnecessary gate costs ten seconds; a silently corrupted measurement
+costs a whole round, which has already happened once.
+
+### Batch
+
+Five interruptions are worse than one interruption five times as long.
+
+- Do **all** headless work first: code, tests, build, documentation, anything
+  needing nothing from the owner.
+- Gather every focus-sensitive step into **one** 🔴 HANDS OFF block and run them
+  back to back.
+- Then release.
+
+If a result forces a second hands-off window, say so at the release — *"I may
+need one more hands-off window after I look at this"* — rather than implying the
+first was the last.
+
+### Say what cannot be seen
+
+When something is outside observation — browser chrome, an OS dialog, a focus
+event that cannot be attributed — **say so and hand it over.** Do not substitute
+a weaker proxy signal and report it as though it settled the question.
+
+`PageBlurred: True` means *something* took focus. It does not mean VS Code
+opened. Reporting the first as evidence of the second is the failure that
+produced this section.
+
+### Never assume the machine is free
+
+Absence of a reply is not consent. A posted gate with no reply means wait. Not
+"the work seemed low-risk, so I continued".
+
 ## Build
 
 ```powershell
