@@ -212,6 +212,12 @@ input[type="range"] { width: 100%; }
                     </div>
                 </div>
             </div>
+            <div class="section">
+                <h2>View</h2>
+                <label for="zoom-speed">Zoom speed: <b id="zoom-speed-val">1.5x</b></label>
+                <input type="range" id="zoom-speed" min="0.25" max="5" step="0.25" value="1.5">
+                <p class="hint">Mouse wheel zoom sensitivity.</p>
+            </div>
             <div class="section btn-row">
                 <button type="button" id="clear-focus">Clear focus</button>
                 <button type="button" id="fit">Fit</button>
@@ -285,6 +291,7 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     document.getElementById('app').hidden = false;
 
     var NODE_LIMIT = 400;
+    var ZOOM_SPEED_DEFAULT = 1.5;
     var KIND_COLOR = {
         Function: 'var(--fn)', Class: 'var(--cls)', Enum: 'var(--enum)',
         Script: 'var(--script)', External: 'var(--ext)'
@@ -379,7 +386,7 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     var cy = cytoscape({
         container: document.getElementById('cy'),
         elements: els,
-        wheelSensitivity: 0.2,
+        wheelSensitivity: ZOOM_SPEED_DEFAULT,
         style: [
             {
                 selector: 'node',
@@ -636,6 +643,27 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     Array.prototype.forEach.call(document.querySelectorAll('input[name="dir"]'), function (r) {
         r.addEventListener('change', reapplyFocus);
     });
+    // Wheel sensitivity lives on the renderer and is read at event time, so it
+    // can be changed live. It is not part of Cytoscape's public API, hence the
+    // guard: if a future version moves it, the slider goes inert rather than
+    // throwing and taking the page down with it.
+    var zoomSpeedEl = document.getElementById('zoom-speed');
+    var zoomSpeedVal = document.getElementById('zoom-speed-val');
+
+    function applyZoomSpeed() {
+        var value = parseFloat(zoomSpeedEl.value);
+        if (isNaN(value)) { return; }
+        zoomSpeedVal.textContent = value + 'x';
+        var renderer = cy._private && cy._private.renderer;
+        if (renderer && 'wheelSensitivity' in renderer) {
+            renderer.wheelSensitivity = value;
+        }
+    }
+
+    zoomSpeedEl.value = String(ZOOM_SPEED_DEFAULT);
+    zoomSpeedEl.addEventListener('input', applyZoomSpeed);
+    applyZoomSpeed();
+
     document.getElementById('clear-focus').addEventListener('click', clearFocus);
     document.getElementById('fit').addEventListener('click', function () {
         runLayout();
