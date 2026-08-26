@@ -194,9 +194,29 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         # its source, so 'TB' sinks the most depended-upon to the foot of the
         # page. This is the default and is meant to stay the default; see the
         # gravity rule in CLAUDE.md before changing it.
-        $script:Html | Should-MatchString "foundation: \{ rankDir: 'TB', ranker: 'longest-path', flip: true \}"
+        $script:Html | Should-MatchString "foundation: \{ layout: 'foundation', flip: true \}"
         $script:Html | Should-MatchString '"DefaultFlow": "foundation"'
         $script:Html | Should-MatchString 'value="foundation"'
+        # Layer 0 takes the largest y, and Cytoscape's y grows downward.
+        $script:Html | Should-MatchString 'layers\.length - 1 - at'
+    }
+
+    It 'bounds how wide a layer may get' {
+        # No dagre ranker can. longest-path pinned 29 of this module's 62 nodes
+        # to one row and drew the graph at 11:1; bounding the layer and letting
+        # the layer count grow brings the same graph to about 2:1.
+        $script:Html | Should-MatchString 'function assignLayers'
+        $script:Html | Should-MatchString 'while \(\(fill\[target\] \|\| 0\) >= capacity\) \{ target\+\+; \}'
+        $script:Html | Should-MatchString 'function reduceCrossings'
+        # Capacity is solved from the container's own shape unless pinned.
+        $script:Html | Should-MatchString 'Math\.sqrt\(\(aspect \* count \* stepY\) / stepX\)'
+        $script:Html | Should-MatchString '"FoundationLayerCapacity"'
+    }
+
+    It 'stops shrinking the opening view past a readable zoom' {
+        # Fitting a large graph to the window is what turns labels into dashes.
+        $script:Html | Should-MatchString "cfg\('MinReadableZoom'"
+        $script:Html | Should-MatchString '"MinReadableZoom"'
     }
 
     It 'lets the data file decide which view the report opens in' {

@@ -188,3 +188,21 @@ present, validated, and ignored.
 siblings.** Partial text is one open checklist item and belongs in one pass;
 migrating one of three labels to `strings.psd1` while the others stay in markup
 is the half-rename this log has already rejected once.
+
+**2026-08-26 - The foundation view lays itself out; the other two stay on
+dagre.** No dagre ranker bounds the width of a layer, and that is the whole
+problem: `longest-path` put 29 of 62 nodes in one row for an 11:1 drawing, and
+`network-simplex` only reached 24. `scripts/foundation.js` assigns layers under
+a capacity and reduces crossings with a median sweep, reaching 10 layers of 7 at
+1.3:1 on the same graph. Measured in both directions before choosing.
+
+**2026-08-26 - Layer capacity is solved from the container's aspect, not
+configured.** Width is capacity x stepX and height is (count / capacity) x
+stepY, so setting their ratio to the container's gives the capacity directly.
+A fixed number would be wrong on either a laptop or a wall display, and one
+setting per screen size is not a design.
+
+**2026-08-26 - `fitVisible()` will not zoom below `MinReadableZoom`.** Fitting a
+large graph to the window is what turns labels into dashes, and a report nobody
+can read has failed whatever its layout. Past the floor the view stops shrinking
+and the reader pans; foundation opens at the bottom, where reading starts.

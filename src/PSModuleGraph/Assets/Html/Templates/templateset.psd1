@@ -23,6 +23,7 @@
         SCRIPT_ORDER     = @('scripts/order.js')
         SCRIPT_ELEMENTS  = @('scripts/elements.js')
         SCRIPT_RENDER    = @('scripts/render.js')
+        SCRIPT_FOUNDATION = @('scripts/foundation.js')
         SCRIPT_SIDEBAR   = @('scripts/sidebar.js')
         SCRIPT_FILTERS   = @('scripts/filters.js')
         SCRIPT_FOCUS     = @('scripts/focus.js')

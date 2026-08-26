@@ -51,6 +51,17 @@
             Description = 'View the report opens in. foundation is vertical and sinks what everything rests on to the bottom.'
         }
 
+        FoundationLayerCapacity = @{
+            Type = 'Integer'; Default = 0; Min = 0; Max = 500
+            In = 'Settings'; Group = 'Layout'
+            Description = 'Most items per layer in the foundation view. 0 derives it from the window shape.'
+        }
+        MinReadableZoom  = @{
+            Type = 'Number'; Default = 0.45; Min = 0.05; Max = 4
+            In = 'Settings'; Group = 'Layout'
+            Description = 'Zoom the opening view will not go below, however large the graph. Pan instead of squinting.'
+        }
+
         # -- Scale ---------------------------------------------------------
         NodeLimit        = @{
             Type = 'Integer'; Default = 400; Min = 1; Max = 100000

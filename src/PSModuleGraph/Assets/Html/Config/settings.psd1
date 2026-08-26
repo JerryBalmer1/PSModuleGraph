@@ -16,5 +16,13 @@
     # Gravity: what everything rests on sits at the foot of the page.
     DefaultFlow   = 'foundation'
 
+    # 0 derives the layer capacity from the window shape, which is what keeps
+    # the drawing near the screen's own aspect instead of a long thin band.
+    FoundationLayerCapacity = 0
+
+    # Fitting a large graph to the window zooms it into illegibility. Below
+    # this the opening view stops shrinking and the reader pans instead.
+    MinReadableZoom = 0.45
+
     NodeLimit     = 400
 }

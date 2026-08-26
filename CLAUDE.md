@@ -389,15 +389,30 @@ The rules:
   Do not change the shipped default to `testorder` or `callflow` as a side
   effect of other work. Changing which view a report opens in is a deliberate
   decision, and this one is made.
-- **Foundation is vertical.** `rankDir: 'TB'` with `ranker: 'longest-path'`.
-  Edges point caller to callee and dagre ranks a target below its source, so
-  top-to-bottom is what sinks the depended-upon. `'BT'` inverts it and puts the
-  foundation in the air; that is the bug to watch for.
+- **Foundation is vertical, and it is not laid out by dagre.** `scripts/foundation.js`
+  assigns layers itself, because the width of a layer has to be bounded and no
+  dagre ranker can bound it. `longest-path` pins every node with no dependencies
+  to one extreme layer: on this module that was 29 of 62 nodes in a single row,
+  drawn at 11:1 and illegible once fitted to a window. Switching ranker only
+  moves it to 24. Bounding the layer and letting the layer count grow is the
+  standard answer, and takes the same graph to 10 layers of 7 at 1.3:1.
+
+  **Do not "simplify" this back to a dagre ranker.** It has been measured in
+  both directions. The other two views still use dagre and should.
+- **Layer capacity is derived from the container's aspect** unless
+  `FoundationLayerCapacity` pins it. That is what keeps the drawing near the
+  screen's own shape on a laptop and on a wall display without a second setting.
+- **Layer 0 is the foundation and takes the largest y.** Cytoscape's y grows
+  downward, so `layers.length - 1 - at` is what puts it at the bottom. Inverting
+  that puts the foundation in the air; it is the bug to watch for.
 - **The arrowhead follows the reading direction.** Foundation reads bottom to
   top, so the arrow sits on the source end: it means "this one first, then the
   one it points at". Only `callflow` keeps the arrow on the callee.
 - **The layout table is `FLOW_LAYOUT` in `scripts/render.js`.** A new view is one
-  entry - `rankDir`, `ranker`, `flip`. Do not add a branch beside it.
+  entry. Do not add a branch beside it.
+- **Fitting is floored at `MinReadableZoom`.** A graph large enough to fit only
+  at 15% is a graph nobody can read; past the floor the view stops shrinking and
+  the reader pans. A legible part beats an illegible whole.
 - **Nothing may leave the starting view to the markup.** The radios carry no
   `checked` attribute; `controls.js` sets it from config. A `checked` in the
   partial would make editing the `.psd1` silently do nothing.

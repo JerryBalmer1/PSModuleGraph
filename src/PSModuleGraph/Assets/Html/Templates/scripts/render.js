@@ -138,7 +138,7 @@
     // which is the source end - the same flip test order uses. Call flow reads
     // the other way and keeps the arrow on the callee.
     var FLOW_LAYOUT = {
-        foundation: { rankDir: 'TB', ranker: 'longest-path', flip: true },
+        foundation: { layout: 'foundation', flip: true },
         testorder: { rankDir: 'RL', ranker: 'longest-path', flip: true },
         callflow: { rankDir: 'LR', ranker: 'network-simplex', flip: false }
     };
@@ -149,9 +149,24 @@
     }
 
     function runLayout() {
-        var name = 'dagre';
         var flow = FLOW_LAYOUT[currentFlow()] || FLOW_LAYOUT.foundation;
         cy.edges().toggleClass('flip', flow.flip);
+
+        // Foundation is laid out here rather than by dagre: it needs a bound on
+        // layer width, and no dagre ranker has one. See foundation.js.
+        if (flow.layout === 'foundation') {
+            var placed = foundationPositions();
+            cy.layout({
+                name: 'preset',
+                positions: function (n) { return placed[n.id()] || { x: 0, y: 0 }; },
+                fit: false,
+                animate: false
+            }).run();
+            document.documentElement.setAttribute('data-layout', 'foundation');
+            return 'foundation';
+        }
+
+        var name = 'dagre';
         var opts = {
             name: 'dagre',
             rankDir: flow.rankDir,
@@ -180,4 +195,23 @@
         // include them, shrinking the real graph into a corner.
         var vis = cy.elements(':visible');
         cy.fit(vis.empty() ? undefined : vis, 30);
+
+        // Fitting a large graph to the window is what turns labels into dashes.
+        // Past a floor the view stops shrinking and the reader pans instead - a
+        // legible part of the graph beats an illegible whole of it. Foundation
+        // opens at the bottom, because that is where reading starts.
+        var floor = cfg('MinReadableZoom', 0.45);
+        if (cy.zoom() >= floor || vis.empty()) { return; }
+
+        cy.zoom(floor);
+        var box = vis.boundingBox();
+        if (currentFlow() === 'foundation') {
+            cy.pan({
+                x: (cy.width() / 2) - ((box.x1 + box.x2) / 2) * floor,
+                y: cy.height() - 40 - (box.y2 * floor)
+            });
+        }
+        else {
+            cy.center(vis);
+        }
     }

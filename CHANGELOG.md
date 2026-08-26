@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The Foundation view bounds how wide a layer may get.** A layered drawing is
+  only as readable as its aspect ratio, and no dagre ranker can bound a layer:
+  `longest-path` pins every node with no dependencies to one extreme layer,
+  which on this module put 29 of 62 nodes in a single row and drew the graph at
+  11:1 — a band of unreadable dashes once fitted to a window. Switching ranker
+  only reaches 24.
+
+  The foundation view now assigns its own layers under a capacity and reduces
+  crossings with a median sweep. The same graph comes out as 10 layers of 7 at
+  1.3:1, which fits a window at 79% zoom with every label legible. Capacity is
+  solved from the container's own shape, so the drawing tracks the screen it is
+  read on; `FoundationLayerCapacity` pins it if you want a fixed number. Test
+  order and Call flow are unchanged and still use dagre.
+- **The opening view will not zoom below `MinReadableZoom`.** Fitting a large
+  graph to the window is what turns labels into dashes. Past the floor the view
+  stops shrinking and you pan instead — a legible part of a graph beats an
+  illegible whole of it. Foundation opens at the bottom, where reading starts.
 - **The report opens on a vertical Foundation view.** What everything rests on
   is stacked at the bottom and its dependents rise above it, so the shape of the
   module reads before a single label does. The two previous horizontal views,
