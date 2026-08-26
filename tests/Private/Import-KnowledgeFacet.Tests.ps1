@@ -167,11 +167,11 @@ kind: vibes
     }
 }
 
-Describe 'ConvertFrom-FacetFrontMatter' {
+Describe 'ConvertFrom-KnowledgeFrontMatter' {
     It 'keeps a version-shaped value a string' {
         # 1.0 silently becoming the number 1 would break a 'since' comparison.
         $parsed = InModuleScope PSModuleGraph {
-            ConvertFrom-FacetFrontMatter -Text "version: 1.0`nsince: 0.0.1"
+            ConvertFrom-KnowledgeFrontMatter -Text "version: 1.0`nsince: 0.0.1"
         }
 
         $parsed['version'] | Should-Be '1.0'
@@ -180,7 +180,7 @@ Describe 'ConvertFrom-FacetFrontMatter' {
 
     It 'tells an empty list from an unknown one' {
         $parsed = InModuleScope PSModuleGraph {
-            ConvertFrom-FacetFrontMatter -Text "supersedes: []"
+            ConvertFrom-KnowledgeFrontMatter -Text "supersedes: []"
         }
 
         @($parsed['supersedes']).Count | Should-Be 0
@@ -192,7 +192,7 @@ Describe 'ConvertFrom-FacetFrontMatter' {
 
     It 'reads a quoted boolean as the string it is' {
         $parsed = InModuleScope PSModuleGraph {
-            ConvertFrom-FacetFrontMatter -Text ("meta: false`nlabel: `"true`"")
+            ConvertFrom-KnowledgeFrontMatter -Text ("meta: false`nlabel: `"true`"")
         }
 
         $parsed['meta'] | Should-HaveType ([bool])

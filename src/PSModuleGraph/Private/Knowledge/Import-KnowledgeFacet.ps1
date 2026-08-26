@@ -26,9 +26,6 @@ function Import-KnowledgeFacet {
     .PARAMETER Path
         The facet file. Mandatory: the store is not addressable from inside the
         built module and guessing at a location would defeat the point.
-    .PARAMETER SchemaPath
-        The JSON Schema to validate against. Defaults to
-        <store>/SCHEMA/facet.schema.json, derived from the facet's own location.
     .PARAMETER SkipValidation
         Parse without validating. For diagnosing a file that will not validate;
         never for routine reads.
@@ -46,43 +43,12 @@ function Import-KnowledgeFacet {
         [string] $Path,
 
         [Parameter()]
-        [string] $SchemaPath,
-
-        [Parameter()]
         [switch] $SkipValidation
     )
 
     process {
-        if (-not (Test-Path -LiteralPath $Path)) {
-            throw "Facet file not found: '$Path'."
-        }
-
-        $text = Get-Content -LiteralPath $Path -Raw
-        $split = Split-FrontMatter -Text $text
-        if ($null -eq $split) {
-            throw "'$Path' has no YAML front matter. Every file in the knowledge store carries it; see knowledge/NAMING.md."
-        }
-
-        $data = ConvertFrom-FacetFrontMatter -Text $split.FrontMatter
-
-        $valid = $null
-        $reason = $null
-        if (-not $SkipValidation) {
-            if (-not $SchemaPath) {
-                # <store>/facets/x.md and <store>/meta/x.md both resolve to
-                # <store>/SCHEMA. Derived rather than configured so a lifted copy
-                # of the store validates without being told where it went.
-                $storeRoot = Split-Path -Path (Split-Path -Path $Path -Parent) -Parent
-                $SchemaPath = Join-Path (Join-Path $storeRoot 'SCHEMA') 'facet.schema.json'
-            }
-
-            $result = Test-KnowledgeDocument -InputObject $data -SchemaPath $SchemaPath
-            $valid = $result.IsValid
-            $reason = $result.Reason
-            if ($false -eq $valid) {
-                throw "'$Path' does not satisfy '$SchemaPath': $reason"
-            }
-        }
+        $read = Read-KnowledgeFile -Path $Path -SchemaName 'facet.schema.json' -SkipValidation:$SkipValidation
+        $data = $read.Data
 
         [pscustomobject]@{
             PSTypeName = 'PSModuleGraph.KnowledgeFacet'
@@ -93,10 +59,10 @@ function Import-KnowledgeFacet {
             Paths      = @(Get-HashtableValue -InputObject $data -Key 'paths' -Default @())
             Supersedes = @(Get-HashtableValue -InputObject $data -Key 'supersedes' -Default @())
             IsMeta     = [bool](Get-HashtableValue -InputObject $data -Key 'meta' -Default $false)
-            Body       = $split.Body
-            Path       = (Resolve-Path -LiteralPath $Path).ProviderPath
-            IsValid    = $valid
-            Reason     = $reason
+            Body       = $read.Body
+            Path       = $read.Path
+            IsValid    = $read.IsValid
+            Reason     = $read.Reason
         }
     }
 }

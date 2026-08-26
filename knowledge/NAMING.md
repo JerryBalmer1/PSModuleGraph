@@ -1,6 +1,6 @@
 # Naming
 
-**Version 0.0.1.** This document is itself versioned, because a naming
+**Version 0.1.0.** This document is itself versioned, because a naming
 convention that changes silently is worse than one that is merely wrong.
 
 ---
@@ -54,11 +54,14 @@ carries no hierarchy meaning beyond "this is inside that".
 
 `psmodule`, `psgallery`, `concept` and `facet` are the namespaces in use today.
 
-**This list is data, not an enum in a `.ps1`, and must never become one.** It is
-destined to be the `namespace` facet — a file under `facets/`, extensible by
-adding a path, with no code change and no release. It is not that yet only
-because v0.0.1 ships exactly two facets and this is not one of them; see the open
-threads in `ledger/0001`.
+**This list is data, not an enum in a `.ps1`, and must never become one.** Any
+reader needing to know whether a namespace is valid must read it from data.
+
+It is *not yet a facet*, and the proposal to make one was **withdrawn** in
+`ledger/0002` under the reflection evidence rule: every subject in the store is
+`psmodule:`, so no pair of subjects exists that `namespace` would distinguish
+and the existing facets would not. It returns when a second namespace does. A
+dimension with one value is not a dimension.
 
 Any reader that needs to know whether a namespace is valid reads the facet. A
 reader that hardcodes the list has moved the taxonomy into code, which is the
@@ -98,19 +101,44 @@ networking:cisco:asa:version:7.4.5
 | --- | --- | --- |
 | `facets/` | one dimension per file | `facet.schema.json` |
 | `meta/` | facets that classify facets | `facet.schema.json`, `meta: true` |
-| `subjects/` | things that can be classified | `subject.schema.json` |
-| `assignments/` | subject x facet -> path | `assignment.schema.json` |
+| `subjects/` | one classifiable thing per file, flat | `subject.schema.json` |
+| `assignments/` | one subject x facet -> path per file, flat | `assignment.schema.json` |
 | `ledger/` | one implementation per file | `ledger-entry.schema.json` |
 
-Filenames are `<id>.md` for facets and `NNNN-slug.md` for ledger entries. Bulk
-files under `subjects/` and `assignments/` are named for what generated them,
-with `:` and `/` replaced by `-`, because those characters are not portable in a
-filename and this store is meant to travel.
+Filenames are `<id>.md` for facets and `NNNN-slug.md` for ledger entries. Under
+`subjects/` and `assignments/` the path is the URN with `:` replaced by `/`, so
+the tree mirrors the identifier.
 
 **Every file is Markdown with YAML front matter.** The front matter is for the
 machine and is schema-validated; the body is for the human and is not optional.
-A facet whose body does not say what *does not* belong on it will absorb its
-neighbours, and that is the failure mode that makes a taxonomy useless.
+
+**Subjects and assignments are FLAT and one record per file.** Every value is a
+scalar or a list of scalars; nothing nests. `evidence` was a list of objects in
+`v0.0.1`, which meant the store could not be read by its own reader — not an
+untested round-trip but an impossible one, and the language-neutrality claim
+rests on readability rather than writability. Evidence is now
+`evidence_kind`, `evidence_value`, `evidence_source`, and a subject with two
+independent pieces of evidence for one path is **two assignments**, which is the
+better shape anyway: each then carries its own confidence.
+
+The file layout mirrors the URN, so a reader finds a file from an identifier
+without an index:
+
+```
+psmodule:PSModuleGraph/function/Get-PSModuleClass
+  -> subjects/psmodule/PSModuleGraph/function/Get-PSModuleClass.md
+  -> assignments/psmodule/PSModuleGraph/function/Get-PSModuleClass/structure.md
+```
+
+Facets keep one level of block list for `paths`, which is the only nesting
+anywhere in the store and the reason the parser supports exactly that much.
+**Do not add a second level.** The rule is that the data reshapes, not that the
+parser grows: any language can read flat front matter in about thirty lines, and
+that is the neutrality claim being true rather than asserted.
+
+**A facet whose body does not say what *does not* belong on it will absorb its
+neighbours**, and that is the failure mode that makes a taxonomy useless. The
+prose half of a facet file is not decoration.
 
 ---
 
@@ -127,6 +155,31 @@ The test is concrete: **if a Python or Go implementation would have to reshape
 the data to read it, the shape is wrong.**
 
 ---
+
+## Versioning below 1.0.0
+
+**Decision, 2026-08-26 (ledger `0002`).** The original rule — patch for a normal
+implementation, minor for a facet added or split, major when the schema changes
+shape — breaks below `1.0.0`. Under it, `v0.1.0` reshaping the subject and
+assignment schemas would have been `v1.0.0`, which would announce a stable format
+on the second day of its existence.
+
+**Below `1.0.0`:**
+
+| Change | Bump |
+| --- | --- |
+| A schema changes shape | **minor** |
+| A facet added, split, merged or renamed | **minor** |
+| Everything else | **patch** |
+
+**`1.0.0` is when the store has been read by a second implementation, in any
+language.** Not when it feels finished, not when the schemas stop moving — when
+something that is not this PowerShell module has read it. Until then the format
+is not stable, and a major version claiming otherwise would be a lie told in a
+number, which is the hardest kind to notice.
+
+That criterion is deliberately outside this repository's control. It cannot be
+satisfied by deciding it has been, which is the property a stability claim needs.
 
 ## Ledger body sections
 

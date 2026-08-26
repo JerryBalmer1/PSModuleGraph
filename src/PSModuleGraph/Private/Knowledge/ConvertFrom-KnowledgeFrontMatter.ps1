@@ -32,15 +32,22 @@ function Split-FrontMatter {
     $null
 }
 
-function ConvertFrom-FacetFrontMatter {
+function ConvertFrom-KnowledgeFrontMatter {
     <#
     .SYNOPSIS
-        Parses the YAML subset a facet file is allowed to contain.
+        Parses the YAML subset a knowledge file is allowed to contain.
     .DESCRIPTION
         Scalars, inline lists, and one level of block list-of-mappings. That is
-        the whole grammar a facet file may use, and this must not grow into a
-        general YAML parser: if a knowledge file needs more than this, the file
-        is wrong rather than the parser.
+        the whole grammar a knowledge file may use, and this must not grow into
+        a general YAML parser: if a knowledge file needs more than this, THE
+        FILE is wrong rather than the parser.
+
+        v0.0.1 proved that the hard way. Subjects and assignments were written
+        as collection documents whose items held nested lists and mappings, so
+        the store could not be read back by its own reader - not an untested
+        round-trip but an impossible one. The data was reshaped flat rather than
+        the parser grown, because a subset parser behind a schema is a
+        defensible trade and a hand-rolled general YAML parser is not.
 
         There is no YAML parser in the box, and taking a module dependency to
         read four keys would put a package between the store and its first
