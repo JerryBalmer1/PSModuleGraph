@@ -99,10 +99,14 @@ function Get-EditorLinkState {
             $machinePolicy = $null -ne $machineItem
         }
 
-        $excluded = $null
-        if ($browser.LocalStatePath -and (Test-Path -LiteralPath $browser.LocalStatePath)) {
-            $excluded = Test-SchemeExcluded -LocalStatePath $browser.LocalStatePath -Protocol $Protocol
-        }
+        $exclusion = Get-SchemeExclusion -LocalStatePath $browser.LocalStatePath -Protocol $Protocol
+
+        # Does not suppress the prompt, but when it is Disabled the user cannot
+        # grant a per-site exemption from the prompt either - which changes what
+        # advice is worth giving.
+        $checkbox = Get-BrowserDwordPolicy -UserPolicyPath $browser.PolicyPath `
+            -MachinePolicyPath $browser.MachinePolicyPath `
+            -Name 'ExternalProtocolDialogShowAlwaysOpenCheckbox'
 
         $configuredOrigins = if ($entry) { @($entry.allowed_origins) } else { @() }
         # $null when nothing was asked for, or when nothing is configured to
@@ -127,14 +131,20 @@ function Get-EditorLinkState {
             AllowedOriginsMatch  = $originsMatch
             MachinePolicyPresent = $machinePolicy
             MachinePolicyPath    = $browser.MachinePolicyPath
+            ExternalProtocolDialogShowAlwaysOpenCheckbox = $checkbox.Value
+            ExternalProtocolDialogCheckboxSource         = $checkbox.Source
             LocalStatePath       = $browser.LocalStatePath
-            SchemeExcluded       = $excluded
+            SchemeExcluded       = $exclusion.Excluded
+            SchemeExclusionState = $exclusion.State
+            SchemeExclusionReason = $exclusion.Reason
             Running              = [bool](Get-Process -Name $browser.ProcessName -ErrorAction SilentlyContinue)
         }
     }
 
     $browsers = @($browsers)
     $detected = @($browsers | Where-Object { $_.Detected })
+    # SchemeExcluded is tri-state: only $true is a refusal. $null means nobody
+    # was ever asked, which does not by itself make the machine not ready.
     $blocked = @($detected | Where-Object {
             -not $_.AutoLaunchConfigured -or
             $_.SchemeExcluded -eq $true -or
