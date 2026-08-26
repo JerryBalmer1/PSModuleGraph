@@ -39,7 +39,7 @@
             // The navigation itself reports nothing either way, so the click
             // starts a watch for the one observable signal there is.
             afterClick: function (node) {
-                attemptEditorLaunch(vsCodeUriFor(node));
+                attemptEditorLaunch(vsCodeUriFor(node), reportNoLaunch);
             }
         },
         {

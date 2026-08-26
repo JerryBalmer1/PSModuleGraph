@@ -43,7 +43,10 @@
     // end at the same fallback.
     var LAUNCH_WATCH_MS = 1200;
 
-    function attemptEditorLaunch(uri) {
+    // onNoLaunch is a parameter rather than a hardcoded call so the watcher can
+    // be exercised without the banner, and so a second caller could report
+    // differently.
+    function attemptEditorLaunch(uri, onNoLaunch) {
         var launched = false;
         function onBlur() { launched = true; }
 
@@ -54,7 +57,7 @@
 
         window.setTimeout(function () {
             window.removeEventListener('blur', onBlur);
-            if (!launched) { reportNoLaunch(uri); }
+            if (!launched) { onNoLaunch(uri); }
         }, LAUNCH_WATCH_MS);
     }
 
