@@ -55,24 +55,30 @@ top-level directory. If nothing new appeared, skip it and say so in one clause;
 do not invent a charter to have something to report.
 
 **6. Invoke `instruction-prune`.**
-Every iteration, without exception. It returns a line count and either a
-proposal or "no". Both go into the ledger. It proposes; it does not act.
+Every iteration, without exception. It returns the always-loaded byte count and
+either a move it made, a deletion proposal, or "no". All three go into the
+ledger. **A move it applies in-turn; a deletion it only proposes.**
 
 **7. Write the ledger entry.**
 `knowledge/ledger/NNNN-slug.md`. Front matter per
 `knowledge/SCHEMA/ledger-entry.schema.json`; five body sections; `closes` and
-`carries_forward` accounting for **every** thread the previous entry left open.
-The reflection pass runs under the evidence rule — a yes to question 1, 2 or 3
-names two specific subjects or it is a no. The Skeptic's "What I could not
-verify" is never empty. Record the `CLAUDE.md` line count from step 6.
+`carries_forward` accounting for **every** thread the previous entry left open;
+`prune_proposals` naming any thread that is a prune. Record the always-loaded
+byte count from step 6. The method is below.
 
-**8. Build green, then tag, then push.**
+**8. Build green, pass the pre-tag gates, then tag, then push.**
 
 ```powershell
 ./build.ps1
+./build.ps1 -Task PreTag
 git tag -a v0.X.Y -m "<one line: what this iteration made possible>"
 git push --follow-tags
 ```
+
+`PreTag` runs the tests the default build deliberately excludes: the seals on a
+*finished* iteration rather than checks on work in progress. Today that is one —
+a prune proposal a second iteration ignored blocks the tag by name. The build
+stays green while an iteration is half done; the tag does not.
 
 Never `Invoke-Pester` or `Invoke-Build` directly — `build.ps1` is the only
 supported entry point and the only thing that pins Pester 6.1.0.
@@ -90,5 +96,62 @@ added or split, major when a schema changes shape.
   always something; if nothing comes to mind, the entry was written too fast.
 - A local tag with no matching remote tag. `git push` without `--follow-tags`
   leaves the release marker on one machine.
-- Steps 4–6 reported as done with no file produced. Each writes something. If
-  one produced nothing, say which and why.
+- Steps 4–6 reported as done with no file produced. `meta-pattern` legitimately
+  produces nothing when the two-scale bar is unmet, and `instruction-prune`
+  legitimately answers "no" — but say which, and why.
+- A ledger entry with no always-loaded byte count. It is the metric now, and a
+  number missing from one entry breaks the only trend anyone can read.
+
+## The four personas
+
+Working modes, not costumes. The value is that each asks a different question
+first, and the ledger names which were used so the lens is visible.
+
+- **Taxonomist** - designing or changing a facet. *What does this distinction let
+  someone do that they could not do before?*
+- **Archivist** - writing to the store. *Will this parse and make sense to a
+  reader in another language who has never seen this repo?*
+- **Integrator** - connecting the store to the graph and the report. *What is the
+  smallest seam that does this without either side learning about the other?*
+- **Skeptic** - invoked last, always. *What did we assert without evidence?*
+
+## The reflection pass
+
+Five questions at the end of every implementation, answered in the ledger's
+**Dimensional impact** section. **"No" is a complete answer and is the expected
+answer most of the time** - a reflection pass that finds a new dimension every
+time is a pass that is inventing them.
+
+**The evidence rule.** A "yes" to question 1, 2 or 3 **must name two specific
+subjects** that the existing facets cannot distinguish, or that the proposed
+split would separate. **No pair, no proposal - the answer is "no".**
+
+This exists because five questions that all ask "did you find something?" will
+find something: answering "no" five times looks like inattention, so the pass
+ratchets upward and the taxonomy grows on enthusiasm rather than need. Entry
+`0001` demonstrated exactly that, returning two yeses on a store containing two
+facets. Both were re-tried under this rule in `0002` and **both were withdrawn**.
+
+Naming the pair converts "did you notice anything" into "show me the thing", and
+a reader can check it in ten seconds. It also has to be a pair the *split would
+separate*: facets are multi-valued, so two axes can already coexist as two paths
+on one facet, and a split that separates nothing is a rename with extra files.
+
+**A proposal you withdraw is a successful reflection pass, not a failed one.** A
+pass that never retracts is a pass that only ratchets, and a taxonomy that only
+grows is one nobody can hold in their head.
+
+1. Did this reveal a dimension that does not exist yet?
+2. Is an existing facet doing two jobs?
+3. Did two facets turn out to be the same thing?
+4. Did anything classify at a depth the facet did not anticipate? A path three
+   levels deeper than its siblings means the hierarchy is wrong, not that the
+   subject is unusual.
+5. Could this facet classify facets? If so it belongs in `meta/` as well.
+
+Then, before the tag: **entry N must close or carry forward every thread entry
+N-1 left open.** `closes` and `carries_forward` in the front matter, thread ids
+of the form `0001-t5`, and a test that fails naming any id that vanished. This
+is the mechanism that replaces the instruction "the skeptic section is never
+empty" - presence-checking cannot tell whether a section says anything, but a
+thread that silently disappears is checkable.

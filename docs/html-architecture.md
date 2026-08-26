@@ -128,9 +128,191 @@ was unchanged — the same argument already recorded against half-renames. The
 first implementation should emit `facets` *alongside* `kind`, prove the page
 reads the same, and remove `kind` in a later pass.
 
+## Local rules for the export
+
+`Export-PSModuleDependencyGraph -Format Html` renders a self-contained page.
+Rules that are easy to violate:
+
+- **HTML-related PowerShell lives in `Private/Html/`**, not directly in
+  `Private/`. `Private/` is enumerated recursively by both loaders, so a new
+  subfolder needs no registration — but `Public/` is deliberately *not*
+  recursive, because the export list is derived from its filenames.
+- **Assets live in `src/PSModuleGraph/Assets/`** and are loaded with
+  `Get-PSModuleGraphAsset`. The template is a static file that ships as-is;
+  there is no bundler, no npm, and no build step for it.
+- **Resolve assets from `$script:ModuleRoot`, never `$PSScriptRoot`.**
+  `$PSScriptRoot` is per-file: under the dev loader a file in `Private/Html`
+  sees that folder, while in the built module the same code has been
+  concatenated into a `.psm1` at the module root. Either loader would work and
+  the other would break, and the break only shows up in the built module.
+- **Token substitution uses `[string]::Replace()`, never the `-replace`
+  operator.** `-replace` is regex. Both the embedded JSON and the CSS contain
+  `$` and `\`, which the regex engine treats as substitution patterns and eats.
+  The result is subtly corrupted output rather than an error.
+- **There is exactly one serialiser.** The HTML payload comes from
+  `ConvertTo-GraphJson`. Do not write a second one for the page — the JSON
+  export and the HTML payload must not be able to drift apart.
+- Embedded JSON escapes `<` as `\u003c`, so a `</script>` in a path or extent
+  cannot terminate the script block. HTML is written UTF-8 **without** a BOM; a
+  BOM ahead of `<!DOCTYPE html>` can trigger quirks mode.
+- **Configuration is four data files under `Assets/Html/Config/`**, resolved by
+  `Resolve-HtmlConfiguration`. Adding a setting is a data change: an entry in
+  `settings.schema.psd1`, a value in `settings.psd1` or `theme.psd1`, and a
+  `cfg('Key', fallback)` in the template. Needing to edit a `.ps1` means the
+  design has broken — report it. See `docs/html-architecture.md`.
+
+  The JS fallbacks in `cfg()` are unreachable in a generated report — the page
+  bails out earlier when `GRAPH_DATA` is null — and exist only so a missing key
+  cannot become `NaN` in a layout calculation.
+
+  `Import-PowerShellDataFile` needs `-ErrorAction Stop`. A `.psd1` that will not
+  parse raises a **non-terminating** error, so without it the `catch` never runs
+  and a broken config falls back in total silence.
+- Paths in the HTML payload are module-relative. Generated reports get attached
+  to PRs and tickets, where absolute paths leak usernames. The JSON export keeps
+  them absolute.
+- **Node context-menu actions live in the `NODE_ACTIONS` registry** in
+  `scripts/menu.js`, not in markup. An entry is `{ id, label, check, href, run }`, where
+  `label` may be a function of the node and `check` returns `null` when the
+  action applies or the reason it does not — an inapplicable action greys out
+  with that reason rather than disappearing. Adding an action means adding one
+  entry; nothing else needs touching.
+  An action that hands a URI to another application must use `href`, never
+  `run` with `window.location`. Chrome discards a scripted navigation to a
+  custom scheme in total silence — the handler runs, the URI is correct, and
+  nothing happens — while a link the user clicked is the supported route.
+  Because a refused or unregistered scheme reports nothing back either, any such
+  action needs a non-scheme fallback beside it; `Copy Path` is that fallback.
+- **The page rebuilds absolute paths in the browser** from `meta.moduleRoot`,
+  which is how the `vscode://file/` link works while payload paths stay
+  relative. Note that `meta.moduleRoot` is itself absolute, so the "no absolute
+  paths in a shared report" rule above is already weaker than it sounds — a
+  report does carry the module's own base path. Do not add absolute paths to
+  `nodes`/`links` on the assumption that it makes no difference.
+- **`-Show` always hands the report to the OS default handler**, never to the
+  editor. See "Looks like a bug, but is not" below before changing that.
+  `Get-VSCodeLauncher` still requires BOTH a VS Code environment marker and the
+  `code` CLI — finding the executable only proves VS Code is installed, not that
+  the user is sitting in it — but it now only gates a `-Verbose` hint. The CLI
+  has no `--command` and no `--uri` flag, so an extension's preview pane cannot
+  be opened from PowerShell - do not add code that pretends otherwise.
+- `tests/Module.Quality.Tests.ps1` asserts that every file the template set
+  manifest names, and all three config files, reach the built module. That is
+  the only thing standing between a build change and a runtime failure in the
+  export.
+
+Watch for parameter shadowing: PowerShell variable names are case-insensitive,
+so a local `$name` **is** the `$Name` parameter. Assigning to it re-runs the
+parameter's validation attributes, and `$name = $null` against a
+`[ValidateNotNullOrEmpty()]` parameter throws at that assignment. Name locals
+distinctly (`$usingName`, `$nestedName`).
+
+## Gravity
+
+**What everything rests on goes at the bottom, and the report opens that way.**
+
+This is a standing invariant, not a preference and not a default someone picked.
+A dependency graph has a direction whether or not the layout admits it: the
+things with the most inbound edges are the things everything else is built on
+top of, and a reader looking for what to trust, what to test first, or what
+breaks the most if it changes is looking for exactly those. Putting them at the
+foot of a vertical stack makes that structural, so it reads correctly before any
+label is read at all.
+
+The rules:
+
+- **`DefaultFlow` in `settings.psd1` is `foundation`, and stays `foundation`.**
+  Do not change the shipped default to `testorder` or `callflow` as a side
+  effect of other work. Changing which view a report opens in is a deliberate
+  decision, and this one is made.
+- **Foundation is vertical, and it is not laid out by dagre.** `scripts/foundation.js`
+  assigns layers itself, because the width of a layer has to be bounded and no
+  dagre ranker can bound it. `longest-path` pins every node with no dependencies
+  to one extreme layer: on this module that was 29 of 62 nodes in a single row,
+  drawn at 11:1 and illegible once fitted to a window. Switching ranker only
+  moves it to 24. Bounding the layer and letting the layer count grow is the
+  standard answer, and takes the same graph to 10 layers of 7 at 1.3:1.
+
+  **Do not "simplify" this back to a dagre ranker.** It has been measured in
+  both directions. The other two views still use dagre and should.
+- **Layer capacity is derived from the container's aspect** unless
+  `FoundationLayerCapacity` pins it. That is what keeps the drawing near the
+  screen's own shape on a laptop and on a wall display without a second setting.
+- **Layer 0 is the foundation and takes the largest y.** Cytoscape's y grows
+  downward, so `layers.length - 1 - at` is what puts it at the bottom. Inverting
+  that puts the foundation in the air; it is the bug to watch for.
+- **The arrowhead follows the reading direction.** Foundation reads bottom to
+  top, so the arrow sits on the source end: it means "this one first, then the
+  one it points at". Only `callflow` keeps the arrow on the callee.
+- **The layout table is `FLOW_LAYOUT` in `scripts/render.js`.** A new view is one
+  entry. Do not add a branch beside it.
+- **Fitting is floored at `MinReadableZoom`.** A graph large enough to fit only
+  at 15% is a graph nobody can read; past the floor the view stops shrinking and
+  the reader pans. A legible part beats an illegible whole.
+- **Nothing may leave the starting view to the markup.** The radios carry no
+  `checked` attribute; `controls.js` sets it from config. A `checked` in the
+  partial would make editing the `.psd1` silently do nothing.
+
+Extend gravity to anything else that gains a spatial arrangement - a tree, a
+list, a timeline. Foundation at the bottom, dependents above. Consistency across
+views is the point; a second view that stacks the other way costs the reader
+more than it gains.
+
+## Looks like a bug, but is not
+
+**`Show-GraphDocument` always opens the browser, never the editor** — even when
+the session is running inside VS Code, and even though `Get-VSCodeLauncher` is
+still called. That is not an oversight, and the launcher is not vestigial: it
+decides whether to print a `-Verbose` hint naming the command that would open
+the source.
+
+Opening the report in VS Code shows the HTML source, so the user reaches for a
+preview extension. Every one of those is a webview, and a webview sandboxes
+custom-scheme navigation — a `vscode://file/...` URI never leaves one. The
+page's own "Open File Location" action is dead in exactly that environment, so
+routing the report into the editor disables the feature most worth having.
+
+**This reverses an earlier implementation that preferred the editor.** It has
+been optimised in both directions already; do not do it a third time. If the
+editor path looks like an obvious improvement, it is the same one that was
+removed.
+
+**`isEmbeddedContext()` checks the user agent for `Electron/`, and that check is
+not redundant.** An editor preview pane is genuinely top-level, is served over
+`file:`, and reports no ancestor origins, so the frame check, the
+`vscode-webview:` check and the `ancestorOrigins` check all pass it as a normal
+browser. It is not one: the Electron host swallows a custom scheme with no
+prompt and no error, which is the same silence a refusing browser produces.
+
+Diagnosing this as a browser policy problem cost a full round. Before concluding
+that a browser is blocking the scheme, **read `navigator.userAgent` in the
+Diagnostics block.** A real browser never reports `Electron/`. Matched
+generically rather than on a product name, both because every Electron host has
+this limitation and because naming VS Code below the seam would violate the
+HTML subsystem directive.
+
+## Token discipline
+
+1. Read `docs/html-architecture.md`, not the templates, when planning.
+2. Never rewrite an asset file wholesale to change part of it. Targeted edits.
+3. Never re-derive the architecture. It is written down. To disagree, propose an
+   amendment in one paragraph and wait — do not silently build to a different
+   design.
+4. Do not restate the plan before starting. The prompt is the plan.
+5. One architectural delta paragraph, then code. No plan documents, no phased
+   roadmaps, no summaries of what you are about to do.
+6. Do not add comments explaining what the architecture document already
+   explains. Link to it. Long comment blocks re-justifying settled decisions are
+   a cost paid on every read.
+7. When something is ambiguous, ask one specific question. Do not implement both
+   options, and do not implement the safer one and mention the other.
+
+This directive stays until the repository owner removes it.
+
 ## Kaizen in this subsystem
 
-The general rule is the **Kaizen** section of `CLAUDE.md`. Here it has a
+The general rule is the **Improvement loop** in `CLAUDE.md`, with its detail
+in `docs/improvements.md`. Here it has a
 specific shape, because this subsystem is being built toward extraction and
 "better shaped" has a definition: **closer to a renderer that knows nothing
 about dependency graphs.**

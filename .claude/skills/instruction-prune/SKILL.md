@@ -1,84 +1,128 @@
 ---
 name: instruction-prune
-description: Ask once per iteration whether anything in CLAUDE.md became obsolete, redundant or subsumed, report its line count as a number, and write a proposal the next iteration applies. Proposes; never deletes.
-when_to_use: Invoked by iteration-close, every iteration without exception. Also invocable by name when an instruction file feels like it is repeating itself.
+description: Ask once per iteration whether anything in the always-loaded instruction tier is not needed before work starts, and move it down a tier. Moves apply in-turn; genuine deletion still proposes and waits.
+when_to_use: Invoked by iteration-close, every iteration without exception. Also invocable by name when CLAUDE.md feels like it is repeating itself or carrying detail nobody needs yet.
 ---
 
 # instruction-prune
 
-`CLAUDE.md` has never once got shorter. It is read in full every session, so
-every line is a tax on every session, and a system whose instructions only
-accrete dies of its own weight. Nothing in this repository currently plays the
-counter-force role. This does.
+`CLAUDE.md` is read in full before every session does anything. Every byte in it
+is a tax on every session, forever, and for four versions the file only grew.
+This is the counter-force.
+
+## Why the first version could not win
+
+It asked "did anything become obsolete?" and proposed a **deletion**, applied by
+a later iteration. It could not work, and iteration `0004` proved it inside the
+turn that raised it: `+26` lines added, one proposal deferred, ratchet untouched.
+
+Two reasons, and the second is the real one:
+
+1. A counter-force that acts one turn behind a force that acts every turn is a
+   formality with a good conscience.
+2. **Deletion has a defender and moving does not.** Every line in `CLAUDE.md` was
+   written because something went wrong. Asked to delete it, the honest answer is
+   almost always no — so the mechanism idled while the file grew.
+
+## The two tiers
+
+- **Always-loaded** — `CLAUDE.md`. Charged to every session, before the work is
+  even known.
+- **On-demand** — `.claude/skills/*`, `docs/*.md`, `knowledge/NAMING.md`. Read
+  when the work touches them, free otherwise.
+
+**The question is no longer "did anything become obsolete". It is: is anything
+here that an agent does not need before it starts?**
+
+The test for the always-loaded tier: **does an agent need this to be true before
+it does anything at all?** If it is only needed while performing a specific task,
+it belongs with that task. Principles, seams, protocols and prohibitions pass.
+Procedures, task lists, API detail, assertion tables and subsystem mechanics do
+not.
+
+**A prune is a move down a tier, not a deletion.** Nothing is lost, so nothing
+needs defending, and the per-session cost genuinely falls even though the
+repository holds exactly as much.
+
+## Moves apply in-turn. Deletions still wait.
+
+This is a carve-out from propose-then-dispose, not an exception to it. That rule
+exists so nobody deletes something in the same turn they judged it redundant.
+**A move loses nothing, so there is nothing to regret and nothing to review** —
+the text is still there, one hop away, and the git history shows exactly where it
+went.
+
+**Genuine deletion — text that is obsolete rather than misplaced — still
+proposes and waits.** It goes in the ledger as a thread, and its id goes in
+`prune_proposals`. If the next iteration neither applies nor explicitly rejects
+it, `tests/PreTag.Tests.ps1` blocks the annotated tag by name. Explicit
+rejection is a valid outcome and closes the thread: *"we considered this and it
+stays, because X"* is a decision. Silence is not.
 
 ## Dependencies
 
-None. It reads instruction files and writes a proposal. It runs even when the
-build is red.
+None. It reads instruction files and moves text between them. It runs even when
+the build is red.
 
 ## What it does
 
-**1. Report the line count as a number.**
+**1. Report the always-loaded size in bytes.**
 
 ```powershell
-(Get-Content CLAUDE.md).Count
+(Get-ChildItem -Recurse -Filter CLAUDE.md -File |
+    Where-Object FullName -notlike '*\output\*' |
+    Measure-Object -Property Length -Sum).Sum
 ```
 
-Into the ledger, every iteration, alongside the previous entry's figure. The
-point is the trend. "The file feels long" is not actionable; *835 → 851 → 847*
-is.
+Into the ledger, every iteration, beside the previous entry's figure and the
+ceiling. **Bytes, not lines** — a section can double in density while shrinking
+in lines, so lines measure the wrong thing.
 
-**2. Ask one question: did anything become obsolete, redundant, or subsumed?**
+**Bytes are a proxy and an imperfect one.** They track roughly with tokens read
+per session, which is the cost actually being paid. They say nothing at all
+about whether the file is comprehensible, and a file that trends downward in
+bytes while getting harder to hold in your head has passed the test and failed
+the purpose. Do not report the number as though it measured quality.
 
-Three different things:
+**2. Find what does not belong in the tier, and move it.**
 
-- **Obsolete** — describes code, a file, or a behaviour that no longer exists.
-  Cheapest to spot and cheapest to fix.
-- **Redundant** — two passages state the same rule. One of them is now the
-  place where a reader will look, and the other is where they will not.
-- **Subsumed** — a specific rule that a later general rule already covers. The
-  specific one now reads as an exception, which is the opposite of its meaning.
+Destinations, in order of preference:
 
-**"No" is a fine answer and will often be the right one.** A prune pass that
-finds something every time is a pass inventing work, and it will start deleting
-load-bearing instructions to prove it is running. The failure mode this guards
-against is accretion, not length.
+| Text about | Goes to |
+| --- | --- |
+| one subsystem | that subsystem's `docs/*-architecture.md` |
+| how to close an iteration | `.claude/skills/iteration-close/SKILL.md` |
+| writing tests | `docs/testing.md` |
+| the module's shape, build, or tooling | `docs/development.md` |
+| the improvement loop's method | `docs/improvements.md` |
+| naming in the store | `knowledge/NAMING.md` |
 
-**3. Enforce the rule that actually holds the line.**
+**Leave a pointer, not a summary.** A pointer costs one line; a summary is a
+second copy that drifts. Where a moved rule is violated from *outside* the file
+it moved to, restate exactly that rule and no more.
+
+**3. Lower the ceiling to what the move achieved.**
+
+The budget follows the tier down and never back up. Raising it needs a ledger
+entry saying why, and *"we needed more room"* is not why — that is the ratchet
+wearing the budget as a hat.
+
+**4. Enforce the rule that holds the line during the turn that adds.**
 
 > **A new rule that duplicates an existing one replaces it rather than joining
 > it.**
 
-This is the only part that operates *during* an iteration rather than after it.
-When you are about to add an instruction, search for what it duplicates first.
-Most growth is not new rules; it is old rules restated in the vocabulary of
-whatever prompt was in front of you.
-
-**4. Propose. Do not act.**
-
-Same discipline as the reflection pass: reflection proposes and the next
-implementation disposes. A prune is applied by the **next** iteration, once the
-owner has seen it. Deleting an instruction in the same turn you decided it was
-redundant is the one edit nobody reviews — the reviewer is the person who wrote
-it, ten seconds ago, holding a reason they have not written down yet.
-
-## What a proposal looks like
-
-In the ledger, and as one line in `docs/improvements.md`:
-
-- The two passages, by section name and line range.
-- Which one survives, and why that one.
-- What is lost by the merge, stated rather than waved away. Something always is;
-  a duplicate that carried nothing extra would not have been written twice.
-- The size, by the `docs/improvements.md` rules. A prune touching the meaning of
-  a rule is Large and is logged and stopped on.
+This operates while you are adding, not afterwards. Most growth is not new
+rules; it is old rules restated in the vocabulary of whatever prompt was in
+front of you.
 
 ## What this is not
 
 - Not a licence to shorten prose you find verbose. Length is not the target;
-  duplication and obsolescence are. A long section that says one thing once is
-  correct.
+  misplacement is. A long section that says one thing once, in the right tier,
+  is correct.
 - Not applicable to `knowledge/`. The store's rule is that renames never delete
-  and removal is not an operation it has. This prunes instruction files —
-  `CLAUDE.md`, `docs/*.md`, skills — and nothing under `knowledge/`.
-- Not a diff. It is a paragraph naming two places and picking one.
+  and removal is not an operation it has. This governs instruction files.
+- Not a reason to create a new `docs/` file per move. Prefer an existing
+  destination; a doc nobody has a reason to open is the on-demand tier's version
+  of the same disease.

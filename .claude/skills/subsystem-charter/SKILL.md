@@ -45,7 +45,7 @@ Seven sections, in the shape `html-architecture.md` already proved:
 3. **File layout** — a tree, marking what moves at extraction and what stays.
 4. **The rule that pays for it** — one blockquote. The single constraint that
    makes the design worth its cost, phrased so a violation is recognisable.
-5. **Kaizen in this subsystem** — the general rule from `CLAUDE.md`, narrowed.
+5. **Kaizen in this subsystem** — the improvement loop, narrowed.
    "Better shaped" must have a local definition or the loop has no direction.
 6. **Extraction checklist** — checkboxes, honest about what is unticked. An
    all-ticked checklist on a young subsystem is the tell of a charter written to
@@ -69,10 +69,18 @@ of this look like *here*, specifically enough that I would recognise it in a
 diff?** If you cannot answer, the rule does not bear on this subsystem and does
 not belong in its charter.
 
-## Keep it short
+## Keep it dense, not short
 
-**Under 120 lines.** A charter nobody reads is worse than none, because it looks
-like coverage. `html-architecture.md` is long because it carries two versions of
-accumulated decisions; a new charter has none and must not pretend otherwise.
+A charter nobody reads is worse than none, because it looks like coverage. The
+guard against that is **saying something local**, not staying under a line
+count: a 60-line charter that points back at `CLAUDE.md` five times is padding,
+and a 300-line one that states what every parent rule means here is not.
 
-An empty decisions log with one honest entry beats twelve invented ones.
+There was a 120-line cap here at v0.3.0. It went at v0.4.0, because charters
+became the **destination** for detail moved out of the always-loaded tier and a
+cap on the on-demand tier directly opposes that move. The budget that matters is
+on `CLAUDE.md` — see `.claude/skills/instruction-prune/SKILL.md`.
+
+An empty decisions log with one honest entry beats twelve invented ones. A new
+charter starts short because it has no accumulated decisions yet, not because a
+rule made it so.

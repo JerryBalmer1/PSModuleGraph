@@ -63,19 +63,22 @@ Describe 'Subsystem charters' {
         }
     }
 
-    It 'keeps a backfilled charter short enough to be read' {
-        # A charter nobody reads is worse than none, because it looks like
-        # coverage. html-architecture.md is exempt: it is long because it
-        # carries two versions of accumulated decisions, which a new one has
-        # none of and must not pretend to.
+    It 'names the parent rules it inherits rather than linking to them' {
+        # The ceiling this replaced (119 lines, non-Html) was written one
+        # iteration before charters became the DESTINATION for detail moved out
+        # of the always-loaded tier. A cap on the on-demand tier directly
+        # opposes that move, so it went; the budget in tests/Instructions.Tests.ps1
+        # caps the tier that is actually charged to every session.
+        #
+        # What the cap was really guarding against was a charter that looks like
+        # coverage without saying anything. That is checkable directly: a
+        # charter must state what the parent rules mean HERE, not point back.
         foreach ($subsystem in $script:Subsystems) {
-            if ($subsystem.Name -eq 'Html') { continue }
-
             $path = Join-Path $script:DocsRoot $subsystem.CharterName
             if (-not (Test-Path -LiteralPath $path)) { continue }
 
-            $lines = @(Get-Content -LiteralPath $path).Count
-            $lines | Should-BeLessThanOrEqual 119 -Because "docs/$($subsystem.CharterName) is $lines lines"
+            $text = Get-Content -LiteralPath $path -Raw
+            $text | Should-MatchString '##\s+What the parent rules mean here|##\s+Kaizen in this subsystem' -Because "docs/$($subsystem.CharterName) states no local form of the parent rules"
         }
     }
 }
