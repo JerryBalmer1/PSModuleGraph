@@ -8,13 +8,14 @@
     # appear inside partials as well as in the layout; substitution repeats
     # until none are left.
     Slots  = @{
-        STYLES           = @('styles/base.css', 'styles/components.css')
+        STYLES           = @('styles/base.css', 'styles/overlays.css', 'styles/components.css')
         HEADER           = @('partials/header.html')
         SIDEBAR          = @('partials/sidebar.html')
         DETAILS          = @('partials/details-panel.html')
         CANVAS           = @('partials/canvas.html')
         BANNER           = @('partials/banner.html')
         CONTEXT_MENU     = @('partials/context-menu.html')
+        INFO_PANEL       = @('partials/info-panel.html')
         TEMPLATE_NOTICE  = @('partials/template-notice.html')
         CDN_GUARD        = @('partials/cdn-guard.html')
 
@@ -25,6 +26,8 @@
         SCRIPT_SIDEBAR   = @('scripts/sidebar.js')
         SCRIPT_FILTERS   = @('scripts/filters.js')
         SCRIPT_FOCUS     = @('scripts/focus.js')
+        SCRIPT_EDITOR_LINK = @('scripts/editor-link.js')
+        SCRIPT_DIAGNOSTICS = @('scripts/diagnostics.js')
         SCRIPT_MENU      = @('scripts/menu.js')
         SCRIPT_CONTROLS  = @('scripts/controls.js')
     }
