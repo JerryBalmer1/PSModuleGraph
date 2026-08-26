@@ -15,6 +15,10 @@ function Test-PSModuleGraphEditorLink {
         null, plus a warning. Automatic configuration is Windows-only.
     .PARAMETER Protocol
         Scheme to check. Defaults to vscode.
+    .PARAMETER AllowedOrigin
+        Origins you intend to grant. Supplying them adds AllowedOriginsMatch to
+        each browser, so a grant that exists but does not cover the origin the
+        report is opened from reads as a mismatch rather than as "configured".
     .PARAMETER PolicyRoot
         Registry root holding vendor policy keys. Exists so the tests can run
         against TestRegistry: rather than the real machine; leave it alone.
@@ -26,7 +30,11 @@ function Test-PSModuleGraphEditorLink {
         Reports protocol registration, per-browser policy, and whether either
         browser has remembered a refusal.
     .EXAMPLE
-        (Test-PSModuleGraphEditorLink).Browsers | Format-Table Name, AutoLaunchConfigured, SchemeExcluded
+        (Test-PSModuleGraphEditorLink).Browsers |
+            Format-Table Name, AutoLaunchConfigured, SchemeExclusionState
+
+        SchemeExclusionState is the one to read first: Declined means prompts are
+        suppressed, NeverAsked means one should still appear.
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -36,11 +44,16 @@ function Test-PSModuleGraphEditorLink {
         [string] $Protocol = 'vscode',
 
         [Parameter()]
+        [AllowNull()]
+        [string[]] $AllowedOrigin,
+
+        [Parameter()]
         [string] $PolicyRoot = 'HKCU:\SOFTWARE\Policies',
 
         [Parameter()]
         [string] $LocalStateRoot = $env:LOCALAPPDATA
     )
 
-    Get-EditorLinkState -Protocol $Protocol -PolicyRoot $PolicyRoot -LocalStateRoot $LocalStateRoot
+    Get-EditorLinkState -Protocol $Protocol -PolicyRoot $PolicyRoot -LocalStateRoot $LocalStateRoot `
+        -AllowedOrigin $AllowedOrigin
 }

@@ -24,6 +24,11 @@ function Enable-PSModuleGraphEditorLink {
         Which browsers to configure.
     .PARAMETER Protocol
         Scheme to grant. Defaults to vscode.
+    .PARAMETER AllowedOrigin
+        Origins to grant the protocol from, replacing the scoped default. Which
+        pattern a browser actually honours is an empirical question - see the
+        note on file:// in CLAUDE.md - so this is a parameter rather than a
+        constant. Cannot be combined with -AllowAnyOrigin.
     .PARAMETER AllowAnyOrigin
         Grants the protocol from ANY origin instead of the scoped defaults. Use
         only if scoped origins are proven not to work: scoped to this one
@@ -47,6 +52,10 @@ function Enable-PSModuleGraphEditorLink {
         Enable-PSModuleGraphEditorLink -Browser Chrome
     .EXAMPLE
         Enable-PSModuleGraphEditorLink -Revert
+    .EXAMPLE
+        Enable-PSModuleGraphEditorLink -AllowedOrigin 'http://127.0.0.1:5500'
+
+        Grants only the origin a local preview server actually serves from.
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     [OutputType([pscustomobject])]
@@ -58,6 +67,10 @@ function Enable-PSModuleGraphEditorLink {
         [Parameter()]
         [ValidateNotNullOrEmpty()]
         [string] $Protocol = 'vscode',
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string[]] $AllowedOrigin,
 
         [Parameter()]
         [switch] $AllowAnyOrigin,
@@ -75,7 +88,30 @@ function Enable-PSModuleGraphEditorLink {
         [string] $BackupRoot = 'HKCU:\SOFTWARE\PSModuleGraph\EditorLinkBackup'
     )
 
-    $state = Get-EditorLinkState -Protocol $Protocol -PolicyRoot $PolicyRoot -LocalStateRoot $LocalStateRoot
+    # Two ways of saying the same thing. Letting one of them silently win is
+    # worse than refusing: the caller would get a grant they did not ask for,
+    # with nothing to say which switch produced it.
+    if ($AllowedOrigin -and $AllowAnyOrigin) {
+        throw ("-AllowedOrigin and -AllowAnyOrigin cannot be combined. -AllowAnyOrigin is '*'; " +
+            'pass that as -AllowedOrigin if it is what you mean.')
+    }
+
+    # The scoped default. 'file:///*' is the only file wildcard Chrome's URL
+    # pattern reference accepts, so it parses and applies cleanly - but Edge's
+    # policy reference states outright that this policy does not work as
+    # expected with file:// wildcards. The entry may therefore be honoured or
+    # ignored, and which one is an experiment rather than a code change: hence
+    # -AllowedOrigin. See CLAUDE.md, "Looks like a bug, but is not".
+    $scopedDefault = @('file:///*', 'http://127.0.0.1:*')
+
+    $origins = if ($AllowedOrigin) { @($AllowedOrigin) }
+    elseif ($AllowAnyOrigin) { @('*') }
+    else { $scopedDefault }
+
+    # Resolved before the first read, so the state object can already say
+    # whether what is configured matches what is about to be asked for.
+    $state = Get-EditorLinkState -Protocol $Protocol -PolicyRoot $PolicyRoot `
+        -LocalStateRoot $LocalStateRoot -AllowedOrigin $origins
     if ($state.Platform -ne 'Windows') { return $state }
 
     if (-not $state.ProtocolRegistered) {
@@ -83,9 +119,6 @@ function Enable-PSModuleGraphEditorLink {
             'permission to launch it will not help until VS Code registers the scheme.')
     }
 
-    # Scoped by default: file:/// covers a report opened straight from disk,
-    # 127.0.0.1 one served by a local preview extension.
-    $origins = if ($AllowAnyOrigin) { @('*') } else { @('file:///*', 'http://127.0.0.1:*') }
 
     if ($AllowAnyOrigin -and -not $Revert) {
         Write-Warning ("-AllowAnyOrigin grants '${Protocol}://' from EVERY origin: any website you visit " +
@@ -162,5 +195,6 @@ function Enable-PSModuleGraphEditorLink {
         Write-Information -MessageData 'Restart your browser completely for this to take effect - every window, not just the tab.' -InformationAction Continue
     }
 
-    Get-EditorLinkState -Protocol $Protocol -PolicyRoot $PolicyRoot -LocalStateRoot $LocalStateRoot
+    Get-EditorLinkState -Protocol $Protocol -PolicyRoot $PolicyRoot `
+        -LocalStateRoot $LocalStateRoot -AllowedOrigin $origins
 }

@@ -16,6 +16,10 @@ function Get-EditorLinkState {
         Machine policy root, read only to warn that it would win.
     .PARAMETER ClassesRoot
         Registry root holding scheme registrations.
+    .PARAMETER AllowedOrigin
+        Origins the caller intends to grant. When supplied, each browser reports
+        whether what is configured matches, so a stale or partial grant is
+        visible rather than passing as "configured".
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -33,7 +37,11 @@ function Get-EditorLinkState {
         [string] $MachinePolicyRoot = 'HKLM:\SOFTWARE\Policies',
 
         [Parameter()]
-        [string] $ClassesRoot = 'HKCU:\SOFTWARE\Classes'
+        [string] $ClassesRoot = 'HKCU:\SOFTWARE\Classes',
+
+        [Parameter()]
+        [AllowNull()]
+        [string[]] $AllowedOrigin
     )
 
     $onWindows = if (Get-Variable -Name IsWindows -ErrorAction SilentlyContinue) {
@@ -96,6 +104,17 @@ function Get-EditorLinkState {
             $excluded = Test-SchemeExcluded -LocalStatePath $browser.LocalStatePath -Protocol $Protocol
         }
 
+        $configuredOrigins = if ($entry) { @($entry.allowed_origins) } else { @() }
+        # $null when nothing was asked for, or when nothing is configured to
+        # compare against. Order-insensitive: the policy does not care.
+        $originsMatch = $null
+        if ($AllowedOrigin -and $entry) {
+            $wanted = @($AllowedOrigin | Sort-Object)
+            $have = @($configuredOrigins | Sort-Object)
+            $originsMatch = ($wanted.Count -eq $have.Count) -and
+                -not @(Compare-Object -ReferenceObject $wanted -DifferenceObject $have).Count
+        }
+
         [pscustomobject]@{
             PSTypeName           = 'PSModuleGraph.EditorLinkBrowserState'
             Name                 = $browser.Name
@@ -104,7 +123,8 @@ function Get-EditorLinkState {
             ExecutablePath       = $browser.ExecutablePath
             PolicyPath           = $browser.PolicyPath
             AutoLaunchConfigured = $null -ne $entry
-            AllowedOrigins       = if ($entry) { @($entry.allowed_origins) } else { @() }
+            AllowedOrigins       = $configuredOrigins
+            AllowedOriginsMatch  = $originsMatch
             MachinePolicyPresent = $machinePolicy
             MachinePolicyPath    = $browser.MachinePolicyPath
             LocalStatePath       = $browser.LocalStatePath
@@ -115,8 +135,12 @@ function Get-EditorLinkState {
 
     $browsers = @($browsers)
     $detected = @($browsers | Where-Object { $_.Detected })
-    $ready = $registered -and $detected.Count -gt 0 -and
-        -not (@($detected | Where-Object { -not $_.AutoLaunchConfigured -or $_.SchemeExcluded -eq $true }).Count)
+    $blocked = @($detected | Where-Object {
+            -not $_.AutoLaunchConfigured -or
+            $_.SchemeExcluded -eq $true -or
+            $_.AllowedOriginsMatch -eq $false
+        })
+    $ready = $registered -and $detected.Count -gt 0 -and -not $blocked.Count
 
     [pscustomobject]@{
         PSTypeName         = 'PSModuleGraph.EditorLinkState'
