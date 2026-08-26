@@ -83,7 +83,9 @@ Right-click a node for **Open File Location**, which hands the file and line to
 VS Code over a `vscode://file/` URI. The absolute path is rebuilt in the browser
 from the module root, so the payload itself keeps relative paths. On an
 unresolved external target the item reads *Open Call Site* — the only path the
-page has for one is where it is called from.
+page has for one is where it is called from. **Copy Path** sits below it: a
+browser that refuses the `vscode://` scheme reports nothing back, so the page
+cannot tell you it was blocked.
 
 #### Changing the page defaults
 

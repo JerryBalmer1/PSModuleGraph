@@ -205,11 +205,17 @@ Rules that are easy to violate:
   to PRs and tickets, where absolute paths leak usernames. The JSON export keeps
   them absolute.
 - **Node context-menu actions live in the `NODE_ACTIONS` registry** in
-  `graph.html`, not in markup. An entry is `{ id, label, check, run }`, where
+  `graph.html`, not in markup. An entry is `{ id, label, check, href, run }`, where
   `label` may be a function of the node and `check` returns `null` when the
   action applies or the reason it does not — an inapplicable action greys out
   with that reason rather than disappearing. Adding an action means adding one
   entry; nothing else needs touching.
+  An action that hands a URI to another application must use `href`, never
+  `run` with `window.location`. Chrome discards a scripted navigation to a
+  custom scheme in total silence — the handler runs, the URI is correct, and
+  nothing happens — while a link the user clicked is the supported route.
+  Because a refused or unregistered scheme reports nothing back either, any such
+  action needs a non-scheme fallback beside it; `Copy Path` is that fallback.
 - **The page rebuilds absolute paths in the browser** from `meta.moduleRoot`,
   which is how the `vscode://file/` link works while payload paths stay
   relative. Note that `meta.moduleRoot` is itself absolute, so the "no absolute

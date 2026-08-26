@@ -154,6 +154,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Open File Location did nothing when clicked.** The action assigned
+  `window.location.href` to the `vscode://` URI, which Chrome discards in
+  silence — no navigation, no error, nothing in the console. Menu actions that
+  hand a URI to another application now render as real links, which is the
+  supported route. A **Copy Path** item sits underneath, because a refused or
+  unregistered protocol launch reports nothing back and the page has no way to
+  detect it.
 - The HTML page's focus mode faded every out-of-focus node and its label to 0.15
   opacity, which reads as gone. Losing the surrounding names loses the context
   that makes a focused neighbourhood mean anything. Out-of-focus nodes now take

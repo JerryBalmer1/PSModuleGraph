@@ -222,6 +222,26 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-NotMatchString '"path": "[A-Za-z]:'
     }
 
+
+    It 'renders the VS Code action as a real link, not a scripted navigation' {
+        # Assigning window.location to a custom scheme is silently discarded by
+        # Chrome - no navigation, no error, nothing in the console. Confirmed
+        # over the DevTools Protocol: run() was reached with the right URI and
+        # the page simply stayed put. A user-clicked anchor is the supported
+        # route, so this must stay an <a href>.
+        $script:Html | Should-MatchString 'href: vsCodeUriFor'
+        $script:Html | Should-MatchString "createElement\('a'\)"
+        $script:Html | Should-NotMatchString 'window\.location\.href = uri'
+    }
+
+    It 'offers Copy Path as a fallback for a blocked scheme' {
+        # A refused or unregistered protocol launch reports nothing back, so the
+        # menu cannot detect or explain the failure. Copy Path is the way out.
+        $script:Html | Should-MatchString "id: 'copy-path'"
+        # navigator.clipboard needs a secure context and file:// is not one.
+        $script:Html | Should-MatchString "document\.execCommand\('copy'\)"
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

@@ -137,7 +137,10 @@ body.resizing { cursor: col-resize; user-select: none; }
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-#node-menu button {
+/* Anchors and buttons look identical: whether an action is a link is a
+   mechanism detail, not something the reader should have to notice. */
+#node-menu button,
+#node-menu a {
     display: block;
     width: 100%;
     padding: 6px 9px;
@@ -146,11 +149,14 @@ body.resizing { cursor: col-resize; user-select: none; }
     border-radius: 3px;
     color: var(--fg);
     text-align: left;
+    text-decoration: none;
     font: inherit;
     cursor: pointer;
 }
 #node-menu button:hover:not(:disabled),
-#node-menu button:focus-visible { background: #2f3a4a; outline: none; }
+#node-menu a:hover,
+#node-menu button:focus-visible,
+#node-menu a:focus-visible { background: #2f3a4a; outline: none; }
 /* Disabled rather than hidden: an action that is missing looks like a bug,
    an action that is greyed out with a reason explains itself. */
 #node-menu button:disabled { color: var(--fg-dim); cursor: default; }
@@ -1161,7 +1167,13 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     //   id       stable key, used for nothing yet but worth having
     //   label    menu text, or a function of the node returning it
     //   check    returns null when applicable, or the reason it is not
-    //   run      performs the action for that node
+    //   href     returns a URI; the item renders as a real link
+    //   run      performs the action for that node; the item renders as a button
+    //
+    // Prefer href over run for anything that hands a URI to another
+    // application. Assigning window.location to a custom scheme is silently
+    // discarded - no navigation, no error, nothing in the console - while a
+    // link the user actually clicked is the supported route.
 
     // Payload paths are module-relative on purpose - a report gets attached to
     // a PR, and absolute paths carry the author's username. The module root
@@ -1207,18 +1219,45 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
                 if (!meta.moduleRoot) { return 'module root unknown'; }
                 return null;
             },
+            // The browser shows its own "open external application" prompt, and
+            // there is no callback for the user declining it or for the scheme
+            // not being registered - so nothing here can report failure. That
+            // is why Copy Path sits underneath it.
+            href: vsCodeUriFor
+        },
+        {
+            id: 'copy-path',
+            label: 'Copy Path',
+            check: function (node) {
+                if (!node.data('path')) { return 'no file recorded'; }
+                return null;
+            },
             run: function (node) {
-                var uri = vsCodeUriFor(node);
-                if (!uri) { return; }
-                // Navigating to the scheme is what hands it to VS Code. The
-                // browser shows its own "open external application" prompt, and
-                // there is no callback for the user declining it or for the
-                // scheme not being registered at all - so nothing here can
-                // report failure.
-                window.location.href = uri;
+                copyText(absolutePathFor(node) || node.data('path'));
             }
         }
     ];
+
+    function copyText(text) {
+        // navigator.clipboard requires a secure context, and a report opened
+        // from file:// is not one, so it is simply absent where these pages
+        // actually get opened. The textarea route still works there.
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.top = '-1000px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+        catch (err) {
+            // Nothing useful to fall back to, and no way to surface it from a
+            // menu that has already closed.
+        }
+    }
 
     var menuEl = document.getElementById('node-menu');
     var menuNode = null;
@@ -1241,18 +1280,31 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
         NODE_ACTIONS.forEach(function (action) {
             var reason = action.check ? action.check(node) : null;
             var label = (typeof action.label === 'function') ? action.label(node) : action.label;
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.setAttribute('role', 'menuitem');
-            btn.textContent = reason ? label + ' \u2014 ' + reason : label;
-            btn.disabled = !!reason;
-            if (!reason) {
-                btn.addEventListener('click', function () {
-                    closeNodeMenu();
-                    action.run(node);
-                });
+            var item;
+
+            if (action.href && !reason) {
+                // A real link, not a scripted navigation - see the note on the
+                // registry above. There is no disabled state for an anchor, so
+                // an inapplicable action falls through to a disabled button.
+                item = document.createElement('a');
+                item.href = action.href(node);
+                item.addEventListener('click', function () { closeNodeMenu(); });
             }
-            menuEl.appendChild(btn);
+            else {
+                item = document.createElement('button');
+                item.type = 'button';
+                item.disabled = !!reason;
+                if (!reason && action.run) {
+                    item.addEventListener('click', function () {
+                        closeNodeMenu();
+                        action.run(node);
+                    });
+                }
+            }
+
+            item.setAttribute('role', 'menuitem');
+            item.textContent = reason ? label + ' \u2014 ' + reason : label;
+            menuEl.appendChild(item);
         });
 
         // Show before measuring; a display:none element has no dimensions.
@@ -1266,7 +1318,9 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
         menuEl.style.left = Math.max(0, x) + 'px';
         menuEl.style.top = Math.max(0, y) + 'px';
 
-        var first = menuEl.querySelector('button:not(:disabled)');
+        // Anchors as well as buttons now, or the first item goes unfocused
+        // whenever the top action happens to be a link.
+        var first = menuEl.querySelector('a[href], button:not(:disabled)');
         if (first) { first.focus(); }
     }
 
