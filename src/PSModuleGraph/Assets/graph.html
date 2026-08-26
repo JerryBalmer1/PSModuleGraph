@@ -1280,9 +1280,11 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     ];
 
     function copyText(text) {
-        // navigator.clipboard requires a secure context, and a report opened
-        // from file:// is not one, so it is simply absent where these pages
-        // actually get opened. The textarea route still works there.
+        // The textarea route, not navigator.clipboard. Not because the async
+        // API is missing - file:// counts as potentially trustworthy in Chrome
+        // and Firefox, so it is normally present - but because it is the one
+        // path that works everywhere this page gets opened, including framed in
+        // a viewer where clipboard permission is not granted to the frame.
         try {
             var ta = document.createElement('textarea');
             ta.value = text;

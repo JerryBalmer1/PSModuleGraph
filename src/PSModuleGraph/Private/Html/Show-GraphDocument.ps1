@@ -1,17 +1,28 @@
 function Show-GraphDocument {
     <#
     .SYNOPSIS
-        Opens a generated document in VS Code when running there, otherwise in the
-        default browser.
+        Opens a generated document with the OS default handler, which for .html is
+        the default browser.
     .DESCRIPTION
-        When the session is running inside VS Code and the 'code' CLI is on PATH,
-        the file is opened in the existing window with --reuse-window. That shows
-        the page SOURCE; click the editor's preview button to render it. The VS
-        Code CLI exposes no --command and no --uri flag, so an extension's preview
-        pane cannot be opened from here - one click is as close as it gets.
+        The report ALWAYS opens in the default browser, never in the editor, even
+        when the session is running inside VS Code.
 
-        Everywhere else, and whenever the CLI is missing, the OS default handler
-        gets it, which for .html is the default browser.
+        That is deliberate, and it is the entire justification for this function's
+        behaviour. Opening the file in VS Code shows the HTML source, so the user
+        reaches for a preview extension - Live Preview, Simple Browser, or
+        similar. Every one of those is a webview, and a webview sandboxes
+        custom-scheme navigation: a vscode://file/... URI never reaches the OS
+        from inside one. The page's own "Open File Location" action, which jumps
+        from a node to its definition, is dead in exactly that environment.
+        Routing the report into the editor would therefore hand the user a page
+        whose most useful feature cannot work.
+
+        This reverses an earlier implementation that preferred the editor. Do not
+        restore it.
+
+        Get-VSCodeLauncher is still consulted, but only to decide whether to print
+        a hint naming the command that would open the source instead. It never
+        launches anything.
 
         On Linux, xdg-open is frequently absent in headless containers and in WSL.
         That is a warning with the path, not an error: the file is already written
@@ -34,20 +45,6 @@ function Show-GraphDocument {
         return
     }
 
-    # Prefer the editor the user is already sitting in.
-    $editor = Get-VSCodeLauncher
-    if ($editor) {
-        try {
-            Start-Process -FilePath $editor -ArgumentList '--reuse-window', $Path -NoNewWindow
-            Write-Verbose "Opened '$Path' in VS Code. Use the editor's preview button to render it."
-            return
-        }
-        catch {
-            # Fall through to the OS handler rather than failing the export.
-            Write-Verbose "VS Code launch failed, falling back to the default handler: $($_.Exception.Message)"
-        }
-    }
-
     # $IsWindows does not exist on Windows PowerShell 5.1, where Desktop always
     # means Windows.
     $onWindows = if (Get-Variable -Name IsWindows -ErrorAction SilentlyContinue) {
@@ -60,17 +57,16 @@ function Show-GraphDocument {
     $onMacOS = (Get-Variable -Name IsMacOS -ErrorAction SilentlyContinue) -and $IsMacOS
     $onLinux = (Get-Variable -Name IsLinux -ErrorAction SilentlyContinue) -and $IsLinux
 
+    # Chained so the hint below runs once, after a successful open. The two
+    # warning branches return without reaching it: nothing was opened, so there
+    # is nothing to add a footnote to.
     if ($onWindows) {
         Start-Process -FilePath $Path
-        return
     }
-
-    if ($onMacOS) {
+    elseif ($onMacOS) {
         & '/usr/bin/open' $Path
-        return
     }
-
-    if ($onLinux) {
+    elseif ($onLinux) {
         $opener = Get-Command -Name 'xdg-open' -ErrorAction SilentlyContinue
         if (-not $opener) {
             Write-Warning ("Cannot open a browser automatically: xdg-open is not installed. " +
@@ -78,8 +74,17 @@ function Show-GraphDocument {
             return
         }
         & $opener.Source $Path
+    }
+    else {
+        Write-Warning "Unrecognised platform; could not open automatically. The report is at: $Path"
         return
     }
 
-    Write-Warning "Unrecognised platform; could not open automatically. The report is at: $Path"
+    # Inside VS Code, name the command that opens the source - do not run it.
+    # See the note in .DESCRIPTION: the rendered report has to stay out of the
+    # editor, or its own click-to-source stops working.
+    if (Get-VSCodeLauncher) {
+        Write-Verbose ("Opened in the default browser. To view the source instead: " +
+            "code --reuse-window `"$Path`"")
+    }
 }

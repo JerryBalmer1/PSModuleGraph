@@ -238,7 +238,8 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         # A refused or unregistered protocol launch reports nothing back, so the
         # menu cannot detect or explain the failure. Copy Path is the way out.
         $script:Html | Should-MatchString "id: 'copy-path'"
-        # navigator.clipboard needs a secure context and file:// is not one.
+        # execCommand rather than navigator.clipboard: the one path that works
+        # everywhere this page gets opened, framed viewers included.
         $script:Html | Should-MatchString "document\.execCommand\('copy'\)"
     }
 
