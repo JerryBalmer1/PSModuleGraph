@@ -1,8 +1,8 @@
 # Improvement backlog
 
-The standing list kaizen works against. See the **Kaizen** section in
-`CLAUDE.md` for the rules; this file is the memory that makes them cumulative
-rather than a good intention repeated every session.
+The improvement loop's backlog, its rules, and its memory. `CLAUDE.md` carries
+the standing instruction in three sentences; everything that makes it
+cumulative rather than a good intention repeated every session is here.
 
 Append only, except to move an item to **Done** or to delete one that turned out
 to be wrong. Each entry: what was noticed, why it matters, and how big it is.
@@ -13,6 +13,54 @@ Size is the whole point — it decides whether an agent may take it unprompted.
   if the owner is quiet, and say clearly that you did.
 - **Large** — changes a contract, a shape, or the user's mental model. Log it and
   stop. Do not take it unprompted.
+
+## On every iteration
+
+1. **Notice one thing.** While reading code for whatever the task actually is,
+   something will be shaped worse than it could be: a branch that wants to be a
+   registry, a literal that wants to be data, a message that lies, a panel that
+   is nearly general. You do not have to hunt. It presents itself.
+2. **Classify it honestly** as Small, Medium or Large, by the rules at the top of
+   `docs/improvements.md`. The classification decides what you may do:
+   - **Small** - fits inside work already happening and needs no new decision.
+     Do it. Mention it in one line.
+   - **Medium** - its own change, its own commit. Say in one line that you are
+     doing it and why, then do it.
+   - **Large** - changes a contract, a data shape, or the user's mental model.
+     **Log it and stop.** Do not take it unprompted. This is the boundary that
+     keeps this loop from becoming scope creep.
+3. **Record it either way.** Something you did goes to **Done** with what
+   prompted it. Something you did not goes to **Open** under its size. An
+   improvement noticed and not written down is an improvement lost.
+4. **Prefer extensibility over the feature.** When the same shape appears a
+   second time, the improvement is usually not "add the second one" but "make
+   adding the third one one entry". `NODE_ACTIONS`, `SELECTION_FACTS`,
+   `SELECTION_ACTIONS` and `FLOW_LAYOUT` all came from this and all read the
+   same way, deliberately.
+
+## What good looks like here
+
+The question to hold is not *what else could I build* - it is **what would make
+the next change to this cheaper**. Three concrete tests:
+
+- **Would a second one of these be one entry, or a second branch?** If a branch,
+  the registry is the improvement.
+- **Is this text, number or colour a decision, or data?** If a user would ever
+  want it different, it belongs in a `.psd1`, not in a `.js` or `.ps1`.
+- **Does this message say something true?** A banner that names the wrong cause
+  is worse than no banner, because it is confidently wrong and people act on it.
+
+## What this loop is not
+
+- **Not a licence to refactor code you are not otherwise touching.** Read it,
+  log it, move on.
+- **Not a reason to add options nobody asked for.** A new setting is a new
+  decision imposed on the reader; extensibility is not the same as configurability.
+- **Not exempt from the standing directives.** The HTML subsystem's rules still
+  hold, `docs/html-architecture.md` is still the authority, and an improvement
+  that contradicts a recorded decision is an amendment to propose, not to make.
+- **Not a running commentary.** One line per improvement taken. The backlog
+  carries the detail; the response does not.
 
 ---
 
@@ -30,6 +78,17 @@ Size is the whole point — it decides whether an agent may take it unprompted.
 
 ### Medium
 
+- **Skill descriptions are always-loaded and outside the budget.** Every skill's
+  `description` and `when_to_use` sit in the listing in every session whether or
+  not the skill runs - about 800 bytes across four. `tests/Instructions.Tests.ps1`
+  enumerates files, so adding a skill grows the always-loaded surface without
+  touching the gate. Either count them or state deliberately that they are cheap
+  enough not to. *Ledger `0005-t1`.*
+- **Nothing measures whether an on-demand file is ever read.** Two `docs/` files
+  were created rather than reused at v0.4.0, and an unread doc is the on-demand
+  tier's version of the accretion the tiering exists to stop. The only signal
+  available from inside the repository is whether anything links to it, which is
+  weak. *Ledger `0005-t3`.*
 - **The store's neutrality guard cannot tell data from prose about data.**
   `Import-KnowledgeFacet.Tests.ps1` greps every `.md` under `knowledge/` for
   `PSTypeName` and exempts `NAMING.md` by name. A seeded pattern quoting the rule
@@ -59,13 +118,6 @@ Size is the whole point — it decides whether an agent may take it unprompted.
 
 ### Large
 
-- **`instruction-prune` cannot win.** It proposes and a *later* iteration
-  applies, while every iteration also adds - so the counter-force is
-  structurally one iteration behind the force and strictly weaker. `0004` is the
-  demonstration: +26 lines added, prune proposal deferred. Fixing it means either
-  letting a prune apply in-turn (which breaks the discovery/action split) or
-  making an unapplied proposal block the next tag. Both change a contract.
-  *Ledger `0004`.*
 - **The token contract is still `__GRAPH_*__`.** Renaming is a breaking change to
   the template contract and belongs in one deliberate pass. *Checklist item.*
 - **Should the graph types be real PowerShell classes?** Open decision in
@@ -90,6 +142,22 @@ Size is the whole point — it decides whether an agent may take it unprompted.
   `strings.psd1`, so wording is a data change.
 - **The starting view was a `checked` attribute in markup.** Now `DefaultFlow`
   in `settings.psd1`, so the setting is not decorative.
+- **`instruction-prune` could not win.** It proposed deletions for a later
+  iteration to apply, while every iteration also added - one turn behind, and
+  worse, proposing the one move that is almost always correctly refused. A prune
+  is now a **move down a tier**, applied in-turn because it loses nothing;
+  `tests/Instructions.Tests.ps1` caps the always-loaded tier; and a genuine
+  deletion proposal a second iteration ignores blocks the tag. 46,681 -> 18,546
+  bytes with nothing deleted. *Logged as Large in `0004`, taken in `0005`.*
+- **The neutrality guard's exemption list became a principle.** It greps for
+  PowerShell type names across the store and exempted `NAMING.md` by name; it
+  then fired twice on prose that quoted the rule. Now scoped to the areas that
+  carry data, so `ledger/`, `patterns/` and `NAMING.md` fall outside it by being
+  what they are. *Ledger `0004-t3`, closed in `0005`.*
+- **The charter line ceiling opposed the tier move.** 119 lines for a non-Html
+  charter, written one iteration before charters became the destination for
+  moved detail. Replaced by an assertion that a charter states what the parent
+  rules mean locally, which is what the cap was really guarding. *Ledger `0005`.*
 - **Two subsystems had no charter and nothing noticed.** `Private/EditorLink/`
   and `Private/Knowledge/` went two versions as the same shape as
   `Private/Html/` with no `docs/*-architecture.md`. Backfilled, and
