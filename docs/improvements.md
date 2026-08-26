@@ -30,6 +30,18 @@ Size is the whole point — it decides whether an agent may take it unprompted.
 
 ### Medium
 
+- **The store's neutrality guard cannot tell data from prose about data.**
+  `Import-KnowledgeFacet.Tests.ps1` greps every `.md` under `knowledge/` for
+  `PSTypeName` and exempts `NAMING.md` by name. A seeded pattern quoting the rule
+  was failed by the rule. Every prose file the store gains - ledger entries,
+  patterns - will eventually trip it, and an exemption list is not a principle.
+  Scope the grep to the file kinds that carry data instead. *Noticed when it
+  fired. Ledger `0004-t3`.*
+- **`read_store.py` reads a shrinking fraction of the store.** It covers
+  `subjects/` and `assignments/` and now misses `ledger/` and `patterns/` as well
+  as `facets/`. The neutrality proof did not get weaker; the thing being proved
+  got bigger, and nothing says so at the point of proof. *Noticed while adding
+  `patterns/`.*
 - **Partial markup still carries its own user-visible text.** The scripts are
   fully externalised; the partials are not, so half the report's wording is data
   and half is markup. Doing it needs a substitution pass over partials, which is
@@ -47,6 +59,13 @@ Size is the whole point — it decides whether an agent may take it unprompted.
 
 ### Large
 
+- **`instruction-prune` cannot win.** It proposes and a *later* iteration
+  applies, while every iteration also adds - so the counter-force is
+  structurally one iteration behind the force and strictly weaker. `0004` is the
+  demonstration: +26 lines added, prune proposal deferred. Fixing it means either
+  letting a prune apply in-turn (which breaks the discovery/action split) or
+  making an unapplied proposal block the next tag. Both change a contract.
+  *Ledger `0004`.*
 - **The token contract is still `__GRAPH_*__`.** Renaming is a breaking change to
   the template contract and belongs in one deliberate pass. *Checklist item.*
 - **Should the graph types be real PowerShell classes?** Open decision in
@@ -71,6 +90,15 @@ Size is the whole point — it decides whether an agent may take it unprompted.
   `strings.psd1`, so wording is a data change.
 - **The starting view was a `checked` attribute in markup.** Now `DefaultFlow`
   in `settings.psd1`, so the setting is not decorative.
+- **Two subsystems had no charter and nothing noticed.** `Private/EditorLink/`
+  and `Private/Knowledge/` went two versions as the same shape as
+  `Private/Html/` with no `docs/*-architecture.md`. Backfilled, and
+  `tests/Private/SubsystemCharter.Tests.ps1` now fails by name at three files.
+  The rule stopped depending on a person remembering it. *Ledger `0004`.*
+- **The commit ritual was unwritten.** Staging, message style, tag and push were
+  habit; `git add -A` had already swept a gitignored `coverage.xml` into a commit
+  titled `asdf`. Now the `Commit` section of `CLAUDE.md`, with the order of
+  operations in `.claude/skills/iteration-close/`. *Ledger `0004`.*
 - **`isEmbeddedContext()` only looked for frames.** An editor preview pane is
   top-level and was reported as a browser blocking the scheme, which sent a
   round of diagnosis at the wrong layer.
