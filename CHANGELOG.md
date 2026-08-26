@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Focused nodes shade by hop distance.** The selected node keeps its full
+  colour and each hop away is a step darker, so a focused chain reads as a
+  sequence instead of one flat block of blue. Shading darkens each node through
+  its own kind colour rather than recolouring it, so a class or an enum in the
+  chain stays a class or an enum. `FocusShadeStep` and `FocusShadeMax` are
+  settable in `graph.defaults.psd1`.
 - **Focused connections are highlighted, not merely undimmed.** Selecting a node
   now draws the edges inside its neighbourhood in a near-white blue at roughly
   double thickness, above the dimmed ones. An edge with only one end inside the

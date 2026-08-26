@@ -49,6 +49,8 @@ function Get-GraphPageDefault {
         RankSep         = @{ Default = 80; Min = 0; Max = 1000 }
         EdgeWidth       = @{ Default = 1.4; Min = 0.2; Max = 20 }
         FocusEdgeWidth  = @{ Default = 2.6; Min = 0.2; Max = 30 }
+        FocusShadeStep  = @{ Default = 0.2; Min = 0; Max = 1 }
+        FocusShadeMax   = @{ Default = 0.6; Min = 0; Max = 1 }
         NodeLimit       = @{ Default = 400; Min = 1; Max = 100000 }
         SidebarWidth    = @{ Default = 300; Min = 120; Max = 2000 }
         SidebarMinWidth = @{ Default = 200; Min = 80; Max = 2000 }

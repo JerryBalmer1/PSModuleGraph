@@ -73,8 +73,9 @@ focus it and use the arrow keys.
 Arrows follow the reading order: in **Test order** an arrow means "test this one
 first, then the one it points at"; in **Call flow** it points caller to callee.
 Selecting a node dims everything outside its neighbourhood rather than hiding
-it, so the names around it stay readable, and the connections inside the
-neighbourhood are drawn bright and thick so they stand out from the rest.
+it, so the names around it stay readable. Inside the neighbourhood the
+connections are drawn bright and thick, and each node shades one step darker
+per hop from the one you clicked, so the chain reads as a sequence.
 
 #### Changing the page defaults
 

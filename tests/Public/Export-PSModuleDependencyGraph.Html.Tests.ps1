@@ -174,6 +174,18 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "removeClass\('focus-edge'\)"
     }
 
+    It 'shades focused nodes by hop distance' {
+        # Everything in a focus rendered one flat blue, so the chain read as a
+        # blob rather than a sequence. Verified in Chrome focusing
+        # Get-PSModuleGraphAsset at depth 3: blacken 0 / 0.2 / 0.4 across the
+        # selected node, its caller, and its caller's caller.
+        $script:Html | Should-MatchString "'background-blacken': 'data\(focusBlacken\)'"
+        $script:Html | Should-MatchString 'FOCUS_SHADE_STEP \* hop'
+        # Blacken keeps each kind's own hue: a class or an enum darkens through
+        # its colour instead of being recoloured as if it were a function.
+        $script:Html | Should-MatchString "focusBlacken: 0"
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

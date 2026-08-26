@@ -42,6 +42,12 @@
     EdgeWidth       = 1.4
     FocusEdgeWidth  = 2.6
 
+    # Focused nodes darken one step per hop from the node that was clicked, so
+    # the chain reads as a sequence. FocusShadeMax stops a long chain fading
+    # into the background.
+    FocusShadeStep  = 0.2
+    FocusShadeMax   = 0.6
+
     # Above this many nodes the page opens filtered to exported functions,
     # behind a dismissible banner, because the layout stops being readable.
     NodeLimit       = 400

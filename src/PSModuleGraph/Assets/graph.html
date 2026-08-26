@@ -557,7 +557,11 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
                 border: n.kind === 'External' ? 2 : borderFor(n.id),
                 level: lvl === undefined ? null : lvl,
                 dependents: (order.dependents[n.id] || []).length,
-                dependencies: (order.deps[n.id] || []).length
+                dependencies: (order.deps[n.id] || []).length,
+                // Hop distance from the focused node, as a Cytoscape blacken
+                // amount. Initialised here so the style mapper never reads
+                // undefined on first paint.
+                focusBlacken: 0
             }
         });
     });
@@ -585,7 +589,7 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
                     id: extId, name: u.targetName, kind: 'External',
                     isExported: false, path: u.path || '', startLine: u.startLine,
                     color: KIND_HEX.External, border: 2, level: null,
-                    dependents: 0, dependencies: 0
+                    dependents: 0, dependencies: 0, focusBlacken: 0
                 },
                 classes: 'unresolved'
             });
@@ -622,6 +626,8 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     var NODE_MAX_WIDTH = cfg('NodeMaxWidth', 340);
     var EDGE_WIDTH = cfg('EdgeWidth', 1.4);
     var FOCUS_EDGE_WIDTH = cfg('FocusEdgeWidth', 2.6);
+    var FOCUS_SHADE_STEP = cfg('FocusShadeStep', 0.2);
+    var FOCUS_SHADE_MAX = cfg('FocusShadeMax', 0.6);
 
     var NODE_WIDTH = (function () {
         var widest = 0;
@@ -684,7 +690,13 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
                     'height': NODE_HEIGHT,
                     'padding': NODE_PAD,
                     'border-width': 'data(border)',
-                    'border-color': '#0b0f14'
+                    'border-color': '#0b0f14',
+                    // Hop distance from the focused node, darkest furthest away.
+                    // Blacken rather than a fixed palette of blues, so a class
+                    // or an enum shades through its own colour instead of being
+                    // recoloured as if it were a function. Zero when nothing is
+                    // focused, which is a no-op.
+                    'background-blacken': 'data(focusBlacken)'
                 }
             },
             {
@@ -925,9 +937,16 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     // Expands one hop at a time with incomers()/outgoers() and unions the result.
     // Cytoscape collections dedupe, so a cycle between two private helpers
     // terminates on its own without any visited-set bookkeeping.
+    //
+    // hops records the distance each node was first reached at. Because the
+    // frontier only ever carries nodes not already in acc, the first time a
+    // node appears is its shortest distance - so a node reachable both directly
+    // and round a longer path shades by the short one.
     function neighbourhood(node, depth, direction) {
         var acc = node;
         var frontier = node;
+        var hops = {};
+        hops[node.id()] = 0;
         for (var i = 0; i < depth; i++) {
             var next = cy.collection();
             if (direction === 'dependents' || direction === 'both') {
@@ -938,11 +957,12 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
             }
             next = next.filter(function (e) { return !e.hasClass('hidden'); });
             var fresh = next.nodes().difference(acc);
+            fresh.forEach(function (n) { hops[n.id()] = i + 1; });
             acc = acc.union(next);
             if (fresh.empty()) { break; }
             frontier = fresh;
         }
-        return acc;
+        return { elements: acc, hops: hops };
     }
 
     function currentDirection() {
@@ -954,13 +974,25 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
         if (!focused || focused.removed() || focused.hasClass('hidden')) {
             cy.elements().removeClass('dimmed');
             cy.edges().removeClass('focus-edge');
+            cy.nodes().data('focusBlacken', 0);
             return;
         }
-        var keep = neighbourhood(focused, parseInt(depthEl.value, 10), currentDirection());
+        var found = neighbourhood(focused, parseInt(depthEl.value, 10), currentDirection());
+        var keep = found.elements;
         cy.batch(function () {
             cy.elements().addClass('dimmed');
             cy.edges().removeClass('focus-edge');
+            // Reset every node, not just the kept ones: a node that was in the
+            // previous focus and is not in this one would keep its old shade.
+            cy.nodes().data('focusBlacken', 0);
             keep.removeClass('dimmed');
+            // The selected node keeps its full colour and each hop away is a
+            // step darker, so the chain reads as a sequence rather than as one
+            // flat blob of blue.
+            keep.nodes().forEach(function (n) {
+                var hop = found.hops[n.id()] || 0;
+                n.data('focusBlacken', Math.min(FOCUS_SHADE_MAX, FOCUS_SHADE_STEP * hop));
+            });
             // Edges with both ends inside the neighbourhood are the connections
             // the user clicked to see, so they are highlighted rather than just
             // left undimmed. An edge with one end outside stays dimmed: drawing
@@ -1018,6 +1050,7 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
         focused = null;
         cy.elements().removeClass('dimmed');
         cy.edges().removeClass('focus-edge');
+        cy.nodes().data('focusBlacken', 0);
         cy.nodes().removeClass('selected-node');
         document.getElementById('focus-controls').hidden = true;
         document.getElementById('focus-hint').textContent = 'Select a node to focus its neighbourhood.';
