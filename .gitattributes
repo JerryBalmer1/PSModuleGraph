@@ -1,0 +1,17 @@
+# Normalise line endings in the repository to LF.
+* text=auto eol=lf
+
+# PowerShell sources are LF explicitly. Windows PowerShell 5.1 and pwsh both
+# read LF fine, and pinning it keeps diffs clean across the CI matrix.
+*.ps1  text eol=lf
+*.psm1 text eol=lf
+*.psd1 text eol=lf
+
+*.md   text eol=lf
+*.yml  text eol=lf
+*.txt  text eol=lf
+
+# Never touch these.
+*.dll  binary
+*.exe  binary
+*.png  binary

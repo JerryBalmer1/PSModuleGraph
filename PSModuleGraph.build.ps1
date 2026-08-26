@@ -77,6 +77,14 @@ task Build Clean, {
         Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $OutRoot $_.Name) -Force
     }
 
+    # Copy culture directories (en-US, fr-FR, ...) so Get-Help finds about_ topics.
+    Get-ChildItem -Path $SrcRoot -Directory |
+        Where-Object { $_.Name -match '^[a-z]{2}(-[A-Za-z]{2,4})?$' } |
+        ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $OutRoot -Recurse -Force
+            Write-Build Green "  help: $($_.Name)"
+        }
+
     Write-Build Green "Built $ModuleName -> $OutRoot"
 }
 

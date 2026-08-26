@@ -1,0 +1,136 @@
+TOPIC
+    about_PSModuleGraph
+
+SHORT DESCRIPTION
+    Static inspection of PowerShell modules through the AST. Nothing is
+    imported, dot-sourced, or executed.
+
+LONG DESCRIPTION
+    PSModuleGraph reads PowerShell modules the way a compiler front end would:
+    it parses source files into an Abstract Syntax Tree and reports what it
+    finds. Every result carries the file and line number it came from.
+
+    THE NO-EXECUTION GUARANTEE
+
+    PSModuleGraph never runs the code it analyses. It does not call
+    Import-Module on the target, does not dot-source it, does not invoke
+    Invoke-Expression, does not reflection-load its assemblies, and does not
+    execute its class constructors.
+
+    This matters because importing a PowerShell module is not a read
+    operation. Importing executes the module's top-level statements, anything
+    listed in ScriptsToProcess, and static constructors of any classes it
+    defines. Pointing a conventional "what's in this module" tool at an
+    untrusted repository therefore runs that repository's code on your machine.
+    PSModuleGraph is built so that you can point it at code you have not read.
+
+    The consequence is that some questions cannot be answered exactly. A
+    command name built at runtime from a variable cannot be resolved
+    statically. Rather than executing the module to find out, PSModuleGraph
+    reports the call site as unresolved. Unresolved results are surfaced, never
+    silently dropped, because that is usually where the interesting problems
+    are.
+
+    Manifest data is read with Import-PowerShellDataFile, which parses .psd1
+    files as restricted data and does not execute them.
+
+    PARAMETER SETS
+
+    Every module-inspecting command accepts the same three parameter sets.
+
+    ByName (the default)
+        Identify the module by name. An already-loaded module is preferred;
+        otherwise the module is located on PSModulePath. Only path metadata is
+        used from the located module -- it is not imported. Add
+        -RequiredVersion to select an exact version.
+
+            Get-PSModuleFunction -Name PSReadLine
+            Get-PSModuleFunction -Name PSReadLine -RequiredVersion 2.3.4
+
+    ByPath
+        Point at source on disk: a module directory, a .psd1 manifest, a .psm1
+        script module, or a single .ps1 file. This is the set to use for a
+        working tree that has never been installed.
+
+            Get-PSModuleFunction -Path ./src/PSModuleGraph
+
+    ByModuleInfo
+        Accept a PSModuleInfo object, typically from the pipeline. Useful for
+        filtering with Get-Module before inspecting.
+
+            Get-Module PSReadLine | Get-PSModuleFunction
+            Get-Module -ListAvailable | Where-Object Name -like 'Az.*' |
+                Get-PSModuleDependencyGraph
+
+    Export-PSModuleDependencyGraph is the exception: it consumes a graph object
+    rather than a module, so it has no parameter sets.
+
+    COMMANDS
+
+    Get-PSModuleFunction
+        Functions and filters, with export status resolved from the manifest.
+
+    Get-PSModuleClass
+        Classes, base types, interfaces, DSC attribution.
+
+    Get-PSModuleEnum
+        Enums with labels and underlying values.
+
+    Get-PSModuleManifest
+        Parsed .psd1 surface and declared dependencies.
+
+    Get-PSModuleSourceFile
+        Every .ps1, .psm1, and .psd1 in the module, with parse status.
+
+    Get-PSModuleAssembly
+        RequiredAssemblies, binary NestedModules, Add-Type sites, loose .dlls.
+
+    Get-PSModuleUsingStatement
+        using module, using namespace, and using assembly statements.
+
+    Get-PSModuleCommandReference
+        Raw call sites attributed to the enclosing function.
+
+    Get-PSModuleDependencyGraph
+        Node/edge model with roots, leaves, and unresolved targets.
+
+    Export-PSModuleDependencyGraph
+        Serialises a graph as JSON, Graphviz DOT, Mermaid, or a CSV edge list.
+
+    THE DEPENDENCY GRAPH
+
+    Nodes are the functions, classes, and enums the module defines. Edges are
+    internal references between them, each carrying Source and Target node ids
+    plus SourceName and TargetName for readability.
+
+    Roots are nodes with no inbound internal edge: entry points, or dead code.
+    Leaves are nodes with no outbound internal edge. Unresolved holds call
+    targets not defined inside the module, each with the call site that
+    produced it.
+
+    The JSON export uses the node-link shape that mainstream graph libraries
+    expect -- a nodes array and a links array whose elements carry source and
+    target -- so it can be handed to a D3 force layout, NetworkX, or Cytoscape
+    without a transform step.
+
+        Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
+            Export-PSModuleDependencyGraph -Format Dot -OutputPath ./graph.dot
+        dot -Tsvg ./graph.dot -o graph.svg
+
+    REQUIREMENTS
+
+    Windows PowerShell 5.1 or PowerShell 7.4 and later.
+
+SEE ALSO
+    Get-PSModuleFunction
+    Get-PSModuleClass
+    Get-PSModuleEnum
+    Get-PSModuleManifest
+    Get-PSModuleSourceFile
+    Get-PSModuleAssembly
+    Get-PSModuleUsingStatement
+    Get-PSModuleCommandReference
+    Get-PSModuleDependencyGraph
+    Export-PSModuleDependencyGraph
+    about_Modules
+    https://github.com/JerryBalmer1/PSModuleGraph

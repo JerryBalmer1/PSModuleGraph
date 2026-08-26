@@ -18,10 +18,37 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$requirementsPath = Join-Path $PSScriptRoot 'Requirements.psd1'
+if (-not (Test-Path -LiteralPath $requirementsPath)) {
+    throw "Requirements file not found: $requirementsPath"
+}
+
+# Requirements.psd1 is the single source of truth for build dependency versions.
+$requirements = Import-PowerShellDataFile -LiteralPath $requirementsPath
 $requiredModules = @(
-    @{ Name = 'InvokeBuild'; MinimumVersion = '5.11.0' }
-    @{ Name = 'Pester'; RequiredVersion = '6.1.0' }
-    @{ Name = 'PSScriptAnalyzer'; MinimumVersion = '1.22.0' }
+    foreach ($moduleName in ($requirements.Keys | Sort-Object)) {
+        $entry = $requirements[$moduleName]
+        $spec = @{ Name = $moduleName }
+
+        if ($entry -is [System.Collections.IDictionary]) {
+            if ($entry.Contains('RequiredVersion')) {
+                $spec['RequiredVersion'] = [string]$entry['RequiredVersion']
+            }
+            if ($entry.Contains('MinimumVersion')) {
+                $spec['MinimumVersion'] = [string]$entry['MinimumVersion']
+            }
+        }
+        else {
+            # Bare string value means an exact pin.
+            $spec['RequiredVersion'] = [string]$entry
+        }
+
+        if (-not ($spec.ContainsKey('RequiredVersion') -or $spec.ContainsKey('MinimumVersion'))) {
+            throw "Requirements.psd1 entry '$moduleName' has neither RequiredVersion nor MinimumVersion."
+        }
+
+        $spec
+    }
 )
 
 function Install-BuildDependency {
