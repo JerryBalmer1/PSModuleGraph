@@ -30,6 +30,20 @@ function ConvertTo-GraphHtml {
     $payload = ConvertTo-GraphJson -Graph $Graph -IncludeUnresolved:$IncludeUnresolved
     $data = $payload | ConvertFrom-Json
 
+    # meta already carries the module's name, version and base path, and the
+    # payload carried all three again - moduleBase and meta.moduleRoot being
+    # literally the same string. Nothing in either backend reads any of them:
+    # only meta.moduleVersion and meta.moduleRoot are ever looked at.
+    #
+    # They leave rather than get renamed. They are in ConvertTo-GraphJson
+    # because -Format Json wants them at the top of the document it produces,
+    # which is a different question from what a renderer needs embedded.
+    foreach ($duplicate in 'moduleName', 'moduleVersion', 'moduleBase') {
+        if ($data.PSObject.Properties[$duplicate]) {
+            $data.PSObject.Properties.Remove($duplicate)
+        }
+    }
+
     foreach ($collection in @('nodes', 'links', 'unresolved')) {
         $property = $data.PSObject.Properties[$collection]
         if (-not $property -or -not $property.Value) { continue }
