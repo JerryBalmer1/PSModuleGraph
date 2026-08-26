@@ -154,6 +154,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`Open File Location` did nothing when clicked, and the page did not say
+  why.** Two compounding causes, both fixed.
+
+  `-Show` opened the report inside VS Code when run from there, which shows the
+  HTML source, so the report was viewed through a preview extension. Every one
+  of those is a webview, and a webview sandboxes custom-scheme navigation — a
+  `vscode://file/...` URI never leaves one. The tool was routing its own output
+  into the single environment where its own link cannot work. Reports now always
+  open in the default browser; inside VS Code, `-Verbose` names the command that
+  would show the source instead.
+
+  The page's own guard did not fire either. It tested `location.protocol` for
+  `vscode-webview:` and scanned `ancestorOrigins`, but Live Preview serves over
+  `http://127.0.0.1` and a nested cross-origin frame reports opaque origins, so
+  detection returned false and the item rendered enabled. It now checks first
+  whether the page is framed at all, which catches every embedded viewer without
+  sniffing for any one of them, and says so in a banner on load rather than only
+  in the context menu.
 - **Open File Location now says why it cannot work inside a VS Code preview.**
   A webview sandboxes the page, so a `vscode://` URI never reaches the OS and
   the link does nothing at all — no prompt, no error. The page detects that

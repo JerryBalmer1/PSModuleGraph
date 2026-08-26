@@ -222,12 +222,13 @@ Rules that are easy to violate:
   paths in a shared report" rule above is already weaker than it sounds — a
   report does carry the module's own base path. Do not add absolute paths to
   `nodes`/`links` on the assumption that it makes no difference.
-- **`-Show` opens VS Code when the session is in VS Code**, otherwise the OS
-  default handler. `Get-VSCodeLauncher` requires BOTH a VS Code environment
-  marker and the `code` CLI: finding the executable only proves VS Code is
-  installed, not that the user is sitting in it. The CLI has no `--command` and
-  no `--uri` flag, so an extension's preview pane cannot be opened from
-  PowerShell - do not add code that pretends otherwise.
+- **`-Show` always hands the report to the OS default handler**, never to the
+  editor. See "Looks like a bug, but is not" below before changing that.
+  `Get-VSCodeLauncher` still requires BOTH a VS Code environment marker and the
+  `code` CLI — finding the executable only proves VS Code is installed, not that
+  the user is sitting in it — but it now only gates a `-Verbose` hint. The CLI
+  has no `--command` and no `--uri` flag, so an extension's preview pane cannot
+  be opened from PowerShell - do not add code that pretends otherwise.
 - `tests/Module.Quality.Tests.ps1` asserts `Assets/graph.html` reaches the built
   module. That is the only thing standing between a build change and a runtime
   failure in the export.
@@ -288,6 +289,23 @@ whole `Describe`, not as the underlying exception. When a `Describe` fails that
 way, call the code under test directly to find the real error.
 
 ## Looks like a bug, but is not
+
+**`Show-GraphDocument` always opens the browser, never the editor** — even when
+the session is running inside VS Code, and even though `Get-VSCodeLauncher` is
+still called. That is not an oversight, and the launcher is not vestigial: it
+decides whether to print a `-Verbose` hint naming the command that would open
+the source.
+
+Opening the report in VS Code shows the HTML source, so the user reaches for a
+preview extension. Every one of those is a webview, and a webview sandboxes
+custom-scheme navigation — a `vscode://file/...` URI never leaves one. The
+page's own "Open File Location" action is dead in exactly that environment, so
+routing the report into the editor disables the feature most worth having.
+
+**This reverses an earlier implementation that preferred the editor.** It has
+been optimised in both directions already; do not do it a third time. If the
+editor path looks like an obvious improvement, it is the same one that was
+removed.
 
 `tests/fixtures/SampleModule` is a deliberately imperfect module. It is input
 data, not a module anyone maintains. **It is never imported and never executed**

@@ -87,10 +87,11 @@ page has for one is where it is called from. **Copy Path** sits below it: a
 browser that refuses the `vscode://` scheme reports nothing back, so the page
 cannot tell you it was blocked.
 
-Note that a VS Code preview pane cannot follow a `vscode://` link — a webview
-sandboxes the page, so the URI never reaches the OS. The menu detects that and
-greys the item out with the reason. Open the report in a real browser for it to
-work.
+Note that no embedded viewer can follow a `vscode://` link — Live Preview, Simple
+Browser, a notebook output cell — because the page is sandboxed and the URI never
+reaches the OS. The page detects any embedding, says so in a banner on load, and
+greys the menu item with the reason. Open the report in a real browser for it to
+work, which is what `-Show` does.
 
 #### Changing the page defaults
 
@@ -121,13 +122,14 @@ opposite orientation, callers first.
 Anything caught in a dependency cycle has no valid position in the order, so it
 is called out separately rather than silently given one.
 
-`-Show` opens the report where you already are. Run from inside VS Code, it opens
-the file in your existing window; click the editor's preview button to render it.
-The VS Code CLI has no flag for running an extension command, so the preview pane
-cannot be opened automatically, and VS Code has no built-in HTML preview - that
-needs an extension such as Live Preview (`ms-vscode.live-server`). Anywhere else,
-`-Show` hands the file to the OS default handler, which for `.html` is your
-browser.
+`-Show` always hands the report to the OS default handler, which for `.html` is
+your browser — including when you run it from inside VS Code.
+
+That is deliberate. An HTML preview inside the editor is a webview, and a webview
+sandboxes custom-scheme navigation, so a `vscode://` URI never reaches the OS
+from one. Opening the report in the editor would therefore kill its own
+click-to-source. Run from inside VS Code, `-Show` opens the browser and mentions
+under `-Verbose` the command that would show the source instead.
 
 Without `-OutputPath` the page goes to `<temp>/PSModuleGraph/<ModuleName>.html`
 and is overwritten every run, so an already-open tab or editor just needs a
