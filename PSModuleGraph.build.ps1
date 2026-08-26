@@ -86,15 +86,6 @@ task Build Clean, {
         Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $OutRoot $_.Name) -Force
     }
 
-    # Copy static assets (the HTML export template). Shipped as-is; there is no
-    # bundler. tests/Module.Quality.Tests.ps1 asserts these land in the output.
-    $assetsDir = Join-Path $SrcRoot 'Assets'
-    if (Test-Path -LiteralPath $assetsDir) {
-        Copy-Item -LiteralPath $assetsDir -Destination $OutRoot -Recurse -Force
-        $assetCount = @(Get-ChildItem -Path (Join-Path $OutRoot 'Assets') -File -Recurse).Count
-        Write-Build Green "  assets: $assetCount file(s)"
-    }
-
     # Copy culture directories (en-US, fr-FR, ...) so Get-Help finds about_ topics.
     Get-ChildItem -Path $SrcRoot -Directory |
         Where-Object { $_.Name -match '^[a-z]{2}(-[A-Za-z]{2,4})?$' } |
@@ -106,7 +97,49 @@ task Build Clean, {
     Write-Build Green "Built $ModuleName -> $OutRoot"
 }
 
-task Test Build, {
+task Dependencies {
+    # PSGraphRender holds the HTML renderer and is a RequiredModules entry in
+    # the manifest, so nothing here imports without it. It is not published, so
+    # there is no Install-Module answer yet and the build has to find a checkout.
+    #
+    # Explicit and loud, in this order:
+    #   1. $env:PSGRAPHRENDER_MODULE_PATH - a directory holding PSGraphRender/,
+    #      for a checkout that is not a sibling or for CI.
+    #   2. ../PSGraphRender/output - the sibling checkout, built.
+    #
+    # It throws rather than falling through to whatever is already on
+    # PSModulePath. A build that passes because of what happened to be imported
+    # in the session is a build that says nothing.
+    $candidates = @()
+    if ($env:PSGRAPHRENDER_MODULE_PATH) {
+        $candidates += $env:PSGRAPHRENDER_MODULE_PATH
+    }
+    $sibling = Join-Path (Split-Path -Path $BuildRoot -Parent) 'PSGraphRender'
+    $candidates += (Join-Path $sibling 'output')
+
+    $resolved = $null
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath (Join-Path (Join-Path $candidate 'PSGraphRender') 'PSGraphRender.psd1')) {
+            $resolved = (Resolve-Path -LiteralPath $candidate).ProviderPath
+            break
+        }
+    }
+
+    if (-not $resolved) {
+        $hint = if (Test-Path -LiteralPath $sibling) {
+            "Found '$sibling' but no built module inside it. Run ./build.ps1 there first."
+        }
+        else {
+            "Expected a sibling checkout at '$sibling', or set `$env:PSGRAPHRENDER_MODULE_PATH to a directory containing PSGraphRender/."
+        }
+        throw "PSGraphRender could not be resolved. $hint"
+    }
+
+    $env:PSModulePath = $resolved + [System.IO.Path]::PathSeparator + $env:PSModulePath
+    Write-Build Green "  PSGraphRender: $resolved"
+}
+
+task Test Build, Dependencies, {
     $pesterModule = Get-Module -Name Pester -ListAvailable |
         Where-Object { $_.Version -ge [version]'6.0.0' -and $_.Version -lt [version]'7.0.0' } |
         Sort-Object Version -Descending |
@@ -169,7 +202,7 @@ task Test Build, {
     }
 }
 
-task PreTag Build, {
+task PreTag Build, Dependencies, {
     # The gates that seal an iteration, run before `git tag -a` and not before
     # anything else. Deliberately a separate task rather than part of Test: a
     # half-finished iteration should still be able to run a green build, which
@@ -198,7 +231,7 @@ task PreTag Build, {
     Write-Build Green 'Pre-tag gates passed. Safe to tag.'
 }
 
-task Knowledge Build, {
+task Knowledge Build, Dependencies, {
     # The answer to a stale store, and it lives in the repository. Before
     # v0.2.0 the generator was a scratch script, so the freshness test could
     # turn the build red with a fix nobody could run - which is the shape of
@@ -220,7 +253,7 @@ task Knowledge Build, {
     }
 }
 
-task Import Build, {
+task Import Build, Dependencies, {
     $manifest = Join-Path $OutRoot "$ModuleName.psd1"
     Import-Module -Name $manifest -Force -Verbose
 }

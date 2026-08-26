@@ -167,15 +167,6 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "showBanner\(str\('EditorLinkNoLaunch'\), str\('editorLinkHelpCommand'\)\)"
     }
 
-    It 'keeps the command name out of the template set' {
-        # The substituted document carries it; the shipped assets must not.
-        $assets = Join-Path $PSScriptRoot '..\..\src\PSModuleGraph\Assets\Html\Templates'
-        $offenders = @(Get-ChildItem -Path $assets -File -Recurse |
-                Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match 'PSModuleGraphEditorLink' })
-
-        $offenders.Count | Should-Be 0
-    }
-
     It 'treats an Electron host as an embedded viewer' {
         # A VS Code preview pane is top-level, served over file:, and reports no
         # ancestor origins, so every other embedding check misses it - while a
@@ -412,7 +403,8 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
     It 'embeds the heat ramp from theme.psd1 rather than a literal' {
         # Colours are a decision, so they are data. This one also advances the
         # extraction checklist rather than working around it.
-        $theme = Import-PowerShellDataFile -Path (Join-Path (Get-BuiltModuleRoot) 'Assets/Html/Config/theme.psd1') -ErrorAction Stop
+        $rendererRoot = @(Get-Module -Name PSGraphRender -ListAvailable)[0].ModuleBase
+        $theme = Import-PowerShellDataFile -Path (Join-Path $rendererRoot 'TemplateSets/cytoscape/Config/theme.psd1') -ErrorAction Stop
         @($theme.HeatRamp).Count | Should-BeGreaterThan 1
         foreach ($stop in $theme.HeatRamp) {
             $script:Html | Should-MatchString ([regex]::Escape($stop))

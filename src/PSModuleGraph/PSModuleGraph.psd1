@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PSModuleGraph.psm1'
-    ModuleVersion        = '0.1.0'
+    ModuleVersion        = '0.7.0'
     GUID                 = 'a7c3e8f1-4b2d-4e9a-9c1f-6d8e5a0b3f72'
     Author               = 'Jerry Balmer'
     CompanyName          = 'Community'
@@ -8,6 +8,13 @@
     Description          = 'Static inspection of PowerShell modules through the AST. Nothing is imported, dot-sourced, or executed.'
     PowerShellVersion    = '5.1'
     CompatiblePSEditions = @('Desktop', 'Core')
+
+    # The HTML renderer. Export-PSModuleDependencyGraph -Format Html hands it a
+    # view model; it knows nothing about modules or ASTs. Declared here so the
+    # dependency fails at import rather than at the moment someone exports.
+    RequiredModules      = @(
+        @{ ModuleName = 'PSGraphRender'; ModuleVersion = '0.1.0' }
+    )
     FunctionsToExport    = @(
         'Get-PSModuleFunction'
         'Get-PSModuleClass'
