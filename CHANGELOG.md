@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Uniform node boxes in the HTML page.** Every node is now the width of the
+  longest label in the graph instead of being sized to its own, so the boxes
+  line up in columns rather than jittering with name length. The width is
+  measured on a canvas in the font the renderer uses, not estimated from a
+  character count. A name too long to fit a 340px box ellipsises on the node;
+  the full name stays in search, the test-order list, and Details.
 - **A draggable splitter between the HTML page's sidebar and the graph.** The
   sidebar was a fixed 300px, which truncates the long function names in the
   test-order list. Drag the divider to resize, double-click it to reset to

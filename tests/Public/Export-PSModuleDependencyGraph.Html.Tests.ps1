@@ -122,6 +122,21 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString 'cy\.resize\(\)'
     }
 
+    It 'sizes every node to the widest label rather than its own' {
+        # Uniform boxes are the point: sized per-label the nodes jitter and stop
+        # reading as columns. Verified in Chrome - all 40 nodes come out
+        # 180x24 with nothing ellipsised - but that needs a real browser, so
+        # this guards the mechanism instead.
+        $script:Html | Should-MatchString 'var NODE_WIDTH ='
+        $script:Html | Should-MatchString "'width': NODE_WIDTH,"
+        $script:Html | Should-MatchString "'height': NODE_HEIGHT,"
+        # measureText, not a character count: the label font is proportional.
+        $script:Html | Should-MatchString 'ctx\.measureText'
+        # Pinned, because the width was measured with it. Falling back to the
+        # Cytoscape default would measure in one font and render in another.
+        $script:Html | Should-MatchString "'font-family': NODE_FONT_FAMILY,"
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

@@ -584,6 +584,53 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         }
     });
 
+    // ---- uniform node size -----------------------------------------------
+    // Every node gets the width of the longest label in the whole dataset, so
+    // the boxes line up instead of jittering with name length.
+    //
+    // The width is measured on a canvas with the same font the renderer uses,
+    // not estimated from a character count. The font is proportional, so two
+    // names of equal length are not equal width, and one glyph of overhang
+    // clips the label. The margin runs thin: rendering this module's own graph,
+    // the longest name measures 163.9px against 166px of inner width.
+    //
+    // Measuring across every node, including the unresolved externals that
+    // start hidden, is deliberate. Sizing to the visible set instead would
+    // resize every node on the page each time a filter box is ticked.
+    var NODE_FONT_SIZE = 10;
+    var NODE_FONT_WEIGHT = 600;
+    var NODE_FONT_FAMILY = '"Segoe UI", Helvetica, Arial, sans-serif';
+    var NODE_PAD = 7;
+    var NODE_HEIGHT = 24;
+    // One pathological name should not make every node unreadable. Past this
+    // the label ellipsises on the node; the full name stays in search, in the
+    // test-order list, and in the Details panel.
+    var NODE_MAX_WIDTH = 340;
+
+    var NODE_WIDTH = (function () {
+        var widest = 0;
+        try {
+            var ctx = document.createElement('canvas').getContext('2d');
+            ctx.font = NODE_FONT_WEIGHT + ' ' + NODE_FONT_SIZE + 'px ' + NODE_FONT_FAMILY;
+            els.forEach(function (el) {
+                if (!el.data || !el.data.name) { return; }
+                var w = ctx.measureText(el.data.name).width;
+                if (w > widest) { widest = w; }
+            });
+        }
+        catch (err) {
+            // No 2D context (very old engine, or a hardened environment).
+            // Fall back to a character-count estimate rather than giving every
+            // node a zero width.
+            els.forEach(function (el) {
+                if (!el.data || !el.data.name) { return; }
+                widest = Math.max(widest, el.data.name.length * NODE_FONT_SIZE * 0.62);
+            });
+        }
+        // +2 covers sub-pixel rounding between measureText and the renderer.
+        return Math.min(Math.ceil(widest) + NODE_PAD * 2 + 2, NODE_MAX_WIDTH);
+    })();
+
     // ---- cytoscape -------------------------------------------------------
     if (typeof cytoscapeDagre !== 'undefined' && cytoscape.use) {
         try { cytoscape.use(cytoscapeDagre); } catch (e) { /* already registered */ }
@@ -595,23 +642,31 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         wheelSensitivity: ZOOM_SPEED_DEFAULT,
         style: [
             {
-                // The name sits inside the box, which is sized to it. A circle
-                // with the label underneath cost roughly double the space and
-                // put the text where it could collide with the next node.
+                // The name sits inside the box. A circle with the label
+                // underneath cost roughly double the space and put the text
+                // where it could collide with the next node.
+                //
+                // Every box is the same size - the widest label in the dataset
+                // - rather than sized to its own label, so the nodes read as a
+                // consistent grid. font-family is pinned because the width was
+                // measured with it: letting it fall back to the Cytoscape
+                // default would measure in one font and render in another.
                 selector: 'node',
                 style: {
                     'shape': 'round-rectangle',
                     'background-color': 'data(color)',
                     'label': 'data(name)',
                     'color': '#0b0f14',
-                    'font-size': 10,
-                    'font-weight': 600,
+                    'font-size': NODE_FONT_SIZE,
+                    'font-weight': NODE_FONT_WEIGHT,
+                    'font-family': NODE_FONT_FAMILY,
                     'text-valign': 'center',
                     'text-halign': 'center',
-                    'text-wrap': 'none',
-                    'width': 'label',
-                    'height': 'label',
-                    'padding': '7px',
+                    'text-wrap': 'ellipsis',
+                    'text-max-width': NODE_WIDTH - NODE_PAD * 2,
+                    'width': NODE_WIDTH,
+                    'height': NODE_HEIGHT,
+                    'padding': NODE_PAD,
                     'border-width': 'data(border)',
                     'border-color': '#0b0f14'
                 }
