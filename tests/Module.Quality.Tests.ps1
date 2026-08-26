@@ -22,6 +22,17 @@ Describe 'Built module layout' {
         (Get-Item -LiteralPath $asset).Length | Should-BeGreaterThan 0
     }
 
+    It 'ships Assets/graph.defaults.psd1 and it still parses' {
+        # The page's starting values live here. If the build stops copying it,
+        # every export warns and silently falls back to the built-in defaults -
+        # a change the user made would just stop taking effect.
+        $asset = Join-Path (Join-Path $script:BuiltRoot 'Assets') 'graph.defaults.psd1'
+
+        Test-Path -LiteralPath $asset | Should-BeTrue
+        $data = Import-PowerShellDataFile -LiteralPath $asset
+        $data.ZoomSpeed | Should-Be 1.25
+    }
+
     It 'ships the about_ help topic' {
         $help = Join-Path (Join-Path $script:BuiltRoot 'en-US') 'about_PSModuleGraph.help.txt'
         Test-Path -LiteralPath $help | Should-BeTrue

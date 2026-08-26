@@ -187,6 +187,20 @@ Rules that are easy to violate:
 - Embedded JSON escapes `<` as `\u003c`, so a `</script>` in a path or extent
   cannot terminate the script block. HTML is written UTF-8 **without** a BOM; a
   BOM ahead of `<!DOCTYPE html>` can trigger quirks mode.
+- **Page defaults live in `src/PSModuleGraph/Assets/graph.defaults.psd1`**, not
+  in the template. `Get-GraphPageDefault` reads it with
+  `Import-PowerShellDataFile` — the same restricted-data exception the module
+  already makes for manifests — validates every key against a range, and warns
+  and falls back rather than throwing. Adding a setting means: a key in the
+  `.psd1`, a row in that function's `$schema` (a key absent from `$schema` is
+  not a setting, whatever the file says), and a `cfg('Key', fallback)` in the
+  template. The JS fallbacks are unreachable in a generated report — the page
+  bails out earlier when `GRAPH_DATA` is null — and exist only so a missing key
+  cannot become `NaN` in a layout calculation.
+
+  `Import-PowerShellDataFile` needs `-ErrorAction Stop` there. A `.psd1` that
+  will not parse raises a **non-terminating** error, so without it the `catch`
+  never runs and a broken config falls back in total silence.
 - Paths in the HTML payload are module-relative. Generated reports get attached
   to PRs and tickets, where absolute paths leak usernames. The JSON export keeps
   them absolute.

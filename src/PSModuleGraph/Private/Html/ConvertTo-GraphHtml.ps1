@@ -48,6 +48,11 @@ function ConvertTo-GraphHtml {
         stats         = $Graph.Stats
     }
 
+    # Page starting values come from Assets/graph.defaults.psd1 so they are
+    # editable without touching the template. Validated and defaulted there.
+    $config = Get-GraphPageDefault
+    $configJson = ConvertTo-EscapedHtmlJson -InputObject $config
+
     $dataJson = ConvertTo-EscapedHtmlJson -InputObject $data
     $metaJson = ConvertTo-EscapedHtmlJson -InputObject $meta
 
@@ -59,6 +64,7 @@ function ConvertTo-GraphHtml {
     # output rather than an error.
     $document = $template.Replace('/*__GRAPH_DATA__*/ null', $dataJson)
     $document = $document.Replace('/*__GRAPH_META__*/ null', $metaJson)
+    $document = $document.Replace('/*__GRAPH_CONFIG__*/ null', $configJson)
     $document = $document.Replace('__PAGE_TITLE__', (ConvertTo-EscapedHtmlText -Text $Title))
 
     $document

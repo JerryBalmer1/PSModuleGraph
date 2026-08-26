@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`Assets/graph.defaults.psd1`** — the HTML page's starting values in one
+  editable data file instead of scattered through the template: zoom speed and
+  its slider range, node type size and width cap, dagre spacing, the large-graph
+  threshold, sidebar geometry, and focus depth. Read with
+  `Import-PowerShellDataFile`, so it is parsed as restricted data and never
+  executed. Every key is validated against a range; anything missing,
+  non-numeric, out of range, or misspelled falls back with a warning naming the
+  key, and a file that will not parse at all warns and falls back whole rather
+  than failing the export.
 - **Uniform node boxes in the HTML page.** Every node is now the width of the
   longest label in the graph instead of being sized to its own, so the boxes
   line up in columns rather than jittering with name length. The width is
@@ -116,6 +125,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The HTML page's focus mode faded every out-of-focus node and its label to 0.15
+  opacity, which reads as gone. Losing the surrounding names loses the context
+  that makes a focused neighbourhood mean anything. Out-of-focus nodes now take
+  a muted fill with a legible label, so they stay readable while the focused
+  ones carry the colour.
+- Arrowheads in the HTML page's **Test order** view pointed against the reading
+  order. Test order ranks right-to-left so the page reads left-to-right in the
+  order to test, but the arrows still pointed at the callee. They now sit on the
+  other end in that view, so an arrow means "test this one first, then the one
+  it points at". **Call flow** is unchanged and still points caller to callee.
 - The HTML page's sidebar and test-order list used the platform default
   scrollbar — a thin overlay bar that fades out — which was close to impossible
   to grab with a mouse. Both now draw a 14px track with an always-visible thumb

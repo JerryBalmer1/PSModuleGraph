@@ -70,6 +70,25 @@ The divider between the sidebar and the graph is draggable — the test-order li
 holds long function names that do not fit 300px. Double-click it to reset, or
 focus it and use the arrow keys.
 
+Arrows follow the reading order: in **Test order** an arrow means "test this one
+first, then the one it points at"; in **Call flow** it points caller to callee.
+Selecting a node dims everything outside its neighbourhood rather than hiding
+it, so the names around it stay readable.
+
+#### Changing the page defaults
+
+The page's starting values live in `Assets/graph.defaults.psd1` inside the
+installed module — zoom speed and its slider range, node type size and width
+cap, layout spacing, the large-graph threshold, sidebar geometry, and focus
+depth. It is read with `Import-PowerShellDataFile`, so it is parsed as data and
+never executed.
+
+Every key is range-checked. A value that is missing, non-numeric, out of range,
+or misspelled falls back to the built-in default with a warning naming the key,
+and a file that will not parse warns and falls back whole rather than failing
+the export. Zoom speed, sidebar width, and focus depth are all adjustable in the
+page itself; the file sets where they start.
+
 #### Test order is the default view
 
 The page opens in **Test order**: dependencies first, laid out left to right, so

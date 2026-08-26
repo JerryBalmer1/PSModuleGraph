@@ -137,6 +137,33 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "'font-family': NODE_FONT_FAMILY,"
     }
 
+    It 'embeds the page defaults from the .psd1' {
+        # The template carries no starting values of its own beyond unreachable
+        # fallbacks; if this substitution stops happening, editing the .psd1
+        # silently does nothing.
+        $script:Html | Should-MatchString 'const GRAPH_CONFIG = \{'
+        $script:Html | Should-MatchString '"ZoomSpeed"'
+        $script:Html | Should-MatchString '"SidebarWidth"'
+        $script:Html | Should-MatchString "cfg\('NodeLimit'"
+    }
+
+    It 'flips the arrowheads for test order' {
+        # Test order ranks right-to-left so the page reads left-to-right in the
+        # order to test. An arrow pointing at the callee would point backwards
+        # through that reading order.
+        $script:Html | Should-MatchString "selector: 'edge\.flip'"
+        $script:Html | Should-MatchString "cy\.edges\(\)\.toggleClass\('flip', testOrder\)"
+    }
+
+    It 'dims out-of-focus nodes instead of blanking them' {
+        # Focus used to fade nodes and labels to 0.15, which reads as gone.
+        # Losing the surrounding names loses the context that makes a focused
+        # neighbourhood mean anything.
+        $script:Html | Should-MatchString "selector: 'node\.dimmed'"
+        $script:Html | Should-MatchString "'text-opacity': 1"
+        $script:Html | Should-NotMatchString "'opacity': 0\.15, 'text-opacity': 0\.15"
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

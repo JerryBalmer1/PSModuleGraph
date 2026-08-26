@@ -340,8 +340,9 @@ input[type="range"] { width: 100%; }
             </div>
             <div class="section">
                 <h2>View</h2>
-                <!-- ZOOM_SPEED_DEFAULT is the source of truth; the value and
-                     label below are placeholders it overwrites at init. -->
+                <!-- Assets/graph.defaults.psd1 is the source of truth for the
+                     value, range, and step; the attributes below are
+                     placeholders the script overwrites at init. -->
                 <label for="zoom-speed">Zoom speed: <b id="zoom-speed-val">1.25x</b></label>
                 <input type="range" id="zoom-speed" min="0.25" max="5" step="0.25" value="1.25">
                 <p class="hint">Mouse wheel zoom sensitivity.</p>
@@ -407,6 +408,7 @@ if (typeof cytoscape === 'undefined') {
 <script>
 const GRAPH_DATA = /*__GRAPH_DATA__*/ null;
 const GRAPH_META = /*__GRAPH_META__*/ null;
+const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
 
 (function () {
     'use strict';
@@ -421,8 +423,18 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
 
     document.getElementById('app').hidden = false;
 
-    var NODE_LIMIT = 400;
-    var ZOOM_SPEED_DEFAULT = 1.25;
+    // Starting values come from Assets/graph.defaults.psd1, substituted above.
+    // PowerShell validates and fills every key before it gets here, so the
+    // fallbacks below are only ever reached by someone opening the raw
+    // template - which bails out earlier anyway. They exist so a missing key
+    // can never yield NaN and silently collapse the layout.
+    function cfg(key, fallback) {
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
+        return (typeof v === 'number' && isFinite(v)) ? v : fallback;
+    }
+
+    var NODE_LIMIT = cfg('NodeLimit', 400);
+    var ZOOM_SPEED_DEFAULT = cfg('ZoomSpeed', 1.25);
     var KIND_HEX = {
         Function: '#4da3ff', Class: '#f2c14e', Enum: '#6ddf6d',
         Script: '#9b8cff', External: '#ff7043'
@@ -599,15 +611,15 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     // Measuring across every node, including the unresolved externals that
     // start hidden, is deliberate. Sizing to the visible set instead would
     // resize every node on the page each time a filter box is ticked.
-    var NODE_FONT_SIZE = 10;
+    var NODE_FONT_SIZE = cfg('NodeFontSize', 10);
     var NODE_FONT_WEIGHT = 600;
     var NODE_FONT_FAMILY = '"Segoe UI", Helvetica, Arial, sans-serif';
-    var NODE_PAD = 7;
-    var NODE_HEIGHT = 24;
+    var NODE_PAD = cfg('NodePadding', 7);
+    var NODE_HEIGHT = cfg('NodeHeight', 24);
     // One pathological name should not make every node unreadable. Past this
     // the label ellipsises on the node; the full name stays in search, in the
     // test-order list, and in the Details panel.
-    var NODE_MAX_WIDTH = 340;
+    var NODE_MAX_WIDTH = cfg('NodeMaxWidth', 340);
 
     var NODE_WIDTH = (function () {
         var widest = 0;
@@ -693,7 +705,31 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
             },
             { selector: 'edge[kind = "Inherits"]', style: { 'line-color': '#f2c14e', 'target-arrow-color': '#f2c14e', 'line-style': 'dashed', 'width': 2 } },
             { selector: 'edge[kind = "Unresolved"]', style: { 'line-color': '#ff7043', 'target-arrow-color': '#ff7043', 'line-style': 'dotted' } },
-            { selector: '.dimmed', style: { 'opacity': 0.15, 'text-opacity': 0.15 } },
+            // Test order ranks right-to-left so the page reads left-to-right in
+            // the order to test. The arrowhead has to follow: pointing at the
+            // callee would point backwards through that reading order. Flipped
+            // to the source end, an arrow means "test this one first, then the
+            // one it points at". Call flow keeps the arrow on the callee.
+            { selector: 'edge.flip', style: { 'target-arrow-shape': 'none', 'source-arrow-shape': 'triangle', 'source-arrow-color': '#6b7785' } },
+            { selector: 'edge[kind = "Inherits"].flip', style: { 'source-arrow-color': '#f2c14e' } },
+            { selector: 'edge[kind = "Unresolved"].flip', style: { 'source-arrow-color': '#ff7043' } },
+            // Out-of-focus nodes stay readable. Hiding them, or fading the
+            // label to nothing, loses the context that makes a focused
+            // neighbourhood mean anything - you cannot see what it sits among.
+            // Muted fill with a light label rather than low opacity, because a
+            // dark label on a faded box goes unreadable long before the box
+            // stops drawing attention.
+            {
+                selector: 'node.dimmed',
+                style: {
+                    'background-color': '#232c38',
+                    'border-color': '#2b3340',
+                    'color': '#8b97a8',
+                    'opacity': 1,
+                    'text-opacity': 1
+                }
+            },
+            { selector: 'edge.dimmed', style: { 'opacity': 0.12 } },
             { selector: 'node.selected-node', style: { 'border-color': '#4da3ff' } },
             { selector: '.hidden', style: { 'display': 'none' } }
         ]
@@ -711,13 +747,15 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         // the order to test in. longest-path makes dagre's rank equal the level
         // computed above, so a node's column IS its test step.
         var testOrder = currentFlow() === 'testorder';
+        // Arrowheads follow the reading direction, so they move with rankDir.
+        cy.edges().toggleClass('flip', testOrder);
         var opts = {
             name: 'dagre',
             rankDir: testOrder ? 'RL' : 'LR',
             ranker: testOrder ? 'longest-path' : 'network-simplex',
             nodeDimensionsIncludeLabels: true,
-            nodeSep: 14,
-            rankSep: 80,
+            nodeSep: cfg('NodeSep', 14),
+            rankSep: cfg('RankSep', 80),
             animate: false
         };
         try {
@@ -961,6 +999,8 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         document.getElementById('details-empty').hidden = false;
     }
 
+    depthEl.value = String(cfg('FocusDepth', 2));
+    depthVal.textContent = depthEl.value;
     depthEl.addEventListener('input', function () {
         depthVal.textContent = depthEl.value;
         reapplyFocus();
@@ -994,6 +1034,11 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         }
     }
 
+    // Range as well as starting value, so the .psd1 is the whole story for this
+    // control and the markup's attributes stay placeholders.
+    zoomSpeedEl.min = String(cfg('ZoomSpeedMin', 0.25));
+    zoomSpeedEl.max = String(cfg('ZoomSpeedMax', 5));
+    zoomSpeedEl.step = String(cfg('ZoomSpeedStep', 0.25));
     zoomSpeedEl.value = String(ZOOM_SPEED_DEFAULT);
     zoomSpeedEl.addEventListener('input', applyZoomSpeed);
     applyZoomSpeed();
@@ -1004,9 +1049,9 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     // re-ranking mid-drag would move the nodes the user is reading.
     var splitterEl = document.getElementById('splitter');
     var sidebarEl = document.getElementById('sidebar');
-    var SIDEBAR_MIN = 200;
-    var SIDEBAR_DEFAULT = 300;
-    var CANVAS_MIN = 320;
+    var SIDEBAR_MIN = cfg('SidebarMinWidth', 200);
+    var SIDEBAR_DEFAULT = cfg('SidebarWidth', 300);
+    var CANVAS_MIN = cfg('CanvasMinWidth', 320);
     var resizeFrame = null;
 
     function setSidebarWidth(px) {
