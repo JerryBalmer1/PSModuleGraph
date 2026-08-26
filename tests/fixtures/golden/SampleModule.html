@@ -1,0 +1,2848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SampleModule dependency graph</title>
+<style>
+:root {
+    --bg: #12161c;
+    --panel: #1a1f27;
+    --panel-2: #222834;
+    --line: #2e3644;
+    --fg: #e6edf6;
+    --fg-dim: #98a4b6;
+    --accent: #4da3ff;
+    --warn: #f2c14e;
+    --danger: #ff7043;
+    --fn: #4da3ff;
+    --cls: #f2c14e;
+    --enum: #6ddf6d;
+    --script: #9b8cff;
+    --ext: #ff7043;
+    --scroll-track: #12161c;
+    --scroll-thumb: #47536a;
+    --scroll-thumb-hover: #61708c;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    /* The layout is exactly viewport-sized and must never scroll at the document
+       level. Cytoscape sizes its canvases ~15px larger than their container; if
+       that overflow reaches the document it produces a scrollbar, which shrinks
+       the viewport, which fires Cytoscape's resize handler, which re-renders and
+       re-triggers the overflow. The page then flickers in a permanent resize
+       loop. Only #sidebar scrolls. */
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--fg);
+    font: 13px/1.5 "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+}
+
+#app { display: flex; flex-direction: column; height: 100%; }
+
+header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+}
+header h1 { margin: 0; font-size: 15px; font-weight: 600; }
+header .version { color: var(--fg-dim); font-size: 12px; }
+header .counts { margin-left: auto; display: flex; gap: 14px; color: var(--fg-dim); font-size: 12px; }
+header .counts b { color: var(--fg); font-weight: 600; }
+
+#main { flex: 1 1 auto; display: flex; min-height: 0; }
+
+#sidebar {
+    flex: 0 0 300px;
+    width: 300px;
+    overflow-y: auto;
+    background: var(--panel);
+    padding: 12px;
+}
+
+/* Both clip Cytoscape's oversized canvases so the overflow never reaches the
+   document. See the note on html, body above. */
+#canvas-wrap { flex: 1 1 auto; position: relative; min-width: 0; overflow: hidden; }
+#cy { position: absolute; inset: 0; overflow: hidden; }
+
+/* Sidebar splitter ---------------------------------------------------- */
+/* Drag left or right to resize the sidebar. The test-order list holds long
+   function names at 300px, so the width has to be the user's call.
+   Double-click resets it. */
+#splitter {
+    flex: 0 0 6px;
+    position: relative;
+    background: var(--line);
+    cursor: col-resize;
+    /* Without this a touch drag scrolls the page instead of resizing. */
+    touch-action: none;
+}
+/* A 6px strip is a poor mouse target. This widens the grab area either side
+   without taking any layout space from the graph. */
+#splitter::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: -4px; right: -4px;
+    z-index: 5;
+}
+/* The grip marks it as draggable; a plain divider reads as decoration. */
+#splitter::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 1px;
+    width: 4px; height: 44px;
+    margin-top: -22px;
+    border-left: 1px solid var(--fg-dim);
+    border-right: 1px solid var(--fg-dim);
+    opacity: 0.55;
+}
+#splitter:hover, #splitter.dragging { background: var(--accent); }
+#splitter:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Held on <body> so the cursor and the selection block survive the pointer
+   leaving the 6px strip mid-drag. */
+body.resizing { cursor: col-resize; user-select: none; }
+
+/* Node context menu ---------------------------------------------------- */
+#node-menu {
+    position: fixed;
+    z-index: 50;
+    display: none;
+    min-width: 190px;
+    padding: 4px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .55);
+}
+#node-menu.open { display: block; }
+#node-menu .menu-title {
+    padding: 5px 9px 6px;
+    margin-bottom: 3px;
+    border-bottom: 1px solid var(--line);
+    color: var(--fg-dim);
+    font-size: 11px;
+    /* A long function name must not stretch the menu off-screen. */
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Anchors and buttons look identical: whether an action is a link is a
+   mechanism detail, not something the reader should have to notice. */
+#node-menu button,
+#node-menu a {
+    display: block;
+    width: 100%;
+    padding: 6px 9px;
+    background: transparent;
+    border: 0;
+    border-radius: 3px;
+    color: var(--fg);
+    text-align: left;
+    text-decoration: none;
+    font: inherit;
+    cursor: pointer;
+}
+#node-menu button:hover:not(:disabled),
+#node-menu a:hover,
+#node-menu button:focus-visible,
+#node-menu a:focus-visible { background: #2f3a4a; outline: none; }
+/* Disabled rather than hidden: an action that is missing looks like a bug,
+   an action that is greyed out with a reason explains itself. */
+#node-menu button:disabled { color: var(--fg-dim); cursor: default; }
+/* Info panel ----------------------------------------------------------- */
+#info-panel {
+    position: fixed;
+    z-index: 60;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: min(760px, 92vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .6);
+}
+#info-panel[hidden] { display: none; }
+.info-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--fg-dim);
+}
+.info-head #info-title { margin-right: auto; }
+#info-rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 12px;
+}
+#info-rows[hidden] { display: none; }
+#info-rows dt { color: var(--fg-dim); }
+#info-rows dd { margin: 0; }
+#info-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 12px 10px;
+}
+#info-actions[hidden] { display: none; }
+#info-body[hidden] { display: none; }
+#info-body {
+    margin: 0;
+    padding: 10px 12px;
+    overflow: auto;
+    font-family: Consolas, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+    /* Selectable by design: this text exists to be copied out. */
+    user-select: text;
+}
+
+/* Scrollbars ---------------------------------------------------------- */
+/* The platform default here is a ~5px overlay bar that fades out - close to
+   un-grabbable with a mouse. Every scrollable pane gets a wide, always-visible
+   thumb instead. Panes are listed explicitly rather than styled globally so the
+   Cytoscape canvas, which must never scroll, cannot pick this up.
+   scrollbar-gutter reserves the track so content does not shift when the thumb
+   appears or disappears. */
+#sidebar,
+#order-list,
+#template-notice,
+.fatal {
+    scrollbar-gutter: stable;
+}
+#sidebar::-webkit-scrollbar,
+#order-list::-webkit-scrollbar,
+#template-notice::-webkit-scrollbar,
+.fatal::-webkit-scrollbar { width: 14px; height: 14px; }
+
+#sidebar::-webkit-scrollbar-track,
+#order-list::-webkit-scrollbar-track,
+#template-notice::-webkit-scrollbar-track,
+.fatal::-webkit-scrollbar-track { background: var(--scroll-track); }
+
+#sidebar::-webkit-scrollbar-thumb,
+#order-list::-webkit-scrollbar-thumb,
+#template-notice::-webkit-scrollbar-thumb,
+.fatal::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    /* Border of the track colour insets the thumb without shrinking the
+       draggable hit area, which stays the full 14px. */
+    border: 3px solid var(--scroll-track);
+    border-radius: 7px;
+    /* A long list otherwise produces a thumb a few pixels tall. */
+    min-height: 44px;
+}
+#sidebar::-webkit-scrollbar-thumb:hover,
+#order-list::-webkit-scrollbar-thumb:hover,
+#template-notice::-webkit-scrollbar-thumb:hover,
+.fatal::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
+
+#sidebar::-webkit-scrollbar-thumb:active,
+#order-list::-webkit-scrollbar-thumb:active,
+#template-notice::-webkit-scrollbar-thumb:active,
+.fatal::-webkit-scrollbar-thumb:active { background: var(--accent); }
+
+/* Firefox has no ::-webkit-scrollbar. Its standard properties are scoped to
+   engines that lack the pseudo-element, because in Chrome 121+ setting
+   scrollbar-color silently disables every ::-webkit-scrollbar rule above. */
+@supports not selector(::-webkit-scrollbar) {
+    #sidebar,
+    #order-list,
+    #template-notice,
+    .fatal {
+        scrollbar-width: auto;
+        scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+    }
+}
+
+.section { margin-bottom: 18px; }
+.section > h2 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--fg-dim);
+    font-weight: 600;
+}
+
+input[type="search"], input[type="text"] {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--fg);
+    font: inherit;
+}
+input[type="search"]:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+label.check { display: flex; align-items: center; gap: 7px; padding: 3px 0; cursor: pointer; }
+label.check .swatch { width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
+label.check .count { margin-left: auto; color: var(--fg-dim); font-size: 11px; }
+
+button {
+    padding: 6px 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--fg);
+    font: inherit;
+    cursor: pointer;
+}
+button:hover { background: #2b3340; }
+.btn-row { display: flex; gap: 8px; }
+.btn-row button { flex: 1; }
+
+input[type="range"] { width: 100%; }
+.radio-row { display: flex; flex-direction: column; gap: 2px; }
+.radio-row label { display: flex; align-items: baseline; gap: 7px; cursor: pointer; }
+.hint { color: var(--fg-dim); font-size: 11px; margin: 2px 0 0; }
+
+/* Test order ---------------------------------------------------------- */
+#order-list { max-height: 250px; overflow-y: auto; user-select: all; }
+.order-step { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid #232a35; }
+.order-step:last-child { border-bottom: 0; }
+.order-step .lvl {
+    flex: 0 0 20px;
+    text-align: right;
+    color: var(--accent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.order-step .names { flex: 1 1 auto; font-size: 11px; word-break: break-word; }
+.order-step .names .exp { color: var(--fg); font-weight: 600; }
+.order-step .names .priv { color: var(--fg-dim); }
+.order-cycle { margin-top: 8px; padding: 7px 9px; background: #3a2016; border: 1px solid var(--danger); border-radius: 4px; font-size: 11px; }
+
+#details { border-top: 1px solid var(--line); padding-top: 12px; }
+#details dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
+#details dt { color: var(--fg-dim); font-size: 11px; }
+#details dd { margin: 0; word-break: break-word; }
+.path {
+    font-family: Consolas, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 4px 6px;
+    user-select: all;
+    display: block;
+}
+
+.legend { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--fg-dim); }
+.legend .row { display: flex; align-items: center; gap: 7px; }
+.legend .line { width: 22px; height: 0; border-top-width: 2px; flex: 0 0 auto; }
+.legend .chip { width: 26px; height: 14px; border-radius: 3px; flex: 0 0 auto; }
+
+#banner {
+    position: absolute;
+    top: 10px; left: 10px; right: 10px;
+    z-index: 10;
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 12px;
+    background: #3a3016;
+    border: 1px solid var(--warn);
+    border-radius: 4px;
+    color: #f8e7bd;
+    font-size: 12px;
+}
+#banner #banner-text { margin-right: auto; }
+#banner button { flex: 0 0 auto; background: transparent; border-color: transparent; color: inherit; }
+#banner #banner-copy { border-color: var(--warn); border-radius: 3px; padding: 1px 8px; }
+
+#template-notice {
+    max-height: 100%;
+    overflow-y: auto;
+    margin: 40px auto;
+    max-width: 640px;
+    padding: 20px 24px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--warn);
+    border-radius: 4px;
+}
+#template-notice h2 { margin-top: 0; font-size: 15px; }
+#template-notice code { background: var(--panel-2); padding: 1px 5px; border-radius: 3px; }
+
+.fatal { max-height: 100%; overflow-y: auto; margin: 60px auto; max-width: 620px; padding: 24px; background: var(--panel); border: 1px solid var(--danger); border-radius: 6px; }
+.fatal h2 { margin-top: 0; color: var(--danger); font-size: 16px; }
+</style>
+</head>
+<body>
+
+<div id="app" hidden>
+    <header>
+        <h1 id="hdr-title">SampleModule dependency graph</h1>
+        <span class="version" id="hdr-version"></span>
+        <div class="counts">
+            <span><b id="c-nodes">0</b> nodes</span>
+            <span><b id="c-edges">0</b> edges</span>
+            <span><b id="c-steps">0</b> test steps</span>
+        </div>
+    </header>
+    <div id="main">
+        <aside id="sidebar">
+            <div class="section">
+                <h2>Order</h2>
+                <div class="radio-row">
+                    <label><input type="radio" name="flow" value="foundation"> Foundation <span class="hint">(vertical, most depended-upon at the bottom)</span></label>
+                    <label><input type="radio" name="flow" value="testorder"> Test order <span class="hint">(dependencies first)</span></label>
+                    <label><input type="radio" name="flow" value="callflow"> Call flow <span class="hint">(callers first)</span></label>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Test order</h2>
+                <p class="hint" id="order-intro"></p>
+                <div id="order-list"></div>
+                <div id="order-cycle" class="order-cycle" hidden></div>
+            </div>
+            <div class="section">
+                <h2 id="colorby-heading"></h2>
+                <div class="radio-row" id="colorby-options"></div>
+            </div>
+            <div class="section">
+                <h2>Search</h2>
+                <input type="search" id="search" placeholder="Filter by name" autocomplete="off">
+            </div>
+            <div class="section">
+                <h2>Kinds</h2>
+                <div id="kind-filters"></div>
+            </div>
+            <div class="section">
+                <h2>Filters</h2>
+                <label class="check"><input type="checkbox" id="exported-only"> Exported only</label>
+                <div id="unresolved-wrap" hidden>
+                    <label class="check"><input type="checkbox" id="show-unresolved"> Show unresolved</label>
+                </div>
+            </div>
+            <div class="section" id="focus-section">
+                <h2>Focus</h2>
+                <p class="hint" id="focus-hint">Select a node to focus its neighbourhood.</p>
+                <div id="focus-controls" hidden>
+                    <label for="depth">Depth: <b id="depth-val">2</b></label>
+                    <input type="range" id="depth" min="1" max="5" step="1" value="2">
+                    <div class="radio-row">
+                        <label><input type="radio" name="dir" value="dependents" checked> Dependents <span class="hint">(what breaks)</span></label>
+                        <label><input type="radio" name="dir" value="dependencies"> Dependencies <span class="hint">(what it needs)</span></label>
+                        <label><input type="radio" name="dir" value="both"> Both</label>
+                    </div>
+                </div>
+            </div>
+            <div class="section">
+                <h2>View</h2>
+                <!-- Assets/Html/Config/settings.psd1 is the source of truth for the
+                     value, range, and step; the attributes below are
+                     placeholders the script overwrites at init. -->
+                <label for="zoom-speed">Zoom speed: <b id="zoom-speed-val">1.25x</b></label>
+                <input type="range" id="zoom-speed" min="0.25" max="5" step="0.25" value="1.25">
+                <p class="hint">Mouse wheel zoom sensitivity.</p>
+            </div>
+            <div class="section btn-row">
+                <button type="button" id="clear-focus">Clear focus</button>
+                <button type="button" id="fit">Fit</button>
+            </div>
+            <div class="section">
+                <h2>Legend</h2>
+                <div class="legend" id="legend"></div>
+            </div>
+            <div class="section" id="details">
+                <h2>Details</h2>
+                <p class="hint" id="details-empty">Click a node.</p>
+                <dl id="details-list" hidden></dl>
+            </div>
+        </aside>
+        <div id="splitter" role="separator" aria-orientation="vertical"
+             aria-label="Resize sidebar" tabindex="0"
+             title="Drag to resize the sidebar. Double-click to reset."></div>
+        <div id="canvas-wrap">
+            <div id="banner">
+                <span id="banner-text"></span>
+                <button type="button" id="banner-copy" hidden></button>
+                <button type="button" id="banner-close" aria-label="Dismiss">&times;</button>
+            </div>
+            <div id="cy"></div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Built from NODE_ACTIONS at open time, not written out here, so a new
+     action is one registry entry rather than markup plus wiring. -->
+<div id="node-menu" role="menu" aria-hidden="true"></div>
+<div id="info-panel" hidden>
+    <div class="info-head">
+        <span id="info-title"></span>
+        <button type="button" id="info-copy">Copy</button>
+        <button type="button" id="info-close" aria-label="Dismiss">&times;</button>
+    </div>
+    <dl id="info-rows" hidden></dl>
+    <pre id="info-body"></pre>
+    <div id="info-actions" hidden></div>
+</div>
+
+<div id="template-notice" hidden>
+    <h2>Raw template</h2>
+    <p>This is the unpopulated <code>graph.html</code> template from PSModuleGraph, opened directly.
+       It has no graph data in it.</p>
+    <p>To generate a real report:</p>
+    <p><code>Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;Export-PSModuleDependencyGraph -Format Html -Show</code></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.34.2/dist/cytoscape.min.js"
+        integrity="sha384-BSWdCKSCDnBW0jqCFJdI+wvv6v62CWMcVb9LSwnq973ykOGAzHY5tQMOjvOTJNpj"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@4.0.0/dist/cytoscape-dagre.min.js"
+        integrity="sha384-ZB0G8+HSDcFhSFvwJP3rhJhh2sU/lJrfRrhqis4Gg7pP/CQ2IUzl86Gdlu3S17UF"
+        crossorigin="anonymous"></script>
+<script>
+// Runs immediately after the CDN tags. A blank white page is the worst failure
+// mode here and it is exactly what happens offline, so say so plainly instead.
+if (typeof cytoscape === 'undefined') {
+    document.body.innerHTML =
+        '<div class="fatal">' +
+        '<h2>Could not load the graph library</h2>' +
+        '<p>This page renders with Cytoscape, loaded from a CDN, so it needs internet access ' +
+        'the first time it is opened. Your browser could not fetch it.</p>' +
+        '<p>Reconnect and reload. Once cached, the page works offline. If you are behind a proxy ' +
+        'that blocks jsdelivr.net, the data is still readable: use ' +
+        '<code>Export-PSModuleDependencyGraph -Format Json</code> instead.</p>' +
+        '</div>';
+}
+</script>
+
+<script>
+const GRAPH_DATA = {
+  "moduleName": "SampleModule",
+  "moduleVersion": "1.2.3",
+  "moduleBase": "C:\\Users\\jlbal\\AppData\\Local\\Temp\\claude\\c----Code-PSGraphRender\\5220d798-0b97-4be6-a214-7261d7779c8e\\scratchpad\\pmg-pre\\tests\\fixtures\\SampleModule",
+  "stats": {
+    "NodeCount": 9,
+    "EdgeCount": 5,
+    "RootCount": 4,
+    "LeafCount": 6,
+    "UnresolvedCount": 9,
+    "FunctionCount": 5,
+    "ClassCount": 2,
+    "EnumCount": 1
+  },
+  "metrics": [
+    "dependents",
+    "blastRadius",
+    "dependencies",
+    "reach"
+  ],
+  "nodes": [
+    {
+      "id": "function:ConvertTo-SampleName",
+      "name": "ConvertTo-SampleName",
+      "kind": "Function",
+      "isExported": false,
+      "path": "private\\ConvertTo-SampleName.ps1",
+      "startLine": 1,
+      "metrics": {
+        "dependents": 1,
+        "blastRadius": 2,
+        "dependencies": 0,
+        "reach": 0
+      }
+    },
+    {
+      "id": "function:New-SampleThing",
+      "name": "New-SampleThing",
+      "kind": "Function",
+      "isExported": false,
+      "path": "private\\New-SampleThing.ps1",
+      "startLine": 1,
+      "metrics": {
+        "dependents": 1,
+        "blastRadius": 2,
+        "dependencies": 0,
+        "reach": 0
+      }
+    },
+    {
+      "id": "function:Test-SampleThing",
+      "name": "Test-SampleThing",
+      "kind": "Function",
+      "isExported": false,
+      "path": "private\\Test-SampleThing.ps1",
+      "startLine": 1,
+      "metrics": {
+        "dependents": 1,
+        "blastRadius": 1,
+        "dependencies": 0,
+        "reach": 0
+      }
+    },
+    {
+      "id": "function:Get-SampleThing",
+      "name": "Get-SampleThing",
+      "kind": "Function",
+      "isExported": true,
+      "path": "public\\Get-SampleThing.ps1",
+      "startLine": 1,
+      "metrics": {
+        "dependents": 1,
+        "blastRadius": 1,
+        "dependencies": 2,
+        "reach": 2
+      }
+    },
+    {
+      "id": "function:Invoke-SampleWorkflow",
+      "name": "Invoke-SampleWorkflow",
+      "kind": "Function",
+      "isExported": true,
+      "path": "public\\Invoke-SampleWorkflow.ps1",
+      "startLine": 1,
+      "metrics": {
+        "dependents": 0,
+        "blastRadius": 0,
+        "dependencies": 2,
+        "reach": 4
+      }
+    },
+    {
+      "id": "class:SampleBase",
+      "name": "SampleBase",
+      "kind": "Class",
+      "isExported": false,
+      "path": "classes\\SampleTypes.ps1",
+      "startLine": 7,
+      "metrics": {
+        "dependents": 1,
+        "blastRadius": 1,
+        "dependencies": 0,
+        "reach": 0
+      }
+    },
+    {
+      "id": "class:SampleThing",
+      "name": "SampleThing",
+      "kind": "Class",
+      "isExported": false,
+      "path": "classes\\SampleTypes.ps1",
+      "startLine": 19,
+      "metrics": {
+        "dependents": 0,
+        "blastRadius": 0,
+        "dependencies": 1,
+        "reach": 1
+      }
+    },
+    {
+      "id": "enum:SampleStatus",
+      "name": "SampleStatus",
+      "kind": "Enum",
+      "isExported": false,
+      "path": "classes\\SampleTypes.ps1",
+      "startLine": 1,
+      "metrics": {
+        "dependents": 0,
+        "blastRadius": 0,
+        "dependencies": 0,
+        "reach": 0
+      }
+    },
+    {
+      "id": "script:toplevel",
+      "name": "\u003cscript>",
+      "kind": "Script",
+      "isExported": false,
+      "path": "SampleModule.psm1",
+      "startLine": 4,
+      "metrics": {
+        "dependents": 0,
+        "blastRadius": 0,
+        "dependencies": 0,
+        "reach": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "source": "function:Get-SampleThing",
+      "target": "function:ConvertTo-SampleName",
+      "sourceName": "Get-SampleThing",
+      "targetName": "ConvertTo-SampleName",
+      "kind": "CommandReference",
+      "path": "public\\Get-SampleThing.ps1",
+      "startLine": 8
+    },
+    {
+      "source": "function:Get-SampleThing",
+      "target": "function:New-SampleThing",
+      "sourceName": "Get-SampleThing",
+      "targetName": "New-SampleThing",
+      "kind": "CommandReference",
+      "path": "public\\Get-SampleThing.ps1",
+      "startLine": 9
+    },
+    {
+      "source": "function:Invoke-SampleWorkflow",
+      "target": "function:Get-SampleThing",
+      "sourceName": "Invoke-SampleWorkflow",
+      "targetName": "Get-SampleThing",
+      "kind": "CommandReference",
+      "path": "public\\Invoke-SampleWorkflow.ps1",
+      "startLine": 8
+    },
+    {
+      "source": "function:Invoke-SampleWorkflow",
+      "target": "function:Test-SampleThing",
+      "sourceName": "Invoke-SampleWorkflow",
+      "targetName": "Test-SampleThing",
+      "kind": "CommandReference",
+      "path": "public\\Invoke-SampleWorkflow.ps1",
+      "startLine": 9
+    },
+    {
+      "source": "class:SampleThing",
+      "target": "class:SampleBase",
+      "sourceName": "SampleThing",
+      "targetName": "SampleBase",
+      "kind": "Inherits",
+      "path": "classes\\SampleTypes.ps1",
+      "startLine": 19
+    }
+  ],
+  "roots": [
+    "function:Invoke-SampleWorkflow",
+    "class:SampleThing",
+    "enum:SampleStatus",
+    "script:toplevel"
+  ],
+  "leaves": [
+    "function:ConvertTo-SampleName",
+    "function:New-SampleThing",
+    "function:Test-SampleThing",
+    "class:SampleBase",
+    "enum:SampleStatus",
+    "script:toplevel"
+  ]
+};
+const GRAPH_META = {
+  "moduleName": "SampleModule",
+  "moduleVersion": "1.2.3",
+  "generatedAt": "2026-08-26T14:04:26.0137680-07:00",
+  "moduleRoot": "C:\\Users\\jlbal\\AppData\\Local\\Temp\\claude\\c----Code-PSGraphRender\\5220d798-0b97-4be6-a214-7261d7779c8e\\scratchpad\\pmg-pre\\tests\\fixtures\\SampleModule",
+  "stats": {
+    "NodeCount": 9,
+    "EdgeCount": 5,
+    "RootCount": 4,
+    "LeafCount": 6,
+    "UnresolvedCount": 9,
+    "FunctionCount": 5,
+    "ClassCount": 2,
+    "EnumCount": 1
+  }
+};
+const GRAPH_CONFIG = {
+  "CanvasMinWidth": 320.0,
+  "ColorBy": "structure",
+  "DefaultFlow": "foundation",
+  "EdgeWidth": 1.4,
+  "FocusDepth": 2,
+  "FocusEdgeWidth": 2.6,
+  "FocusShadeMax": 0.6,
+  "FocusShadeStep": 0.2,
+  "FoundationLayerCapacity": 0,
+  "HeatRamp": [
+    "#6e7d8c",
+    "#a8756e",
+    "#d1665a",
+    "#f05340",
+    "#ff3b2f"
+  ],
+  "MinReadableZoom": 0.45,
+  "NodeFontSize": 10.0,
+  "NodeHeight": 24.0,
+  "NodeLimit": 400,
+  "NodeMaxWidth": 340.0,
+  "NodePadding": 7.0,
+  "NodeSep": 14.0,
+  "RankSep": 80.0,
+  "RelatedShadeBase": 0.62,
+  "RelatedShadeMax": 0.78,
+  "SidebarMinWidth": 200.0,
+  "SidebarWidth": 300.0,
+  "ZoomSpeed": 1.25,
+  "ZoomSpeedMax": 5.0,
+  "ZoomSpeedMin": 0.25,
+  "ZoomSpeedStep": 0.25
+};
+const GRAPH_STRINGS = {
+  "BannerCopyLabel": "Copy command",
+  "BannerCopyUrlLabel": "Copy URL",
+  "ColorByHeading": "Colour by",
+  "ColorByStructure": "Kind",
+  "ColorByStructureHint": "one colour per kind",
+  "DetailBlastRadius": "Blast radius",
+  "DetailDependencies": "Dependencies",
+  "DetailDependents": "Dependents",
+  "DetailExported": "Exported",
+  "DetailKind": "Kind",
+  "DetailLine": "Line",
+  "DetailName": "Name",
+  "DetailPath": "Path",
+  "DetailReach": "Reach",
+  "DetailTestStep": "Test step",
+  "DetailTestStepValue": "{step} of {total}",
+  "DiagnosticsUndefined": "(undefined)",
+  "EditorLinkNoLaunch": "Nothing opened. Your browser is blocking vscode:// links. Run Enable-PSModuleGraphEditorLink in PowerShell, restart your browser, and try again. Or use Copy Editor Link and paste it into the Run dialog.",
+  "EditorLinkNoLaunchNoCommand": "Nothing opened. Your browser is blocking vscode:// links. Use Copy Editor Link and paste it into the Run dialog.",
+  "EditorLinkNoLaunchOrigin": "Nothing opened. Your browser is blocking vscode:// links from {origin}. Run Enable-PSModuleGraphEditorLink -AllowedOrigin '{origin}' in PowerShell, restart your browser, and try again.",
+  "EmbeddedViewer": "Opened in an embedded viewer, which cannot hand a vscode:// link to the operating system - no prompt appears and nothing reports the failure. Open File Location is disabled here. Re-open this report in a real browser, or use Copy Editor Link and paste the URI into the Run dialog.",
+  "EmbeddedViewerUrl": "Opened in an embedded viewer, which cannot hand a vscode:// link to the operating system - no prompt appears and nothing reports the failure. Open File Location is disabled here. Re-open this report at {url} in a real browser, or use Copy Editor Link and paste the URI into the Run dialog.",
+  "FocusHintEmpty": "Select a node to focus its neighbourhood. Shift-click, or shift-drag a box, to select several.",
+  "FocusHintSelected": "Focused: {name}",
+  "HeaderGeneratedPrefix": "  ·  generated ",
+  "HeaderVersionPrefix": "v",
+  "LegendBorderWidth": "thicker border = more direct callers",
+  "LegendCalls": "calls",
+  "LegendExported": "exported",
+  "LegendHeatRank": "shaded by rank, not by size - the number is in Details",
+  "LegendHeatScale": "{metric}: {low} to {high}",
+  "LegendInherits": "inherits",
+  "LegendUnresolved": "unresolved",
+  "MenuCopyEditorLink": "Copy Editor Link",
+  "MenuCopyPath": "Copy Path",
+  "MenuDiagnostics": "Diagnostics",
+  "MenuOpenCallSite": "Open Call Site",
+  "MenuOpenFileLocation": "Open File Location",
+  "MenuReasonSeparator": " — ",
+  "MetricBlastRadius": "Blast radius",
+  "MetricBlastRadiusHint": "everything that breaks if this changes",
+  "MetricDependencies": "Dependencies",
+  "MetricDependenciesHint": "things this calls directly",
+  "MetricDependents": "Dependents",
+  "MetricDependentsHint": "things that call this directly",
+  "MetricReach": "Reach",
+  "MetricReachHint": "everything this rests on, transitively",
+  "OrderCycleBody": "These have no valid order, because each waits on the other: {names}",
+  "OrderCycleHeading": "{count} in a dependency cycle.",
+  "OrderIntro": "Test step 1 first. Nothing in a step depends on anything in a later step, so the first failure is the cause rather than an echo of it.",
+  "ReasonEmbedded": "not available in an embedded viewer, open the report in a browser",
+  "ReasonNoFile": "no file recorded",
+  "ReasonNoModuleRoot": "module root unknown",
+  "ScaleGuard": "This module has {count} nodes. Above ~{limit} the layout stops being readable, so the view starts filtered to exported functions. Uncheck \"Exported only\" to see everything.",
+  "SelectionActionClear": "Clear selection",
+  "SelectionActionCopyLinks": "Copy editor links",
+  "SelectionActionCopyNames": "Copy names",
+  "SelectionActionCopyPaths": "Copy paths",
+  "SelectionActionSelectFoundation": "Select shared foundation",
+  "SelectionCount": "Selected",
+  "SelectionDependencies": "Depend on, in total",
+  "SelectionDependents": "Depended on by, in total",
+  "SelectionInternalLinks": "Links between them",
+  "SelectionMore": "and {count} more",
+  "SelectionNoneShared": "nothing in common",
+  "SelectionSharedFoundation": "Shared foundation",
+  "SelectionTestSteps": "Test steps",
+  "SelectionTitle": "{count} selected",
+  "ValueInCycle": "in a cycle",
+  "ValueNo": "no",
+  "ValueNotApplicable": "n/a",
+  "ValueYes": "yes",
+  "ZoomSpeedSuffix": "x",
+  "editorLinkHelpCommand": "Enable-PSModuleGraphEditorLink",
+  "editorLinkHelpCommandForOrigin": "Enable-PSModuleGraphEditorLink -AllowedOrigin '{origin}'"
+};
+
+(function () {
+    'use strict';
+
+    if (typeof cytoscape === 'undefined') { return; }
+
+    // Opened as a raw template rather than a generated report.
+    if (!GRAPH_DATA) {
+        document.getElementById('template-notice').hidden = false;
+        return;
+    }
+
+    document.getElementById('app').hidden = false;
+
+    // Starting values come from Assets/Html/Config, substituted above.
+    // PowerShell validates and fills every key before it gets here, so the
+    // fallbacks below are only ever reached by someone opening the raw
+    // template - which bails out earlier anyway. They exist so a missing key
+    // can never yield NaN and silently collapse the layout.
+    function cfg(key, fallback) {
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
+        return (typeof v === 'number' && isFinite(v)) ? v : fallback;
+    }
+
+    // cfg() is numeric only, so a string or enum setting needs its own reader:
+    // a perfectly valid value would otherwise fail the isFinite test and fall
+    // back to the default every time.
+    function cfgText(key, fallback) {
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
+        return (typeof v === 'string' && v.length) ? v : fallback;
+    }
+
+    // Same reason again for a list setting. A heat ramp is one decision, so it
+    // is one entry rather than five numbered ones - which means a reader that
+    // handles only scalars cannot see it.
+    function cfgList(key, fallback) {
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
+        return (Object.prototype.toString.call(v) === '[object Array]' && v.length) ? v : fallback;
+    }
+
+    // User-visible text comes from Assets/Html/Config/strings.psd1, substituted
+    // above. A missing key renders as its own name in brackets rather than as
+    // nothing: a silently blank label is the one failure mode nobody notices.
+    function str(key) {
+        var v = GRAPH_STRINGS ? GRAPH_STRINGS[key] : null;
+        return (typeof v === 'string' && v.length) ? v : '[' + key + ']';
+    }
+
+    // Whether a key was actually supplied, as opposed to defaulting. Used for
+    // the values the caller passes through config, which may legitimately be
+    // absent - str() alone cannot tell absent from present-and-bracketed.
+    function hasStr(key) {
+        var v = GRAPH_STRINGS ? GRAPH_STRINGS[key] : null;
+        return typeof v === 'string' && v.length > 0;
+    }
+
+    // {token} substitution for the values only the browser knows at display
+    // time. Deliberately not a template language: an unfilled token is left as
+    // written, so it shows up rather than disappearing.
+    function fmt(key, values) {
+        return str(key).replace(/\{(\w+)\}/g, function (match, name) {
+            return Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : match;
+        });
+    }
+
+    var NODE_LIMIT = cfg('NodeLimit', 400);
+    var ZOOM_SPEED_DEFAULT = cfg('ZoomSpeed', 1.25);
+    var KIND_HEX = {
+        Function: '#4da3ff', Class: '#f2c14e', Enum: '#6ddf6d',
+        Script: '#9b8cff', External: '#ff7043'
+    };
+
+    var meta = GRAPH_META || {};
+    var data = GRAPH_DATA;
+    var COLOR_BY = cfgText('ColorBy', 'structure');
+    var nodes = GRAPH_DATA.nodes || [];
+    var links = GRAPH_DATA.links || [];
+    var unresolved = GRAPH_DATA.unresolved || [];
+
+    function uniq(arr) {
+        return arr.filter(function (v, i, a) { return a.indexOf(v) === i; });
+    }
+
+    function escapeHtml(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ---- test order ------------------------------------------------------
+    // An edge source -> target means source calls target, so source DEPENDS ON
+    // target. Anything that depends on nothing can be tested in isolation, so it
+    // goes first; everything else waits for what it rests on. Test in this order
+    // and the first failure is the cause, not an echo of something earlier.
+    //
+    //   level(n) = 0                        if n depends on nothing internal
+    //   level(n) = 1 + max(level(deps(n)))  otherwise
+    //
+    // Kahn's algorithm, so a cycle cannot spin forever: anything still
+    // unassigned when the queue drains is part of one, and gets reported rather
+    // than given a fake position in the order.
+    function computeTestOrder(nodeList, edgeList) {
+        var ids = nodeList.map(function (n) { return n.id; });
+        var known = {};
+        ids.forEach(function (id) { known[id] = true; });
+
+        var deps = {};
+        var dependents = {};
+        ids.forEach(function (id) { deps[id] = []; dependents[id] = []; });
+
+        edgeList.forEach(function (e) {
+            if (e.source === e.target) { return; }   // self-call is not a dependency
+            if (!known[e.source] || !known[e.target]) { return; }
+            deps[e.source].push(e.target);
+            dependents[e.target].push(e.source);
+        });
+
+        // Parallel edges would otherwise decrement the in-degree more than once.
+        ids.forEach(function (id) {
+            deps[id] = uniq(deps[id]);
+            dependents[id] = uniq(dependents[id]);
+        });
+
+        var remaining = {};
+        var level = {};
+        var queue = [];
+        ids.forEach(function (id) {
+            remaining[id] = deps[id].length;
+            if (remaining[id] === 0) { level[id] = 0; queue.push(id); }
+        });
+
+        for (var head = 0; head < queue.length; head++) {
+            var current = queue[head];
+            dependents[current].forEach(function (d) {
+                if (level[d] !== undefined) { return; }
+                remaining[d] -= 1;
+                if (remaining[d] > 0) { return; }
+                var max = -1;
+                deps[d].forEach(function (x) {
+                    if (level[x] !== undefined && level[x] > max) { max = level[x]; }
+                });
+                level[d] = max + 1;
+                queue.push(d);
+            });
+        }
+
+        var cyclic = ids.filter(function (id) { return level[id] === undefined; });
+        return { level: level, deps: deps, dependents: dependents, cyclic: cyclic };
+    }
+
+    var internal = nodes.filter(function (n) { return n.kind !== 'External'; });
+    var order = computeTestOrder(internal, links);
+
+    var maxLevel = -1;
+    Object.keys(order.level).forEach(function (id) {
+        if (order.level[id] > maxLevel) { maxLevel = order.level[id]; }
+    });
+    var stepCount = maxLevel + 1;
+
+    // ---- header ----------------------------------------------------------
+    document.getElementById('hdr-version').textContent =
+        (meta.moduleVersion ? str('HeaderVersionPrefix') + meta.moduleVersion : '') +
+        (meta.generatedAt ? str('HeaderGeneratedPrefix') + meta.generatedAt : '');
+    document.getElementById('c-nodes').textContent = nodes.length;
+    document.getElementById('c-edges').textContent = links.length;
+    document.getElementById('c-steps').textContent = stepCount;
+
+    // ---- heat ------------------------------------------------------------
+    // A facet CLASSIFIES and a metric MEASURES. Kind gives a node one of five
+    // colours; a metric gives it a position on a scale. ColorBy takes either,
+    // so this is the same fill channel carrying a different kind of fact.
+    //
+    // METRIC_IDS comes from the payload, not from a list here. Adding a metric
+    // is a change in Get-GraphNodeMetric plus a value in the ColorBy enum, and
+    // no branch anywhere in this file - which is the test the registries in
+    // this subsystem are all held to.
+    var METRIC_IDS = (data.metrics && data.metrics.length) ? data.metrics : [];
+    var HEAT_RAMP = cfgList('HeatRamp', ['#6e7d8c', '#a8756e', '#d1665a', '#f05340', '#ff3b2f']);
+
+    function metricValue(node, id) {
+        var m = node && node.metrics;
+        return (m && typeof m[id] === 'number') ? m[id] : 0;
+    }
+
+    // Rank, not magnitude. Blast radius is heavily skewed - on this module one
+    // node scores 30 and most score 0 to 3 - so a linear scale would paint
+    // nearly everything the coldest colour and answer no question at all. Rank
+    // spreads the ramp across the values that actually occur.
+    //
+    // The cost is that colour is no longer proportional: two adjacent ranks can
+    // look far apart. That is why every panel that shows a node also shows the
+    // raw number, and why the legend labels its ends with real values rather
+    // than with "low" and "high".
+    function rankScale(values) {
+        var distinct = [];
+        var seen = {};
+        values.forEach(function (v) {
+            if (!seen[v]) { seen[v] = true; distinct.push(v); }
+        });
+        distinct.sort(function (a, b) { return a - b; });
+
+        var position = {};
+        distinct.forEach(function (v, i) {
+            position[v] = distinct.length > 1 ? i / (distinct.length - 1) : 0;
+        });
+        return position;
+    }
+
+    var heatScale = {};
+    METRIC_IDS.forEach(function (id) {
+        heatScale[id] = rankScale(nodes.map(function (n) { return metricValue(n, id); }));
+    });
+
+    function rampColor(t) {
+        if (HEAT_RAMP.length === 1) { return HEAT_RAMP[0]; }
+        var clamped = Math.max(0, Math.min(1, t));
+        // Nearest stop rather than an interpolation. Five bands read as five
+        // bands; a continuous blend across a dark canvas mostly reads as noise,
+        // and a reader comparing two nodes wants "hotter", not "3% hotter".
+        var index = Math.round(clamped * (HEAT_RAMP.length - 1));
+        return HEAT_RAMP[index];
+    }
+
+    function fillFor(node, colorBy) {
+        if (METRIC_IDS.indexOf(colorBy) === -1) {
+            return KIND_HEX[node.kind] || '#8895a7';
+        }
+        var scale = heatScale[colorBy] || {};
+        return rampColor(scale[metricValue(node, colorBy)] || 0);
+    }
+
+    // ---- build elements --------------------------------------------------
+    function borderFor(id) {
+        // DIRECT dependents - how many things call this by name. Deliberately
+        // not the blast radius, which the fill can now carry: two channels
+        // saying the same thing is one wasted channel. Width rather than fill
+        // so it survives greyscale, and clamped so one hot node cannot
+        // dominate.
+        //
+        // The comment here used to say blast radius while counting direct
+        // dependents. It was the label that was wrong, and the real measure now
+        // exists next to it.
+        var n = (order.dependents[id] || []).length;
+        return Math.min(1 + n, 7);
+    }
+
+    var els = [];
+    nodes.forEach(function (n) {
+        var lvl = order.level[n.id];
+        var nodeMetrics = {};
+        METRIC_IDS.forEach(function (id) { nodeMetrics[id] = metricValue(n, id); });
+        els.push({
+            data: {
+                id: n.id,
+                name: n.name,
+                kind: n.kind,
+                isExported: !!n.isExported,
+                path: n.path || '',
+                startLine: n.startLine,
+                metrics: nodeMetrics,
+                color: fillFor(n, COLOR_BY),
+                border: n.kind === 'External' ? 2 : borderFor(n.id),
+                level: lvl === undefined ? null : lvl,
+                dependents: (order.dependents[n.id] || []).length,
+                dependencies: (order.deps[n.id] || []).length,
+                // Hop distance from the focused node, as a Cytoscape blacken
+                // amount. Initialised here so the style mapper never reads
+                // undefined on first paint.
+                focusBlacken: 0
+            }
+        });
+    });
+    links.forEach(function (l, i) {
+        els.push({
+            data: {
+                id: 'e' + i, source: l.source, target: l.target,
+                kind: l.kind || 'CommandReference'
+            }
+        });
+    });
+
+    // Unresolved targets become External nodes. Edges whose origin is not a real
+    // node (module:manifest, using:module) are shown as isolated nodes rather
+    // than dropped, matching the "report, never discard" rule.
+    var realIds = {};
+    nodes.forEach(function (n) { realIds[n.id] = true; });
+    var extSeen = {};
+    unresolved.forEach(function (u, i) {
+        var extId = 'external:' + u.targetName;
+        if (!extSeen[extId]) {
+            extSeen[extId] = true;
+            els.push({
+                data: {
+                    id: extId, name: u.targetName, kind: 'External',
+                    isExported: false, path: u.path || '', startLine: u.startLine,
+                    // An unresolved target is outside the module, so nothing
+                    // here was measured about it. Zero is honest: it is not a
+                    // cold node, it is an unmeasured one, and the dashed border
+                    // is what says so.
+                    metrics: {}, color: KIND_HEX.External, border: 2, level: null,
+                    dependents: 0, dependencies: 0, focusBlacken: 0
+                },
+                classes: 'unresolved'
+            });
+        }
+        if (u.source && realIds[u.source]) {
+            els.push({
+                data: { id: 'u' + i, source: u.source, target: extId, kind: 'Unresolved' },
+                classes: 'unresolved'
+            });
+        }
+    });
+
+    // ---- uniform node size -----------------------------------------------
+    // Every node gets the width of the longest label in the whole dataset, so
+    // the boxes line up instead of jittering with name length.
+    //
+    // The width is measured on a canvas with the same font the renderer uses,
+    // not estimated from a character count. The font is proportional, so two
+    // names of equal length are not equal width, and one glyph of overhang
+    // clips the label. The margin runs thin: rendering this module's own graph,
+    // the longest name measures 163.9px against 166px of inner width.
+    //
+    // Measuring across every node, including the unresolved externals that
+    // start hidden, is deliberate. Sizing to the visible set instead would
+    // resize every node on the page each time a filter box is ticked.
+    var NODE_FONT_SIZE = cfg('NodeFontSize', 10);
+    var NODE_FONT_WEIGHT = 600;
+    var NODE_FONT_FAMILY = '"Segoe UI", Helvetica, Arial, sans-serif';
+    var NODE_PAD = cfg('NodePadding', 7);
+    var NODE_HEIGHT = cfg('NodeHeight', 24);
+    // One pathological name should not make every node unreadable. Past this
+    // the label ellipsises on the node; the full name stays in search, in the
+    // test-order list, and in the Details panel.
+    var NODE_MAX_WIDTH = cfg('NodeMaxWidth', 340);
+    var EDGE_WIDTH = cfg('EdgeWidth', 1.4);
+    var FOCUS_EDGE_WIDTH = cfg('FocusEdgeWidth', 2.6);
+    var FOCUS_SHADE_STEP = cfg('FocusShadeStep', 0.2);
+    var FOCUS_SHADE_MAX = cfg('FocusShadeMax', 0.6);
+    var RELATED_SHADE_BASE = cfg('RelatedShadeBase', 0.62);
+    var RELATED_SHADE_MAX = cfg('RelatedShadeMax', 0.78);
+
+    var NODE_WIDTH = (function () {
+        var widest = 0;
+        try {
+            var ctx = document.createElement('canvas').getContext('2d');
+            ctx.font = NODE_FONT_WEIGHT + ' ' + NODE_FONT_SIZE + 'px ' + NODE_FONT_FAMILY;
+            els.forEach(function (el) {
+                if (!el.data || !el.data.name) { return; }
+                var w = ctx.measureText(el.data.name).width;
+                if (w > widest) { widest = w; }
+            });
+        }
+        catch (err) {
+            // No 2D context (very old engine, or a hardened environment).
+            // Fall back to a character-count estimate rather than giving every
+            // node a zero width.
+            els.forEach(function (el) {
+                if (!el.data || !el.data.name) { return; }
+                widest = Math.max(widest, el.data.name.length * NODE_FONT_SIZE * 0.62);
+            });
+        }
+        // +2 covers sub-pixel rounding between measureText and the renderer.
+        return Math.min(Math.ceil(widest) + NODE_PAD * 2 + 2, NODE_MAX_WIDTH);
+    })();
+
+    // ---- cytoscape -------------------------------------------------------
+    if (typeof cytoscapeDagre !== 'undefined' && cytoscape.use) {
+        try { cytoscape.use(cytoscapeDagre); } catch (e) { /* already registered */ }
+    }
+
+    var cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: els,
+        wheelSensitivity: ZOOM_SPEED_DEFAULT,
+        style: [
+            {
+                // The name sits inside the box. A circle with the label
+                // underneath cost roughly double the space and put the text
+                // where it could collide with the next node.
+                //
+                // Every box is the same size - the widest label in the dataset
+                // - rather than sized to its own label, so the nodes read as a
+                // consistent grid. font-family is pinned because the width was
+                // measured with it: letting it fall back to the Cytoscape
+                // default would measure in one font and render in another.
+                selector: 'node',
+                style: {
+                    'shape': 'round-rectangle',
+                    'background-color': 'data(color)',
+                    'label': 'data(name)',
+                    'color': '#0b0f14',
+                    'font-size': NODE_FONT_SIZE,
+                    'font-weight': NODE_FONT_WEIGHT,
+                    'font-family': NODE_FONT_FAMILY,
+                    'text-valign': 'center',
+                    'text-halign': 'center',
+                    'text-wrap': 'ellipsis',
+                    'text-max-width': NODE_WIDTH - NODE_PAD * 2,
+                    'width': NODE_WIDTH,
+                    'height': NODE_HEIGHT,
+                    'padding': NODE_PAD,
+                    'border-width': 'data(border)',
+                    'border-color': '#0b0f14',
+                    // Hop distance from the focused node, darkest furthest away.
+                    // Blacken rather than a fixed palette of blues, so a class
+                    // or an enum shades through its own colour instead of being
+                    // recoloured as if it were a function. Zero when nothing is
+                    // focused, which is a no-op.
+                    'background-blacken': 'data(focusBlacken)'
+                }
+            },
+            {
+                // Export status is border colour, blast radius is border width.
+                // Neither is a fill, so both survive greyscale.
+                selector: 'node[?isExported]',
+                style: { 'border-color': '#ffffff' }
+            },
+            { selector: 'node.unresolved', style: { 'border-style': 'dashed', 'border-color': '#7a2f14' } },
+            {
+                selector: 'edge',
+                style: {
+                    'width': EDGE_WIDTH,
+                    'line-color': '#6b7785',
+                    'target-arrow-color': '#6b7785',
+                    'target-arrow-shape': 'triangle',
+                    'arrow-scale': 0.9,
+                    'curve-style': 'bezier'
+                }
+            },
+            { selector: 'edge[kind = "Inherits"]', style: { 'line-color': '#f2c14e', 'target-arrow-color': '#f2c14e', 'line-style': 'dashed', 'width': 2 } },
+            { selector: 'edge[kind = "Unresolved"]', style: { 'line-color': '#ff7043', 'target-arrow-color': '#ff7043', 'line-style': 'dotted' } },
+            // Test order ranks right-to-left so the page reads left-to-right in
+            // the order to test. The arrowhead has to follow: pointing at the
+            // callee would point backwards through that reading order. Flipped
+            // to the source end, an arrow means "test this one first, then the
+            // one it points at". Call flow keeps the arrow on the callee.
+            { selector: 'edge.flip', style: { 'target-arrow-shape': 'none', 'source-arrow-shape': 'triangle', 'source-arrow-color': '#6b7785' } },
+            { selector: 'edge[kind = "Inherits"].flip', style: { 'source-arrow-color': '#f2c14e' } },
+            { selector: 'edge[kind = "Unresolved"].flip', style: { 'source-arrow-color': '#ff7043' } },
+            // Out-of-focus nodes stay readable. Hiding them, or fading the
+            // label to nothing, loses the context that makes a focused
+            // neighbourhood mean anything - you cannot see what it sits among.
+            // Muted fill with a light label rather than low opacity, because a
+            // dark label on a faded box goes unreadable long before the box
+            // stops drawing attention.
+            {
+                selector: 'node.dimmed',
+                style: {
+                    'background-color': '#232c38',
+                    'border-color': '#2b3340',
+                    'color': '#8b97a8',
+                    'opacity': 1,
+                    'text-opacity': 1
+                }
+            },
+            { selector: 'edge.dimmed', style: { 'opacity': 0.12 } },
+            // Connected to the focus, but the other way round from the chosen
+            // direction - a dependency when asking about dependents, or the
+            // reverse. Related is not the same as irrelevant, so these keep
+            // their kind colour, darkened well past the chain, instead of
+            // dropping into the grey used for genuinely unconnected nodes. The
+            // label goes light because a dark label on a dark fill is a label
+            // nobody can read.
+            {
+                selector: 'node.related',
+                style: {
+                    'color': '#c6d4e6',
+                    'border-color': '#2b3340',
+                    'opacity': 1,
+                    'text-opacity': 1
+                }
+            },
+            { selector: 'edge.related-edge', style: { 'opacity': 0.45 } },
+            // The connections inside a focused neighbourhood are the reason the
+            // node was clicked, so they brighten and thicken rather than merely
+            // failing to dim. Declared after the kind rules and after .dimmed so
+            // it wins on all three arrow colours; z-index lifts it clear of the
+            // dimmed edges it crosses.
+            {
+                selector: 'edge.focus-edge',
+                style: {
+                    'width': FOCUS_EDGE_WIDTH,
+                    'line-color': '#cfe6ff',
+                    'target-arrow-color': '#cfe6ff',
+                    'source-arrow-color': '#cfe6ff',
+                    'arrow-scale': 1.05,
+                    'opacity': 1,
+                    'z-index': 20
+                }
+            },
+            { selector: 'node.selected-node', style: { 'border-color': '#4da3ff' } },
+            { selector: '.hidden', style: { 'display': 'none' } }
+        ]
+    });
+
+    // Gravity. Edges point caller -> callee, and dagre gives a target a higher
+    // rank than its source, so rankDir 'TB' sinks the callees - the things
+    // everything else rests on - to the foot of the page. longest-path makes a
+    // node's rank equal the test level computed above, so a row IS a test step.
+    //
+    // The arrowhead follows the reading direction in every view. Read bottom to
+    // top and an arrow means "this comes first, then the one it points at",
+    // which is the source end - the same flip test order uses. Call flow reads
+    // the other way and keeps the arrow on the callee.
+    var FLOW_LAYOUT = {
+        foundation: { layout: 'foundation', flip: true },
+        testorder: { rankDir: 'RL', ranker: 'longest-path', flip: true },
+        callflow: { rankDir: 'LR', ranker: 'network-simplex', flip: false }
+    };
+
+    function currentFlow() {
+        var checked = document.querySelector('input[name="flow"]:checked');
+        return checked ? checked.value : cfgText('DefaultFlow', 'foundation');
+    }
+
+    function runLayout() {
+        var flow = FLOW_LAYOUT[currentFlow()] || FLOW_LAYOUT.foundation;
+        cy.edges().toggleClass('flip', flow.flip);
+
+        // Foundation is laid out here rather than by dagre: it needs a bound on
+        // layer width, and no dagre ranker has one. See foundation.js.
+        if (flow.layout === 'foundation') {
+            var placed = foundationPositions();
+            cy.layout({
+                name: 'preset',
+                positions: function (n) { return placed[n.id()] || { x: 0, y: 0 }; },
+                fit: false,
+                animate: false
+            }).run();
+            document.documentElement.setAttribute('data-layout', 'foundation');
+            return 'foundation';
+        }
+
+        var name = 'dagre';
+        var opts = {
+            name: 'dagre',
+            rankDir: flow.rankDir,
+            ranker: flow.ranker,
+            nodeDimensionsIncludeLabels: true,
+            nodeSep: cfg('NodeSep', 14),
+            rankSep: cfg('RankSep', 80),
+            animate: false
+        };
+        try {
+            cy.layout(opts).run();
+        } catch (e) {
+            // Falling back is better than an empty canvas, but record why so the
+            // failure is diagnosable instead of just looking like a bad layout.
+            name = 'cose';
+            document.documentElement.setAttribute('data-layout-error', String(e && e.message));
+            cy.layout({ name: 'cose', animate: false }).run();
+        }
+        document.documentElement.setAttribute('data-layout', name);
+        return name;
+    }
+
+    function fitVisible() {
+        // Fit to visible elements only. Hidden nodes are excluded from the
+        // layout but keep a position at the origin, and a bare cy.fit() would
+        // include them, shrinking the real graph into a corner.
+        var vis = cy.elements(':visible');
+        cy.fit(vis.empty() ? undefined : vis, 30);
+
+        // Fitting a large graph to the window is what turns labels into dashes.
+        // Past a floor the view stops shrinking and the reader pans instead - a
+        // legible part of the graph beats an illegible whole of it. Foundation
+        // opens at the bottom, because that is where reading starts.
+        var floor = cfg('MinReadableZoom', 0.45);
+        if (cy.zoom() >= floor || vis.empty()) { return; }
+
+        cy.zoom(floor);
+        var box = vis.boundingBox();
+        if (currentFlow() === 'foundation') {
+            cy.pan({
+                x: (cy.width() / 2) - ((box.x1 + box.x2) / 2) * floor,
+                y: cy.height() - 40 - (box.y2 * floor)
+            });
+        }
+        else {
+            cy.center(vis);
+        }
+    }
+
+    // ---- foundation layout -----------------------------------------------
+    // A layered drawing, built the usual way: assign layers, reduce crossings
+    // between adjacent layers, then place. dagre does all three and is used for
+    // the other two views - but none of its rankers can bound how wide a layer
+    // gets. longest-path pins every node with no dependencies to one extreme
+    // layer, which on this module put 29 of 62 nodes in a single row and drew
+    // the graph at 11:1. Nothing readable survives being fitted to a screen at
+    // that shape.
+    //
+    // Bounding the layer width and letting the layer count grow instead is the
+    // standard answer (Coffman-Graham with a layer capacity, used iteratively
+    // to hit an aspect ratio). Measured on the same graph it comes out near
+    // 2:1. See the gravity rule in CLAUDE.md.
+
+    // Enough passes to settle, few enough to stay instant. The median heuristic
+    // converges fast and alternating direction is what stops it oscillating.
+    var CROSSING_SWEEPS = 4;
+
+    // Layer 0 is the foundation and is drawn at the bottom. A node goes in the
+    // lowest layer that sits above every one of its dependencies and is not yet
+    // full; when that layer is full it rises, and that is the whole width bound.
+    function assignLayers(ids, deps, capacity) {
+        var layer = {};
+        var fill = {};
+        var remaining = ids.slice();
+        var guard = 0;
+
+        while (remaining.length && guard++ <= ids.length + 1) {
+            var next = [];
+            remaining.forEach(function (id) {
+                var floor = 0;
+                var ready = true;
+                deps[id].forEach(function (d) {
+                    if (!(d in layer)) { ready = false; return; }
+                    if (layer[d] + 1 > floor) { floor = layer[d] + 1; }
+                });
+                if (!ready) { next.push(id); return; }
+
+                var target = floor;
+                while ((fill[target] || 0) >= capacity) { target++; }
+                layer[id] = target;
+                fill[target] = (fill[target] || 0) + 1;
+            });
+
+            // Nothing became placeable, so what is left is in a cycle. Stack it
+            // above everything already placed rather than spinning: a cycle has
+            // no valid layering and dropping the nodes would hide them.
+            if (next.length === remaining.length) {
+                var top = 0;
+                Object.keys(layer).forEach(function (id) {
+                    if (layer[id] + 1 > top) { top = layer[id] + 1; }
+                });
+                next.forEach(function (id) {
+                    var target = top;
+                    while ((fill[target] || 0) >= capacity) { target++; }
+                    layer[id] = target;
+                    fill[target] = (fill[target] || 0) + 1;
+                });
+                return layer;
+            }
+            remaining = next;
+        }
+        return layer;
+    }
+
+    // Median heuristic, swept up and then down. A node moves to the median
+    // position of its neighbours in the layer being swept against, which is the
+    // cheap standard first choice for crossing reduction.
+    function reduceCrossings(layers, deps, dependents) {
+        function medianKey(id, reference, relation, fallback) {
+            var positions = [];
+            relation[id].forEach(function (other) {
+                var at = reference.indexOf(other);
+                if (at >= 0) { positions.push(at); }
+            });
+            if (!positions.length) { return fallback; }
+            positions.sort(function (a, b) { return a - b; });
+            return positions[Math.floor(positions.length / 2)];
+        }
+
+        for (var sweep = 0; sweep < CROSSING_SWEEPS; sweep++) {
+            var upward = (sweep % 2) === 0;
+            for (var step = 1; step < layers.length; step++) {
+                var index = upward ? step : layers.length - 1 - step;
+                var referenceIndex = upward ? index - 1 : index + 1;
+                if (referenceIndex < 0 || referenceIndex >= layers.length) { continue; }
+
+                // A layer's dependencies are below it and its dependents above,
+                // so which relation points at the reference layer depends on
+                // which way the sweep is going.
+                var reference = layers[referenceIndex];
+                var relation = upward ? deps : dependents;
+                var keys = {};
+                layers[index].forEach(function (id, at) {
+                    keys[id] = medianKey(id, reference, relation, at);
+                });
+                // Array.prototype.sort is stable, so a node with no neighbour in
+                // the reference layer keeps its place instead of drifting.
+                layers[index] = layers[index].slice().sort(function (a, b) {
+                    return keys[a] - keys[b];
+                });
+            }
+        }
+        return layers;
+    }
+
+    // Solve the capacity that lands the drawing on the container's own aspect.
+    // Width is capacity * stepX and height is (count / capacity) * stepY, so
+    // setting their ratio to the container's and rearranging gives the root
+    // below. A pinned setting wins; deriving it is what keeps the result
+    // readable on a laptop and on a wall display without a second setting.
+    function foundationCapacity(count, stepX, stepY) {
+        var pinned = cfg('FoundationLayerCapacity', 0);
+        if (pinned >= 1) { return Math.max(1, Math.round(pinned)); }
+
+        var box = cy.container().getBoundingClientRect();
+        var aspect = (box.width > 0 && box.height > 0) ? (box.width / box.height) : (16 / 9);
+        var derived = Math.sqrt((aspect * count * stepY) / stepX);
+        return Math.max(3, Math.min(count, Math.round(derived)));
+    }
+
+    // Positions for every visible node, keyed by id. Hidden nodes are left out
+    // deliberately: they are excluded from the drawing and would otherwise
+    // reserve width they do not occupy.
+    function foundationPositions() {
+        var visible = cy.nodes().filter(function (n) { return !n.hasClass('hidden'); });
+        var ids = visible.map(function (n) { return n.id(); });
+        var known = {};
+        ids.forEach(function (id) { known[id] = true; });
+
+        var deps = {};
+        var dependents = {};
+        ids.forEach(function (id) { deps[id] = []; dependents[id] = []; });
+
+        cy.edges().forEach(function (e) {
+            if (e.hasClass('hidden')) { return; }
+            var from = e.source().id();
+            var to = e.target().id();
+            // An edge source -> target means source depends on target, so the
+            // target belongs below. Self-calls are not a dependency.
+            if (from === to || !known[from] || !known[to]) { return; }
+            if (deps[from].indexOf(to) === -1) { deps[from].push(to); }
+            if (dependents[to].indexOf(from) === -1) { dependents[to].push(from); }
+        });
+
+        var stepX = NODE_WIDTH + cfg('NodeSep', 14);
+        var stepY = NODE_HEIGHT + cfg('RankSep', 80);
+        var capacity = foundationCapacity(ids.length, stepX, stepY);
+        var layer = assignLayers(ids, deps, capacity);
+
+        var layers = [];
+        ids.forEach(function (id) {
+            var at = layer[id] || 0;
+            while (layers.length <= at) { layers.push([]); }
+            layers[at].push(id);
+        });
+        layers = reduceCrossings(layers, deps, dependents);
+
+        var widest = 0;
+        layers.forEach(function (row) { if (row.length > widest) { widest = row.length; } });
+
+        var positions = {};
+        layers.forEach(function (row, at) {
+            // Rows are centred on each other, and layer 0 takes the largest y.
+            // Cytoscape's y grows downward, so that is the bottom of the page:
+            // what everything rests on is what the reader starts from.
+            var offset = ((widest - row.length) * stepX) / 2;
+            var y = (layers.length - 1 - at) * stepY;
+            row.forEach(function (id, column) {
+                positions[id] = { x: offset + (column * stepX), y: y };
+            });
+        });
+
+        document.documentElement.setAttribute('data-foundation-capacity', String(capacity));
+        document.documentElement.setAttribute('data-foundation-layers', String(layers.length));
+        return positions;
+    }
+
+    // ---- test order list -------------------------------------------------
+    function renderOrder() {
+        var byLevel = [];
+        var i;
+        for (i = 0; i < stepCount; i++) { byLevel.push([]); }
+
+        internal.forEach(function (n) {
+            var lvl = order.level[n.id];
+            if (lvl === undefined) { return; }
+            byLevel[lvl].push(n);
+        });
+
+        var html = byLevel.map(function (group, index) {
+            group.sort(function (a, b) { return a.name.localeCompare(b.name); });
+            var names = group.map(function (n) {
+                return '<span class="' + (n.isExported ? 'exp' : 'priv') + '">' +
+                       escapeHtml(n.name) + '</span>';
+            }).join(', ');
+            return '<div class="order-step"><span class="lvl">' + (index + 1) + '</span>' +
+                   '<span class="names">' + names + '</span></div>';
+        }).join('');
+
+        document.getElementById('order-list').innerHTML = html;
+        document.getElementById('order-intro').textContent = str('OrderIntro');
+
+        var cycleBox = document.getElementById('order-cycle');
+        if (order.cyclic.length > 0) {
+            var byId = {};
+            internal.forEach(function (n) { byId[n.id] = n.name; });
+            var names = order.cyclic.map(function (id) { return byId[id] || id; }).sort().join(', ');
+            // The emphasis is the page's, not the string's: strings.psd1 holds
+            // no markup, so a message can never inject an element.
+            cycleBox.innerHTML = '<b>' +
+                escapeHtml(fmt('OrderCycleHeading', { count: order.cyclic.length })) + '</b> ' +
+                escapeHtml(fmt('OrderCycleBody', { names: names }));
+            cycleBox.hidden = false;
+        } else {
+            cycleBox.hidden = true;
+        }
+    }
+
+    // ---- kind checkboxes, generated from the data ------------------------
+    var kindCounts = {};
+    cy.nodes().forEach(function (n) {
+        var k = n.data('kind');
+        kindCounts[k] = (kindCounts[k] || 0) + 1;
+    });
+    var kinds = Object.keys(kindCounts).filter(function (k) { return k !== 'External'; }).sort();
+
+    var kindBox = document.getElementById('kind-filters');
+    kinds.forEach(function (k) {
+        var id = 'kind-' + k;
+        var label = document.createElement('label');
+        label.className = 'check';
+        label.innerHTML =
+            '<input type="checkbox" id="' + id + '" data-kind="' + k + '" checked>' +
+            '<span class="swatch" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' +
+            '<span>' + k + '</span><span class="count">' + kindCounts[k] + '</span>';
+        kindBox.appendChild(label);
+        label.querySelector('input').addEventListener('change', applyFilters);
+    });
+
+    if (unresolved.length > 0) {
+        document.getElementById('unresolved-wrap').hidden = false;
+    }
+
+    // ---- colour by -------------------------------------------------------
+    // One radio per option, built from the metric ids the PAYLOAD carries plus
+    // 'structure'. Adding a metric is a change in Get-GraphNodeMetric, a value
+    // in the ColorBy enum, and two strings - no branch here. Same shape as
+    // NODE_ACTIONS and FLOW_LAYOUT, and for the same reason.
+    //
+    // Metric label and hint keys are mechanical: 'Metric' + the id, capitalised.
+    function metricStringKey(id, suffix) {
+        return 'Metric' + id.charAt(0).toUpperCase() + id.slice(1) + (suffix || '');
+    }
+
+    var colorByOptions = [{
+        id: 'structure',
+        label: str('ColorByStructure'),
+        hint: str('ColorByStructureHint')
+    }].concat(METRIC_IDS.map(function (id) {
+        return { id: id, label: str(metricStringKey(id)), hint: str(metricStringKey(id, 'Hint')) };
+    }));
+
+    document.getElementById('colorby-heading').textContent = str('ColorByHeading');
+    document.getElementById('colorby-options').innerHTML = colorByOptions.map(function (o) {
+        // Checked is set from config, never from markup - a checked attribute
+        // in the partial would make editing settings.psd1 silently do nothing.
+        return '<label><input type="radio" name="colorby" value="' + escapeHtml(o.id) + '"' +
+            (o.id === COLOR_BY ? ' checked' : '') + '> ' + escapeHtml(o.label) +
+            ' <span class="hint">(' + escapeHtml(o.hint) + ')</span></label>';
+    }).join('');
+
+    function applyColorBy(choice) {
+        COLOR_BY = choice;
+        cy.batch(function () {
+            nodes.forEach(function (n) {
+                var el = cy.getElementById(n.id);
+                if (el && el.length) { el.data('color', fillFor(n, choice)); }
+            });
+        });
+        renderLegend();
+    }
+
+    Array.prototype.forEach.call(
+        document.querySelectorAll('input[name="colorby"]'),
+        function (input) {
+            input.addEventListener('change', function () {
+                if (input.checked) { applyColorBy(input.value); }
+            });
+        });
+
+    // ---- legend ----------------------------------------------------------
+    // Redrawn on every colour-by change: a legend that keeps showing kind
+    // swatches while the canvas is painted by blast radius is a legend that
+    // lies, which this subsystem already rules worse than no legend at all.
+    var legend = document.getElementById('legend');
+
+    function heatLegendRows(metricId) {
+        var values = nodes.map(function (n) {
+            var m = n.metrics || {};
+            return typeof m[metricId] === 'number' ? m[metricId] : 0;
+        });
+        var low = values.length ? Math.min.apply(null, values) : 0;
+        var high = values.length ? Math.max.apply(null, values) : 0;
+
+        var strip = HEAT_RAMP.map(function (c) {
+            return '<span class="chip" style="background:' + c + ';border-radius:0"></span>';
+        }).join('');
+
+        return [
+            '<div class="row">' + strip + '</div>',
+            '<div class="row"><span class="hint">' +
+            escapeHtml(fmt('LegendHeatScale', {
+                metric: str(metricStringKey(metricId)), low: low, high: high
+            })) + '</span></div>',
+            '<div class="row"><span class="hint">' + escapeHtml(str('LegendHeatRank')) + '</span></div>'
+        ];
+    }
+
+    function renderLegend() {
+        var legendRows;
+        if (METRIC_IDS.indexOf(COLOR_BY) === -1) {
+            legendRows = kinds.map(function (k) {
+                return '<div class="row"><span class="chip" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' + k + '</div>';
+            });
+        }
+        else {
+            legendRows = heatLegendRows(COLOR_BY);
+        }
+        legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:2px solid #fff"></span>' + escapeHtml(str('LegendExported')) + '</div>');
+        legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:5px solid #0b0f14"></span>' + escapeHtml(str('LegendBorderWidth')) + '</div>');
+        legendRows.push('<div class="row"><span class="line" style="border-top:2px solid #6b7785"></span>' + escapeHtml(str('LegendCalls')) + '</div>');
+        legendRows.push('<div class="row"><span class="line" style="border-top:2px dashed #f2c14e"></span>' + escapeHtml(str('LegendInherits')) + '</div>');
+        if (unresolved.length > 0) {
+            legendRows.push('<div class="row"><span class="line" style="border-top:2px dotted #ff7043"></span>' + escapeHtml(str('LegendUnresolved')) + '</div>');
+        }
+        legend.innerHTML = legendRows.join('');
+    }
+
+    renderLegend();
+
+    // ---- filtering -------------------------------------------------------
+    var searchEl = document.getElementById('search');
+    var exportedOnlyEl = document.getElementById('exported-only');
+    var showUnresolvedEl = document.getElementById('show-unresolved');
+
+    function applyFilters() {
+        var term = searchEl.value.trim().toLowerCase();
+        var exportedOnly = exportedOnlyEl.checked;
+        var showUnres = showUnresolvedEl.checked;
+        var enabled = {};
+        kinds.forEach(function (k) {
+            var box = document.getElementById('kind-' + k);
+            enabled[k] = !box || box.checked;
+        });
+
+        cy.batch(function () {
+            cy.nodes().forEach(function (n) {
+                var kind = n.data('kind');
+                var visible;
+                if (kind === 'External') {
+                    visible = showUnres;
+                } else {
+                    visible = !!enabled[kind];
+                    if (visible && exportedOnly && !n.data('isExported')) { visible = false; }
+                    if (visible && term && n.data('name').toLowerCase().indexOf(term) === -1) { visible = false; }
+                }
+                n.toggleClass('hidden', !visible);
+            });
+            cy.edges().forEach(function (e) {
+                var hide = e.source().hasClass('hidden') || e.target().hasClass('hidden');
+                e.toggleClass('hidden', hide);
+            });
+        });
+        reapplyFocus();
+    }
+
+    searchEl.addEventListener('input', applyFilters);
+    exportedOnlyEl.addEventListener('change', applyFilters);
+    showUnresolvedEl.addEventListener('change', applyFilters);
+
+    // ---- focus mode ------------------------------------------------------
+    var focused = null;
+    var depthEl = document.getElementById('depth');
+    var depthVal = document.getElementById('depth-val');
+
+    // Expands one hop at a time with incomers()/outgoers() and unions the result.
+    // Cytoscape collections dedupe, so a cycle between two private helpers
+    // terminates on its own without any visited-set bookkeeping.
+    //
+    // hops records the distance each node was first reached at. Because the
+    // frontier only ever carries nodes not already in acc, the first time a
+    // node appears is its shortest distance - so a node reachable both directly
+    // and round a longer path shades by the short one.
+    function neighbourhood(node, depth, direction) {
+        var acc = node;
+        var frontier = node;
+        var hops = {};
+        hops[node.id()] = 0;
+        for (var i = 0; i < depth; i++) {
+            var next = cy.collection();
+            if (direction === 'dependents' || direction === 'both') {
+                next = next.union(frontier.incomers());
+            }
+            if (direction === 'dependencies' || direction === 'both') {
+                next = next.union(frontier.outgoers());
+            }
+            next = next.filter(function (e) { return !e.hasClass('hidden'); });
+            var fresh = next.nodes().difference(acc);
+            fresh.forEach(function (n) { hops[n.id()] = i + 1; });
+            acc = acc.union(next);
+            if (fresh.empty()) { break; }
+            frontier = fresh;
+        }
+        return { elements: acc, hops: hops };
+    }
+
+    // 'both' already covers everything, so it has no opposite to show.
+    function oppositeDirection(direction) {
+        if (direction === 'dependents') { return 'dependencies'; }
+        if (direction === 'dependencies') { return 'dependents'; }
+        return null;
+    }
+
+    function currentDirection() {
+        var checked = document.querySelector('input[name="dir"]:checked');
+        return checked ? checked.value : 'dependents';
+    }
+
+    function reapplyFocus() {
+        if (!focused || focused.removed() || focused.hasClass('hidden')) {
+            clearFocusStyling();
+            return;
+        }
+        var depth = parseInt(depthEl.value, 10);
+        var found = neighbourhood(focused, depth, currentDirection());
+        var keep = found.elements;
+
+        // The same walk the other way round. Those nodes are not the answer to
+        // the question asked, but they are still connected, so they get their
+        // own tier rather than being lumped in with the unrelated.
+        var opposite = oppositeDirection(currentDirection());
+        var other = opposite ? neighbourhood(focused, depth, opposite) : null;
+
+        cy.batch(function () {
+            cy.elements().addClass('dimmed');
+            cy.edges().removeClass('focus-edge').removeClass('related-edge');
+            cy.nodes().removeClass('related');
+            // Reset every node, not just the kept ones: a node that was in the
+            // previous focus and is not in this one would keep its old shade.
+            cy.nodes().data('focusBlacken', 0);
+
+            keep.removeClass('dimmed');
+            // The selected node keeps its full colour and each hop away is a
+            // step darker, so the chain reads as a sequence rather than as one
+            // flat blob of blue.
+            keep.nodes().forEach(function (n) {
+                var hop = found.hops[n.id()] || 0;
+                n.data('focusBlacken', Math.min(FOCUS_SHADE_MAX, FOCUS_SHADE_STEP * hop));
+            });
+
+            if (other) {
+                var related = other.elements.nodes().difference(keep.nodes());
+                related.removeClass('dimmed').addClass('related');
+                // Shading continues past where the chain stops, so the two
+                // tiers cannot be confused for each other at a glance.
+                related.forEach(function (n) {
+                    var hop = other.hops[n.id()] || 1;
+                    n.data('focusBlacken', Math.min(
+                        RELATED_SHADE_MAX, RELATED_SHADE_BASE + FOCUS_SHADE_STEP * (hop - 1)));
+                });
+                var reachable = keep.nodes().union(related);
+                other.elements.edges().filter(function (e) {
+                    return reachable.contains(e.source()) && reachable.contains(e.target());
+                }).removeClass('dimmed').addClass('related-edge');
+            }
+
+            // Edges with both ends inside the neighbourhood are the connections
+            // the user clicked to see, so they are highlighted rather than just
+            // left undimmed. An edge with one end outside stays dimmed: drawing
+            // it bright would imply a link to something not in the answer.
+            // Applied last so it wins over related-edge on any shared edge.
+            keep.connectedEdges().filter(function (e) {
+                return keep.contains(e.source()) && keep.contains(e.target());
+            }).removeClass('dimmed').removeClass('related-edge').addClass('focus-edge');
+        });
+    }
+
+    function clearFocusStyling() {
+        cy.elements().removeClass('dimmed');
+        cy.edges().removeClass('focus-edge').removeClass('related-edge');
+        cy.nodes().removeClass('related');
+        cy.nodes().data('focusBlacken', 0);
+    }
+
+    function showDetails(n) {
+        var lvl = n.data('level');
+        var rows = [
+            [str('DetailName'), escapeHtml(n.data('name'))],
+            [str('DetailKind'), escapeHtml(n.data('kind'))],
+            [str('DetailExported'), n.data('kind') === 'External'
+                ? str('ValueNotApplicable')
+                : (n.data('isExported') ? str('ValueYes') : str('ValueNo'))]
+        ];
+        if (n.data('kind') !== 'External') {
+            rows.push([str('DetailTestStep'), lvl === null
+                ? str('ValueInCycle')
+                : fmt('DetailTestStepValue', { step: lvl + 1, total: stepCount })]);
+            rows.push([str('DetailDependents'), String(n.data('dependents'))]);
+            rows.push([str('DetailDependencies'), String(n.data('dependencies'))]);
+            // The transitive pair. Colour is ranked rather than proportional,
+            // so the raw number has to be readable somewhere - this is where.
+            var m = n.data('metrics') || {};
+            if (typeof m.blastRadius === 'number') {
+                rows.push([str('DetailBlastRadius'), String(m.blastRadius)]);
+            }
+            if (typeof m.reach === 'number') {
+                rows.push([str('DetailReach'), String(m.reach)]);
+            }
+        }
+        if (n.data('startLine')) { rows.push([str('DetailLine'), String(n.data('startLine'))]); }
+
+        var html = rows.map(function (r) {
+            return '<dt>' + escapeHtml(r[0]) + '</dt><dd>' + r[1] + '</dd>';
+        }).join('');
+        if (n.data('path')) {
+            // Plain selectable text, deliberately not a link: a file:// href to a
+            // local path does not reliably open from a browser, and a dead link
+            // is worse than text you can copy.
+            html += '<dt>' + escapeHtml(str('DetailPath')) + '</dt><dd><span class="path">' +
+                escapeHtml(n.data('path')) + '</span></dd>';
+        }
+        var list = document.getElementById('details-list');
+        list.innerHTML = html;
+        list.hidden = false;
+        document.getElementById('details-empty').hidden = true;
+    }
+
+    cy.on('tap', 'node', function (evt) {
+        cy.nodes().removeClass('selected-node');
+        focused = evt.target;
+        focused.addClass('selected-node');
+        document.getElementById('focus-controls').hidden = false;
+        document.getElementById('focus-hint').textContent =
+            fmt('FocusHintSelected', { name: focused.data('name') });
+        showDetails(focused);
+        reapplyFocus();
+    });
+
+    cy.on('tap', function (evt) {
+        if (evt.target === cy) { clearFocus(); }
+    });
+
+    // Payload paths are module-relative on purpose - a report gets attached to
+    // a PR, and absolute paths carry the author's username. The module root
+    // comes back from the meta block, so absolute paths are rebuilt only here,
+    // in the browser, at the moment they are needed.
+    function absolutePathFor(node) {
+        var rel = node.data('path');
+        if (!rel) { return null; }
+        var root = meta.moduleRoot;
+        if (!root) { return null; }
+        var joined = root.replace(/[\\/]+$/, '') + '/' + rel;
+        return joined.replace(/\\/g, '/');
+    }
+
+    // An embedded viewer - Live Preview, Simple Browser, an HTML preview
+    // extension, a notebook output cell - sandboxes the page, so a custom
+    // scheme never reaches the OS. Nothing in the page can change that. It can
+    // at least say so, rather than presenting a link that does nothing.
+    //
+    // Not named for VS Code, because it is not VS Code specific: Live Preview
+    // serves over http://127.0.0.1, where nothing about the URL says "webview".
+    function isEmbeddedContext() {
+        // A report opened in a real browser is never framed. Any embedding at
+        // all means custom-scheme navigation is unreliable, and this catches
+        // every host without sniffing for any one of them.
+        //
+        // Identity comparison against window.top is same-origin safe; it is
+        // reading top's PROPERTIES that throws cross-origin.
+        try {
+            if (window.top !== window.self) { return true; }
+        }
+        catch (err) {
+            // A throw here can only mean an exotic embedding. Treat it as embedded.
+            return true;
+        }
+
+        if (location.protocol === 'vscode-webview:') { return true; }
+
+        // An editor preview pane runs the page in the editor's own Electron
+        // renderer. It is top-level and served over file:, so neither the frame
+        // check above nor the scheme check sees it - and yet a custom scheme
+        // never reaches the OS from there, because the Electron host swallows
+        // it without a prompt and without an error.
+        //
+        // The user agent is the only signal that separates this from a real
+        // browser: a browser never reports Electron/. Matched generically
+        // rather than on any one product name, because every Electron host has
+        // the same problem.
+        //
+        // This case looked exactly like a browser refusing the scheme, and cost
+        // a round of diagnosis aimed at the wrong layer. Do not remove it.
+        if (/\bElectron\//.test(navigator.userAgent)) { return true; }
+
+        try {
+            // Still worth checking: catches a TOP-LEVEL webview, which the
+            // frame check above cannot see.
+            var origins = location.ancestorOrigins;
+            for (var i = 0; origins && i < origins.length; i++) {
+                if (origins[i].indexOf('vscode-webview') === 0) { return true; }
+            }
+        }
+        catch (err) {
+            // ancestorOrigins is Chromium-only; absence is not evidence either way.
+        }
+        return false;
+    }
+
+    // vscode://file/{path}:{line}:{column}. Kept separate from the action that
+    // navigates to it, so the construction can be exercised without handing the
+    // browser a URI and launching an editor.
+    //
+    // The path carries no leading slash: on Windows it starts with the drive
+    // letter, and on POSIX VS Code expects vscode://file/Users/... rather than
+    // a doubled slash. encodeURI leaves / and : alone while escaping spaces,
+    // which are common in Windows paths.
+    function vsCodeUriFor(node) {
+        var abs = absolutePathFor(node);
+        if (!abs) { return null; }
+        var line = node.data('startLine') || 1;
+        return 'vscode://file/' + encodeURI(abs.replace(/^\/+/, '')) + ':' + line + ':1';
+    }
+
+    // Shared by the launch and copy actions. The launch adds the embedded check
+    // on top; copying works in an embedded viewer, which is exactly when it is
+    // the only thing that does.
+    function editorLinkCheck(node) {
+        if (!node.data('path')) { return str('ReasonNoFile'); }
+        if (!meta.moduleRoot) { return str('ReasonNoModuleRoot'); }
+        return null;
+    }
+    // Every input the launch depends on, in one copyable block. The point is
+    // that a failure here is reported rather than reasoned about.
+    function diagnosticsFor(node) {
+        var rows = [
+            ['node.data(path)', node.data('path')],
+            ['meta.moduleRoot', meta.moduleRoot],
+            ['absolutePathFor', absolutePathFor(node)],
+            ['vsCodeUriFor', vsCodeUriFor(node)],
+            ['node.data(startLine)', node.data('startLine')],
+            ['location.protocol', location.protocol],
+            ['location.href', location.href],
+            ['window.top === window.self', window.top === window.self],
+            ['isEmbeddedContext()', isEmbeddedContext()],
+            ['navigator.userAgent', navigator.userAgent]
+        ];
+        return rows.map(function (r) {
+            return r[0] + ': ' + (r[1] === undefined ? str('DiagnosticsUndefined') : r[1]);
+        }).join('\n');
+    }
+
+    // One overlay, several occupants. It takes a title plus any of: a block of
+    // preformatted text, a list of label/value rows, and a row of actions.
+    // Diagnostics uses the text; the selection panel uses rows and actions. A
+    // third caller should need no markup either - see the kaizen note in
+    // docs/html-architecture.md.
+    var infoPanel = document.getElementById('info-panel');
+    var infoBody = document.getElementById('info-body');
+    var infoRows = document.getElementById('info-rows');
+    var infoActions = document.getElementById('info-actions');
+    var panelOwner = null;
+    var panelCopyText = '';
+
+    function hideInfoPanel() {
+        infoPanel.hidden = true;
+        panelOwner = null;
+    }
+
+    function showInfoPanel(title, text, options) {
+        var opts = options || {};
+        document.getElementById('info-title').textContent = title;
+        panelOwner = opts.owner || null;
+
+        infoBody.textContent = text || '';
+        infoBody.hidden = !text;
+
+        infoRows.textContent = '';
+        infoRows.hidden = !opts.rows || !opts.rows.length;
+        (opts.rows || []).forEach(function (row) {
+            var dt = document.createElement('dt');
+            dt.textContent = row[0];
+            var dd = document.createElement('dd');
+            dd.textContent = row[1];
+            infoRows.appendChild(dt);
+            infoRows.appendChild(dd);
+        });
+
+        infoActions.textContent = '';
+        infoActions.hidden = !opts.actions || !opts.actions.length;
+        (opts.actions || []).forEach(function (action) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.disabled = !!action.reason;
+            button.textContent = action.reason
+                ? action.label + str('MenuReasonSeparator') + action.reason
+                : action.label;
+            if (!action.reason) { button.addEventListener('click', action.run); }
+            infoActions.appendChild(button);
+        });
+
+        // Whatever is on screen is what Copy hands over, rows included.
+        panelCopyText = text || (opts.rows || []).map(function (row) {
+            return row[0] + ': ' + row[1];
+        }).join('\n');
+
+        infoPanel.hidden = false;
+    }
+
+    document.getElementById('info-close').addEventListener('click', hideInfoPanel);
+    document.getElementById('info-copy').addEventListener('click', function () {
+        copyText(panelCopyText);
+    });
+
+    // A custom-scheme navigation reports nothing on failure - no error, no
+    // console entry, no callback. Losing OS focus is the only observable signal
+    // that the URI actually reached an application.
+    //
+    // A user who declines the browser's own prompt also produces no blur, so
+    // this cannot tell "declined" from "no handler". It does not need to: both
+    // end at the same fallback.
+    var LAUNCH_WATCH_MS = 1200;
+
+    // onNoLaunch is a parameter rather than a hardcoded call so the watcher can
+    // be exercised without the banner, and so a second caller could report
+    // differently.
+    function attemptEditorLaunch(uri, onNoLaunch) {
+        var launched = false;
+        function onBlur() { launched = true; }
+
+        // Additive: the menu's own blur handler stays registered and still
+        // runs. Two listeners on the same event do not displace each other, so
+        // closing the menu cannot eat this signal.
+        window.addEventListener('blur', onBlur);
+
+        window.setTimeout(function () {
+            window.removeEventListener('blur', onBlur);
+            if (!launched) { onNoLaunch(uri); }
+        }, LAUNCH_WATCH_MS);
+    }
+
+    // The uri is part of the reporter contract and another reporter may want
+    // it; this one deliberately does not repeat it. What the user needs is the
+    // command that unblocks the link, on a button, because the link itself has
+    // just been shown not to work.
+    //
+    // The command name is supplied by whatever generated the report. Without
+    // one there is nothing to run, so the message says so rather than reading
+    // "Run  in PowerShell".
+    // An http origin is one a browser policy can match, and the page knows its
+    // own. Offering the command already scoped to it removes the step where the
+    // reader edits a generic command to insert a port they have to go and read
+    // off the address bar. A file:// document has no origin worth naming, so it
+    // gets the generic form.
+    function servedOrigin() {
+        if (location.protocol !== 'http:' && location.protocol !== 'https:') { return null; }
+        return location.origin || null;
+    }
+
+    function reportNoLaunch(uri) {
+        var origin = servedOrigin();
+        if (origin && hasStr('editorLinkHelpCommandForOrigin')) {
+            // {editorLinkHelpCommandForOrigin} inside the message was already
+            // substituted in PowerShell, because it is a caller token. What is
+            // left in both places is {origin}, which only the browser knows.
+            var command = fmt('editorLinkHelpCommandForOrigin', { origin: origin });
+            showBanner(fmt('EditorLinkNoLaunchOrigin', { origin: origin }), command);
+            return;
+        }
+        if (hasStr('editorLinkHelpCommand')) {
+            showBanner(str('EditorLinkNoLaunch'), str('editorLinkHelpCommand'));
+            return;
+        }
+        showBanner(str('EditorLinkNoLaunchNoCommand'));
+    }
+
+    function copyText(text) {
+        // The textarea route, not navigator.clipboard. Not because the async
+        // API is missing - file:// counts as potentially trustworthy in Chrome
+        // and Firefox, so it is normally present - but because it is the one
+        // path that works everywhere this page gets opened, including framed in
+        // a viewer where clipboard permission is not granted to the frame.
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.top = '-1000px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+        catch (err) {
+            // Nothing useful to fall back to, and no way to surface it from a
+            // menu that has already closed.
+        }
+    }
+    // ---- selection -------------------------------------------------------
+    // Shift-click or shift-drag builds a selection; two or more selected items
+    // open the panel. Facts and actions are registries for the same reason the
+    // context menu's are: adding one is a single entry, and a reader can see the
+    // whole vocabulary in one place.
+    //
+    // Both take the selected collection, not one item, because the interesting
+    // questions about several things are the ones a single item cannot answer -
+    // what do these all rest on, what would they break between them.
+
+    // Edges point caller -> callee, so successors() is everything a node rests
+    // on and predecessors() is everything resting on it, transitively.
+    function selectionDependencies(selected) {
+        return selected.successors().nodes().difference(selected);
+    }
+
+    function selectionDependents(selected) {
+        return selected.predecessors().nodes().difference(selected);
+    }
+
+    // What every selected item rests on, however indirectly. The gravity
+    // question asked of more than one thing at a time: change any of this and
+    // you change all of them.
+    function sharedFoundation(selected) {
+        var shared = null;
+        selected.forEach(function (n) {
+            var reach = n.successors().nodes();
+            shared = (shared === null) ? reach : shared.intersection(reach);
+        });
+        return (shared === null) ? cy.collection() : shared.difference(selected);
+    }
+
+    function nameList(collection) {
+        var names = collection.map(function (n) { return n.data('name'); }).sort();
+        var shown = names.slice(0, SELECTION_NAME_LIMIT);
+        if (names.length > shown.length) {
+            shown.push(fmt('SelectionMore', { count: names.length - shown.length }));
+        }
+        return shown.join(', ');
+    }
+
+    var SELECTION_NAME_LIMIT = 6;
+
+    var SELECTION_FACTS = [
+        {
+            id: 'count',
+            label: function () { return str('SelectionCount'); },
+            value: function (selected) {
+                var kinds = {};
+                selected.forEach(function (n) {
+                    var k = n.data('kind');
+                    kinds[k] = (kinds[k] || 0) + 1;
+                });
+                var parts = Object.keys(kinds).sort().map(function (k) {
+                    return kinds[k] + ' ' + k;
+                });
+                return selected.length + ' (' + parts.join(', ') + ')';
+            }
+        },
+        {
+            id: 'shared-foundation',
+            label: function () { return str('SelectionSharedFoundation'); },
+            value: function (selected) {
+                var shared = sharedFoundation(selected);
+                if (shared.empty()) { return str('SelectionNoneShared'); }
+                return shared.length + ' - ' + nameList(shared);
+            }
+        },
+        {
+            id: 'internal-links',
+            label: function () { return str('SelectionInternalLinks'); },
+            value: function (selected) {
+                // Edges with both ends inside the selection: whether these are
+                // one cluster or several unrelated things picked together.
+                return String(selected.edgesWith(selected).length);
+            }
+        },
+        {
+            id: 'dependencies',
+            label: function () { return str('SelectionDependencies'); },
+            value: function (selected) { return String(selectionDependencies(selected).length); }
+        },
+        {
+            id: 'dependents',
+            label: function () { return str('SelectionDependents'); },
+            value: function (selected) { return String(selectionDependents(selected).length); }
+        },
+        {
+            id: 'test-steps',
+            label: function () { return str('SelectionTestSteps'); },
+            value: function (selected) {
+                var levels = [];
+                selected.forEach(function (n) {
+                    var lvl = n.data('level');
+                    if (lvl !== null && lvl !== undefined) { levels.push(lvl + 1); }
+                });
+                if (!levels.length) { return str('ValueNotApplicable'); }
+                levels.sort(function (a, b) { return a - b; });
+                var low = levels[0];
+                var high = levels[levels.length - 1];
+                return (low === high) ? String(low) : (low + '-' + high);
+            }
+        }
+    ];
+
+    // check returns null when the action applies, or the reason it does not -
+    // the same contract the context menu uses, so an inapplicable action greys
+    // out with its reason rather than vanishing.
+    var SELECTION_ACTIONS = [
+        {
+            id: 'select-shared-foundation',
+            label: function () { return str('SelectionActionSelectFoundation'); },
+            check: function (selected) {
+                if (sharedFoundation(selected).empty()) { return str('SelectionNoneShared'); }
+                return null;
+            },
+            run: function (selected) { sharedFoundation(selected).select(); }
+        },
+        {
+            id: 'copy-names',
+            label: function () { return str('SelectionActionCopyNames'); },
+            check: function () { return null; },
+            run: function (selected) {
+                copyText(selected.map(function (n) { return n.data('name'); }).sort().join('\n'));
+            }
+        },
+        {
+            id: 'copy-paths',
+            label: function () { return str('SelectionActionCopyPaths'); },
+            check: function (selected) {
+                if (selected.filter(function (n) { return !!n.data('path'); }).empty()) {
+                    return str('ReasonNoFile');
+                }
+                return null;
+            },
+            run: function (selected) {
+                var paths = [];
+                selected.forEach(function (n) {
+                    if (n.data('path')) { paths.push(absolutePathFor(n) || n.data('path')); }
+                });
+                copyText(paths.sort().join('\n'));
+            }
+        },
+        {
+            id: 'copy-editor-links',
+            label: function () { return str('SelectionActionCopyLinks'); },
+            check: function (selected) {
+                if (selected.filter(function (n) { return !editorLinkCheck(n); }).empty()) {
+                    return str('ReasonNoFile');
+                }
+                return null;
+            },
+            run: function (selected) {
+                var uris = [];
+                selected.forEach(function (n) {
+                    if (!editorLinkCheck(n)) { uris.push(vsCodeUriFor(n)); }
+                });
+                copyText(uris.join('\n'));
+            }
+        },
+        {
+            id: 'clear',
+            label: function () { return str('SelectionActionClear'); },
+            check: function () { return null; },
+            run: function (selected) { selected.unselect(); }
+        }
+    ];
+
+    function renderSelection() {
+        var selected = cy.nodes(':selected').filter(function (n) { return !n.hasClass('hidden'); });
+
+        // One item is the Details panel's job; the panel is for the questions
+        // that only arise once there is more than one.
+        if (selected.length < 2) {
+            if (panelOwner === 'selection') { hideInfoPanel(); }
+            return;
+        }
+
+        var rows = SELECTION_FACTS.map(function (fact) {
+            return [fact.label(), fact.value(selected)];
+        });
+
+        var actions = SELECTION_ACTIONS.map(function (action) {
+            var reason = action.check ? action.check(selected) : null;
+            return {
+                label: action.label(),
+                reason: reason,
+                run: function () { action.run(selected); }
+            };
+        });
+
+        showInfoPanel(fmt('SelectionTitle', { count: selected.length }), null, {
+            rows: rows,
+            actions: actions,
+            owner: 'selection'
+        });
+    }
+
+    // Re-rendered rather than patched: an action may change the selection it was
+    // computed from, and every fact is cheap on a graph this size.
+    cy.on('select unselect', 'node', renderSelection);
+
+    // ---- node context menu -----------------------------------------------
+    // Actions are a registry, not hardcoded markup: a new entry here is the
+    // whole change. Each one declares whether it applies to the node under the
+    // cursor and why not, so an inapplicable action greys out with a reason
+    // instead of silently vanishing.
+    //
+    //   id       stable key, used for nothing yet but worth having
+    //   label    menu text, or a function of the node returning it
+    //   check    returns null when applicable, or the reason it is not
+    //   href     returns a URI; the item renders as a real link
+    //   run      performs the action for that node; the item renders as a button
+    //
+    // Prefer href over run for anything that hands a URI to another
+    // application. Assigning window.location to a custom scheme is silently
+    // discarded - no navigation, no error, nothing in the console - while a
+    // link the user actually clicked is the supported route.
+
+
+    var NODE_ACTIONS = [
+        {
+            id: 'open-in-vscode',
+            // An external target has no definition inside this module, so the
+            // path recorded against it is the CALL SITE. Opening that is still
+            // useful, but calling it "file location" would be a lie about what
+            // the page knows - the definition is exactly what static analysis
+            // could not resolve.
+            label: function (node) {
+                return node.data('kind') === 'External'
+                    ? str('MenuOpenCallSite') : str('MenuOpenFileLocation');
+            },
+            check: function (node) {
+                var reason = editorLinkCheck(node);
+                if (reason) { return reason; }
+                if (isEmbeddedContext()) {
+                    return str('ReasonEmbedded');
+                }
+                return null;
+            },
+            href: vsCodeUriFor,
+            // The navigation itself reports nothing either way, so the click
+            // starts a watch for the one observable signal there is.
+            afterClick: function (node) {
+                attemptEditorLaunch(vsCodeUriFor(node), reportNoLaunch);
+            }
+        },
+        {
+            id: 'copy-editor-link',
+            label: str('MenuCopyEditorLink'),
+            // Deliberately without the embedded check: pasting the URI into the
+            // Run dialog, Spotlight or a terminal opens the file whatever the
+            // browser is or is not willing to do.
+            check: editorLinkCheck,
+            run: function (node) {
+                copyText(vsCodeUriFor(node));
+            }
+        },
+        {
+            id: 'copy-path',
+            label: str('MenuCopyPath'),
+            check: function (node) {
+                if (!node.data('path')) { return str('ReasonNoFile'); }
+                return null;
+            },
+            run: function (node) {
+                copyText(absolutePathFor(node) || node.data('path'));
+            }
+        },
+        {
+            id: 'diagnostics',
+            label: str('MenuDiagnostics'),
+            check: function () { return null; },
+            run: function (node) {
+                showInfoPanel('Diagnostics', diagnosticsFor(node));
+            }
+        }
+    ];
+
+    var menuEl = document.getElementById('node-menu');
+    var menuNode = null;
+
+    function closeNodeMenu() {
+        menuEl.classList.remove('open');
+        menuEl.setAttribute('aria-hidden', 'true');
+        menuNode = null;
+    }
+
+    function openNodeMenu(node, clientX, clientY) {
+        menuNode = node;
+        menuEl.textContent = '';
+
+        var title = document.createElement('div');
+        title.className = 'menu-title';
+        title.textContent = node.data('name');
+        menuEl.appendChild(title);
+
+        NODE_ACTIONS.forEach(function (action) {
+            var reason = action.check ? action.check(node) : null;
+            var label = (typeof action.label === 'function') ? action.label(node) : action.label;
+            var item;
+
+            if (action.href && !reason) {
+                // A real link, not a scripted navigation - see the note on the
+                // registry above. There is no disabled state for an anchor, so
+                // an inapplicable action falls through to a disabled button.
+                item = document.createElement('a');
+                item.href = action.href(node);
+                item.addEventListener('click', function () {
+                    closeNodeMenu();
+                    // No preventDefault: the anchor's own navigation is what
+                    // carries the user activation, and a scripted assignment to
+                    // window.location for a custom scheme is discarded.
+                    if (action.afterClick) { action.afterClick(node); }
+                });
+            }
+            else {
+                item = document.createElement('button');
+                item.type = 'button';
+                item.disabled = !!reason;
+                if (!reason && action.run) {
+                    item.addEventListener('click', function () {
+                        closeNodeMenu();
+                        action.run(node);
+                    });
+                }
+            }
+
+            item.setAttribute('role', 'menuitem');
+            item.textContent = reason ? label + str('MenuReasonSeparator') + reason : label;
+            menuEl.appendChild(item);
+        });
+
+        // Show before measuring; a display:none element has no dimensions.
+        menuEl.classList.add('open');
+        menuEl.setAttribute('aria-hidden', 'false');
+        var box = menuEl.getBoundingClientRect();
+        // Flip rather than clamp: a menu pinned to the edge under the cursor
+        // covers the node that was right-clicked.
+        var x = (clientX + box.width > window.innerWidth) ? clientX - box.width : clientX;
+        var y = (clientY + box.height > window.innerHeight) ? clientY - box.height : clientY;
+        menuEl.style.left = Math.max(0, x) + 'px';
+        menuEl.style.top = Math.max(0, y) + 'px';
+
+        // Anchors as well as buttons now, or the first item goes unfocused
+        // whenever the top action happens to be a link.
+        var first = menuEl.querySelector('a[href], button:not(:disabled)');
+        if (first) { first.focus(); }
+    }
+
+    cy.on('cxttap', 'node', function (evt) {
+        var oe = evt.originalEvent;
+        if (oe && oe.preventDefault) { oe.preventDefault(); }
+        openNodeMenu(evt.target, oe ? oe.clientX : 0, oe ? oe.clientY : 0);
+    });
+
+    // Right-clicking the background closes it; so does anything else that moves
+    // the view out from under it.
+    cy.on('cxttap', function (evt) {
+        if (evt.target === cy) { closeNodeMenu(); }
+    });
+    cy.on('tap zoom pan', closeNodeMenu);
+
+    // The browser menu would otherwise appear on top of ours.
+    document.getElementById('cy').addEventListener('contextmenu', function (ev) {
+        ev.preventDefault();
+    });
+
+    document.addEventListener('mousedown', function (ev) {
+        if (menuEl.classList.contains('open') && !menuEl.contains(ev.target)) {
+            closeNodeMenu();
+        }
+    });
+    document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') { closeNodeMenu(); hideInfoPanel(); }
+    });
+    window.addEventListener('blur', closeNodeMenu);
+
+    function clearFocus() {
+        focused = null;
+        clearFocusStyling();
+        cy.nodes().removeClass('selected-node');
+        document.getElementById('focus-controls').hidden = true;
+        document.getElementById('focus-hint').textContent = str('FocusHintEmpty');
+        document.getElementById('details-list').hidden = true;
+        document.getElementById('details-empty').hidden = false;
+    }
+
+    // Which view the report opens in is a data decision, so the markup carries
+    // no checked attribute. An unrecognised value leaves nothing checked, and
+    // currentFlow() falls back to the same default rather than to whichever
+    // radio happens to be first.
+    var startFlow = document.querySelector('input[name="flow"][value="' + cfgText('DefaultFlow', 'foundation') + '"]');
+    if (startFlow) { startFlow.checked = true; }
+
+    depthEl.value = String(cfg('FocusDepth', 2));
+    depthVal.textContent = depthEl.value;
+    depthEl.addEventListener('input', function () {
+        depthVal.textContent = depthEl.value;
+        reapplyFocus();
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="dir"]'), function (r) {
+        r.addEventListener('change', reapplyFocus);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="flow"]'), function (r) {
+        r.addEventListener('change', function () { runLayout(); fitVisible(); });
+    });
+    document.getElementById('clear-focus').addEventListener('click', clearFocus);
+    document.getElementById('fit').addEventListener('click', function () {
+        runLayout();
+        fitVisible();
+    });
+
+    // Wheel sensitivity lives on the renderer and is read at event time, so it
+    // can be changed live. It is not part of Cytoscape's public API, hence the
+    // guard: if a future version moves it, the slider goes inert rather than
+    // throwing and taking the page down with it.
+    var zoomSpeedEl = document.getElementById('zoom-speed');
+    var zoomSpeedVal = document.getElementById('zoom-speed-val');
+
+    function applyZoomSpeed() {
+        var value = parseFloat(zoomSpeedEl.value);
+        if (isNaN(value)) { return; }
+        zoomSpeedVal.textContent = value + str('ZoomSpeedSuffix');
+        var renderer = cy._private && cy._private.renderer;
+        if (renderer && 'wheelSensitivity' in renderer) {
+            renderer.wheelSensitivity = value;
+        }
+    }
+
+    // Range as well as starting value, so the .psd1 is the whole story for this
+    // control and the markup's attributes stay placeholders.
+    zoomSpeedEl.min = String(cfg('ZoomSpeedMin', 0.25));
+    zoomSpeedEl.max = String(cfg('ZoomSpeedMax', 5));
+    zoomSpeedEl.step = String(cfg('ZoomSpeedStep', 0.25));
+    zoomSpeedEl.value = String(ZOOM_SPEED_DEFAULT);
+    zoomSpeedEl.addEventListener('input', applyZoomSpeed);
+    applyZoomSpeed();
+
+    // ---- sidebar splitter ------------------------------------------------
+    // Cytoscape only notices a container size change when it is told, so every
+    // width change ends in cy.resize(). The layout is deliberately NOT re-run:
+    // re-ranking mid-drag would move the nodes the user is reading.
+    var splitterEl = document.getElementById('splitter');
+    var sidebarEl = document.getElementById('sidebar');
+    var SIDEBAR_MIN = cfg('SidebarMinWidth', 200);
+    var SIDEBAR_DEFAULT = cfg('SidebarWidth', 300);
+    var CANVAS_MIN = cfg('CanvasMinWidth', 320);
+    var resizeFrame = null;
+
+    function setSidebarWidth(px) {
+        // Never let the drag squeeze the graph out of existence, and never let
+        // the clamp itself push the sidebar below its own minimum.
+        var max = Math.max(SIDEBAR_MIN, window.innerWidth - CANVAS_MIN);
+        var w = Math.round(Math.min(Math.max(px, SIDEBAR_MIN), max));
+        sidebarEl.style.flexBasis = w + 'px';
+        sidebarEl.style.width = w + 'px';
+        splitterEl.setAttribute('aria-valuenow', String(w));
+        // Coalesce to one resize per frame; pointermove fires far faster.
+        if (resizeFrame !== null) { return; }
+        resizeFrame = requestAnimationFrame(function () {
+            resizeFrame = null;
+            cy.resize();
+        });
+    }
+
+    splitterEl.addEventListener('pointerdown', function (ev) {
+        // Pointer capture keeps the drag alive over the canvas, where
+        // Cytoscape would otherwise swallow the move events.
+        ev.preventDefault();
+        splitterEl.setPointerCapture(ev.pointerId);
+        splitterEl.classList.add('dragging');
+        document.body.classList.add('resizing');
+    });
+
+    splitterEl.addEventListener('pointermove', function (ev) {
+        if (!splitterEl.classList.contains('dragging')) { return; }
+        setSidebarWidth(ev.clientX - sidebarEl.getBoundingClientRect().left);
+    });
+
+    function endResize(ev) {
+        if (!splitterEl.classList.contains('dragging')) { return; }
+        splitterEl.classList.remove('dragging');
+        document.body.classList.remove('resizing');
+        try { splitterEl.releasePointerCapture(ev.pointerId); } catch (err) { /* already gone */ }
+        cy.resize();
+    }
+    splitterEl.addEventListener('pointerup', endResize);
+    splitterEl.addEventListener('pointercancel', endResize);
+
+    splitterEl.addEventListener('dblclick', function () {
+        setSidebarWidth(SIDEBAR_DEFAULT);
+    });
+
+    splitterEl.addEventListener('keydown', function (ev) {
+        var step = ev.shiftKey ? 40 : 10;
+        var current = sidebarEl.getBoundingClientRect().width;
+        if (ev.key === 'ArrowLeft') { setSidebarWidth(current - step); }
+        else if (ev.key === 'ArrowRight') { setSidebarWidth(current + step); }
+        else if (ev.key === 'Home') { setSidebarWidth(SIDEBAR_DEFAULT); }
+        else { return; }
+        ev.preventDefault();
+    });
+
+    // A window narrow enough to violate the clamp has to be re-clamped, or the
+    // sidebar keeps a width that leaves no canvas at all.
+    window.addEventListener('resize', function () {
+        setSidebarWidth(sidebarEl.getBoundingClientRect().width);
+    });
+
+    setSidebarWidth(SIDEBAR_DEFAULT);
+
+    // ---- banner ----------------------------------------------------------
+    // One banner, several possible messages. Appending rather than assigning is
+    // the point: a second condition used to overwrite the first, so whichever
+    // guard ran last was the only one the user ever saw.
+    var banner = document.getElementById('banner');
+    var bannerMessages = [];
+    var bannerCopyEl = document.getElementById('banner-copy');
+    var bannerCopyValue = null;
+    bannerCopyEl.addEventListener('click', function () {
+        if (bannerCopyValue) { copyText(bannerCopyValue); }
+    });
+    document.getElementById('banner-close').addEventListener('click', function () {
+        banner.style.display = 'none';
+    });
+
+    // copyValue is optional: a message that names something worth pasting
+    // elsewhere gets a button, and the rest do not. The button is the whole
+    // point of the no-launch message - a user reading it cannot click a link
+    // that has just been shown not to work.
+    //
+    // copyLabelKey travels with it. Two different messages now want a copy
+    // button for two different things - a command, and this page's own URL -
+    // and a fixed 'Copy command' label on a button that copies a URL is a
+    // message that lies.
+    function showBanner(text, copyValue, copyLabelKey) {
+        bannerMessages.push(text);
+        document.getElementById('banner-text').textContent = bannerMessages.join(' ');
+        if (copyValue) {
+            bannerCopyValue = copyValue;
+            bannerCopyEl.textContent = str(copyLabelKey || 'BannerCopyLabel');
+            bannerCopyEl.hidden = false;
+        }
+        banner.style.display = 'flex';
+    }
+
+    // ---- scale guard -----------------------------------------------------
+    if (nodes.length > NODE_LIMIT) {
+        exportedOnlyEl.checked = true;
+        showBanner(fmt('ScaleGuard', { count: nodes.length, limit: NODE_LIMIT }));
+    }
+
+    // ---- embedded viewer guard -------------------------------------------
+    // Said on load, not only in the context menu: a user who never right-clicks
+    // would otherwise never learn the page is running degraded.
+    //
+    // "Re-open this report in a real browser" leaves the reader to work out
+    // WHERE. The page is sitting on the answer, so it shows it with a copy
+    // button - the same mechanism, and the same reason, as the command button
+    // on the no-launch message. A file:// document has an address worth
+    // pasting too, so this is not limited to the served case.
+    if (isEmbeddedContext()) {
+        if (location.href) {
+            showBanner(fmt('EmbeddedViewerUrl', { url: location.href }), location.href, 'BannerCopyUrlLabel');
+        }
+        else {
+            showBanner(str('EmbeddedViewer'));
+        }
+    }
+
+    // First paint. Filters run before the first layout, so nodes that start
+    // hidden - unresolved externals are off by default - never occupy space in
+    // it. Cytoscape excludes display:none elements from layouts.
+    renderOrder();
+    applyFilters();
+    runLayout();
+    fitVisible();
+}());
+</script>
+</body>
+</html>
