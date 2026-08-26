@@ -342,8 +342,8 @@ input[type="range"] { width: 100%; }
                 <h2>View</h2>
                 <!-- ZOOM_SPEED_DEFAULT is the source of truth; the value and
                      label below are placeholders it overwrites at init. -->
-                <label for="zoom-speed">Zoom speed: <b id="zoom-speed-val">1x</b></label>
-                <input type="range" id="zoom-speed" min="0.25" max="5" step="0.25" value="1">
+                <label for="zoom-speed">Zoom speed: <b id="zoom-speed-val">1.25x</b></label>
+                <input type="range" id="zoom-speed" min="0.25" max="5" step="0.25" value="1.25">
                 <p class="hint">Mouse wheel zoom sensitivity.</p>
             </div>
             <div class="section btn-row">
@@ -422,7 +422,7 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     document.getElementById('app').hidden = false;
 
     var NODE_LIMIT = 400;
-    var ZOOM_SPEED_DEFAULT = 1;
+    var ZOOM_SPEED_DEFAULT = 1.25;
     var KIND_HEX = {
         Function: '#4da3ff', Class: '#f2c14e', Enum: '#6ddf6d',
         Script: '#9b8cff', External: '#ff7043'
