@@ -38,8 +38,8 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
     }
 
     It 'leaves no unreplaced template tokens' {
-        $script:Html | Should-NotMatchString '__GRAPH_DATA__'
-        $script:Html | Should-NotMatchString '__GRAPH_META__'
+        $script:Html | Should-NotMatchString '__DATA__'
+        $script:Html | Should-NotMatchString '__META__'
         $script:Html | Should-NotMatchString '__PAGE_TITLE__'
     }
 

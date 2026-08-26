@@ -74,10 +74,10 @@ function ConvertTo-GraphHtml {
     # and the CSS both contain '$' and '\', which the regex engine treats as
     # substitution patterns and silently eats. The result would be corrupted
     # output rather than an error.
-    $document = $template.Replace('/*__GRAPH_DATA__*/ null', $dataJson)
-    $document = $document.Replace('/*__GRAPH_META__*/ null', $metaJson)
-    $document = $document.Replace('/*__GRAPH_CONFIG__*/ null', $configJson)
-    $document = $document.Replace('/*__GRAPH_STRINGS__*/ null', $stringsJson)
+    $document = $template.Replace('/*__DATA__*/ null', $dataJson)
+    $document = $document.Replace('/*__META__*/ null', $metaJson)
+    $document = $document.Replace('/*__CONFIG__*/ null', $configJson)
+    $document = $document.Replace('/*__STRINGS__*/ null', $stringsJson)
     $document = $document.Replace('__PAGE_TITLE__', (ConvertTo-EscapedHtmlText -Text $Title))
 
     $document
