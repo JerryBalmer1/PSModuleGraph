@@ -124,6 +124,90 @@ produced this section.
 Absence of a reply is not consent. A posted gate with no reply means wait. Not
 "the work seemed low-risk, so I continued".
 
+## Kaizen: the knowledge substrate
+
+**A dimension is `Kind` generalised** - open-ended instead of closed,
+hierarchical instead of flat, multi-valued instead of single, evidence-backed
+instead of asserted, and able to classify anything addressable rather than only
+nodes in one module. `networking:cisco:asa:version:7.4.5` is a path on a
+dimension; so is `structure:function`; and a facet is itself a subject, which is
+where the recursion comes from and it is real rather than decorative.
+
+**If everything else in this section is lost, re-derive from that paragraph.**
+
+This section is about the *store*. The **Kaizen** section further down is about
+the *code* - notice one improvement per iteration, classify it by size, take
+only what the size permits. They share a name because they are the same habit
+pointed at two things: this one asks what the store learned, that one asks what
+the code should have looked like. The reflection pass below feeds
+`knowledge/ledger/`; the code loop feeds `docs/improvements.md`.
+
+The store is `knowledge/` at the repository root, with `knowledge/NAMING.md` as
+its own authority. It is not under `src/` and must never move there: the
+directory boundary is what makes it liftable.
+
+1. **The store is language-neutral and PowerShell is a tenant, not the owner.**
+   No PowerShell types, no `.psd1`, no `PSTypeName`, no serialised objects, no
+   PowerShell-shaped assumptions anywhere in `knowledge/`. Markdown with YAML
+   front matter, validated by JSON Schema. The test is concrete: **if a Python
+   or Go implementation would have to reshape the data to read it, it is wrong.**
+2. **Every implementation ends with a ledger entry, a reflection pass, and an
+   annotated git tag.** Not optional and not "when significant". An
+   implementation that produces no `knowledge/ledger/NNNN-slug.md` did not
+   happen. Patch for a normal implementation, minor when a facet is added or
+   split, major when a schema changes shape. The tag is the **last** action,
+   after the build is green, and is always `-a`, never lightweight.
+3. **Renames never delete.** The old name becomes an alias with a `since`
+   marker. Anything that resolved yesterday resolves today. This applies to
+   facet ids, to paths, and to subject URNs. Removal is not an operation this
+   store has.
+4. **Confidence is required and never defaults to 1.** An inference from a name
+   is not the same fact as a declared tag, and the store must always be able to
+   say which it holds. If you are tempted to write 1 because you have nothing
+   better, the honest value is lower and the evidence block should say why.
+5. **Reflection proposes; the next implementation disposes.** A split or a merge
+   is written into the ledger as a proposal and applied by a *later* pass, once
+   the owner has seen it. An agent that reorganises a taxonomy inside the same
+   turn it discovered the need is an agent nobody can review.
+6. **The Skeptic persona runs on every implementation**, and its output is the
+   ledger's "What I could not verify" section. That section is never omitted,
+   never empty, and never "nothing". There is always something.
+7. **A dimension nobody will filter on does not get created.** The test for a new
+   facet is that it changes what someone can see or do in the HTML report. A
+   dimension that changes nothing is decoration, and decoration is what makes a
+   taxonomy stop being trusted.
+8. **The namespace set is data.** It is destined to be a facet. It must never
+   become an enum in a `.ps1`; a reader that hardcodes it has moved the taxonomy
+   into code, which is the thing this store exists to prevent.
+
+### The four personas
+
+Working modes, not costumes. The value is that each asks a different question
+first, and the ledger names which were used so the lens is visible.
+
+- **Taxonomist** - designing or changing a facet. *What does this distinction let
+  someone do that they could not do before?*
+- **Archivist** - writing to the store. *Will this parse and make sense to a
+  reader in another language who has never seen this repo?*
+- **Integrator** - connecting the store to the graph and the report. *What is the
+  smallest seam that does this without either side learning about the other?*
+- **Skeptic** - invoked last, always. *What did we assert without evidence?*
+
+### The reflection pass
+
+Five questions at the end of every implementation, answered in the ledger's
+**Dimensional impact** section. **"No" is a complete answer and is the expected
+answer most of the time** - a reflection pass that finds a new dimension every
+time is a pass that is inventing them.
+
+1. Did this reveal a dimension that does not exist yet?
+2. Is an existing facet doing two jobs?
+3. Did two facets turn out to be the same thing?
+4. Did anything classify at a depth the facet did not anticipate? A path three
+   levels deeper than its siblings means the hierarchy is wrong, not that the
+   subject is unusual.
+5. Could this facet classify facets? If so it belongs in `meta/` as well.
+
 ## Build
 
 ```powershell
@@ -375,6 +459,10 @@ mechanism explains a link that does nothing.
 
 **Every iteration leaves this repository slightly better shaped than it found
 it, and writes down what it noticed but did not do.**
+
+> This is the *code* half. The store half is **"Kaizen: the knowledge
+> substrate"** above, and its reflection pass is not optional the way an
+> improvement here is. Both run on every implementation.
 
 This is a standing instruction. It applies to every task, whether or not the
 prompt mentions it, and it is not licence to widen scope - it is the opposite.

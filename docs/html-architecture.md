@@ -71,6 +71,63 @@ Each has one validator, dispatched from the entry's `Type`.
 > editing a `.ps1`, the design is wrong. Report that as a bug; do not work
 > around it.
 
+## Facets at the seam — designed, not built
+
+Dimensions arrive at the renderer as **generic facet data through the seam that
+already exists**. `ConvertTo-GraphHtml` knows what a facet is; nothing below it
+does. The renderer receives axes, paths and values exactly as it currently
+receives `editorLinkHelpCommand` without knowing what a PSModuleGraph command
+is. **The renderer must not learn what a facet means** — not in code, not in a
+setting name, not in a string key.
+
+This is a map for the next implementation to land on. None of it is built, and
+building it is not licence granted by writing it down.
+
+**`Kind` becomes the first facet rather than a special case.** The `KINDS`
+checkbox group in the sidebar is already a facet selector wearing one facet's
+clothes: a list of paths, each with a count and a swatch, that the user filters
+by. Generalising the *shape* means that group is rendered from a facet
+descriptor rather than from `KIND_HEX` and a hardcoded `kind` field — one group
+per facet the payload carries, with `structure` supplying today's behaviour
+unchanged. The feature is not new filtering; it is the same filtering with the
+facet id passed in rather than assumed.
+
+**Colour-by, group-by and filter-by all take a facet id.** Today all three take
+`Kind` implicitly — `KIND_HEX` colours it, the layout does not group by it, and
+`applyFilters` reads `n.data('kind')` directly. Each becomes a setting naming a
+facet, which is a data change under the existing rule. The colours then belong
+to the facet's paths rather than to a `KIND_HEX` literal, which also closes the
+open "all colours externalised" checklist item rather than working around it.
+
+**A heatmap is two facets crossed with a count.** Rows are the paths of one
+facet, columns the paths of another, cells the number of subjects carrying both.
+That is the whole definition and it needs no new data beyond what a `facets`
+block already carries. Stating it is the deliverable here; implementing it is
+explicitly out of scope, and it should not be attempted before a facet exists
+that a reader would actually want crossed with `structure`.
+
+**The payload gains a `facets` block alongside `nodes` and `links`.** Sketch,
+not contract:
+
+```
+facets: [
+  { id, label, kind, separator,
+    paths: [ { path, label, color?, count } ] }
+]
+```
+
+and each node gains `facets: { <facetId>: [ <path>, ... ] }` — an array because a
+facet is multi-valued even where today's data never uses more than one. Nothing
+emits this yet, and `ConvertTo-GraphJson` remains the single serialiser: when the
+block is built it is built there, not in a second one for the page.
+
+**The one trap.** `nodes[].kind` is load-bearing in `elements.js`, `render.js`,
+`filters.js` and `sidebar.js`. Replacing it with `facets.structure` in a single
+pass would be a rename spread across four files with no way to verify behaviour
+was unchanged — the same argument already recorded against half-renames. The
+first implementation should emit `facets` *alongside* `kind`, prove the page
+reads the same, and remove `kind` in a later pass.
+
 ## Kaizen in this subsystem
 
 The general rule is the **Kaizen** section of `CLAUDE.md`. Here it has a
