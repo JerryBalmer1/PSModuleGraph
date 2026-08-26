@@ -53,6 +53,34 @@ dot -Tsvg ./output/graph.dot -o graph.svg
 `Unresolved` holds call targets that are not defined inside the module; they are
 surfaced rather than silently dropped, because the interesting bugs live there.
 
+### Interactive HTML
+
+```powershell
+Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
+    Export-PSModuleDependencyGraph -Format Html -Show
+```
+
+Produces a single self-contained page: search, filter by kind or export status,
+click a node to focus its neighbourhood at a chosen depth in either direction —
+*Dependents* (what breaks if I change this) or *Dependencies* (what this needs).
+Node size tracks inbound edge count, so the big nodes are the risky ones.
+
+`-Show` opens your **default web browser**, not VS Code. VS Code has no built-in
+HTML preview, so opening the file there shows the page source rather than the
+rendered graph; the Live Preview extension provides in-editor rendering.
+
+Without `-OutputPath` the page is written to a temp file and opened. With one, it
+is written there:
+
+```powershell
+Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
+    Export-PSModuleDependencyGraph -Format Html -OutputPath ./output/graph.html -IncludeUnresolved
+```
+
+Omit `-Show` to get the HTML back as a string instead. The page pulls Cytoscape
+from a CDN, so it needs internet access the first time it is opened; it says so
+plainly rather than rendering blank if it cannot.
+
 ## Requirements
 
 - Windows PowerShell 5.1 or PowerShell 7.4+ (Pester 6 dropped everything else)

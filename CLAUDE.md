@@ -57,11 +57,14 @@ PSScriptAnalyzerSettings.psd1    lint rules (passed via -Settings)
 src/PSModuleGraph/
   PSModuleGraph.psd1             the manifest; FunctionsToExport is explicit
   PSModuleGraph.psm1             dev-time loader only — see below
-  Public/                        one exported function per file
-  Private/                       helpers; not exported
+  Public/                        one exported function per file; NOT recursive
+  Private/                       helpers; not exported; enumerated recursively
+    Html/                        everything behind -Format Html
+  Assets/                        static files shipped as-is (graph.html)
   en-US/                         about_ help topic
 tests/
   Public/  Private/              mirror the src layout
+  Module.Quality.Tests.ps1       asserts on the BUILT module, not source
   fixtures/SampleModule/         the module under analysis in tests
 output/                          build artifact, gitignored, never edited
 ```
@@ -156,6 +159,40 @@ wrong, so fix the name rather than the settings file.
 
 Emit `pscustomobject` with a `PSTypeName` of `PSModuleGraph.<Thing>`. Every
 record carries `Path` and `StartLine`.
+
+## The HTML export
+
+`Export-PSModuleDependencyGraph -Format Html` renders a self-contained page.
+Rules that are easy to violate:
+
+- **HTML-related PowerShell lives in `Private/Html/`**, not directly in
+  `Private/`. `Private/` is enumerated recursively by both loaders, so a new
+  subfolder needs no registration — but `Public/` is deliberately *not*
+  recursive, because the export list is derived from its filenames.
+- **Assets live in `src/PSModuleGraph/Assets/`** and are loaded with
+  `Get-PSModuleGraphAsset`. The template is a static file that ships as-is;
+  there is no bundler, no npm, and no build step for it.
+- **Resolve assets from `$script:ModuleRoot`, never `$PSScriptRoot`.**
+  `$PSScriptRoot` is per-file: under the dev loader a file in `Private/Html`
+  sees that folder, while in the built module the same code has been
+  concatenated into a `.psm1` at the module root. Either loader would work and
+  the other would break, and the break only shows up in the built module.
+- **Token substitution uses `[string]::Replace()`, never the `-replace`
+  operator.** `-replace` is regex. Both the embedded JSON and the CSS contain
+  `$` and `\`, which the regex engine treats as substitution patterns and eats.
+  The result is subtly corrupted output rather than an error.
+- **There is exactly one serialiser.** The HTML payload comes from
+  `ConvertTo-GraphJson`. Do not write a second one for the page — the JSON
+  export and the HTML payload must not be able to drift apart.
+- Embedded JSON escapes `<` as `\u003c`, so a `</script>` in a path or extent
+  cannot terminate the script block. HTML is written UTF-8 **without** a BOM; a
+  BOM ahead of `<!DOCTYPE html>` can trigger quirks mode.
+- Paths in the HTML payload are module-relative. Generated reports get attached
+  to PRs and tickets, where absolute paths leak usernames. The JSON export keeps
+  them absolute.
+- `tests/Module.Quality.Tests.ps1` asserts `Assets/graph.html` reaches the built
+  module. That is the only thing standing between a build change and a runtime
+  failure in the export.
 
 Watch for parameter shadowing: PowerShell variable names are case-insensitive,
 so a local `$name` **is** the `$Name` parameter. Assigning to it re-runs the

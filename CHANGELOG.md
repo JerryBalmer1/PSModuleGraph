@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`Export-PSModuleDependencyGraph -Format Html`** — a single self-contained
+  interactive page. Search, filter by node kind or export status, optionally show
+  unresolved targets, and click any node to focus its neighbourhood at a chosen
+  depth in either direction: *Dependents* (what breaks if I change this) or
+  *Dependencies* (what this needs). Node size tracks inbound edge count, exported
+  functions are marked with a border rather than a fill so the cue survives
+  greyscale, and above 400 nodes the view starts filtered to exported functions
+  behind a dismissible banner.
+
+  The page renders with Cytoscape and cytoscape-dagre loaded from a CDN with
+  Subresource Integrity, so it needs internet access the first time it is opened
+  and says so plainly rather than rendering blank. Paths in the embedded payload
+  are relative to the module root, so a report can be attached to a PR without
+  leaking usernames or directory layout.
+- **`-Show`** on `Export-PSModuleDependencyGraph`, which opens the generated page
+  in the default web browser — not VS Code, which has no built-in HTML preview.
+  Valid only with `-Format Html`; any other format is a terminating error. With
+  no `-OutputPath` the page goes to a temp file that is opened and returned.
+- **`-Title`** on `Export-PSModuleDependencyGraph`, for the page heading.
+  Defaults to `<ModuleName> dependency graph`.
+
 - Initial command set, all static: nothing is imported, dot-sourced, or
   executed, and every result carries a file path and line number.
   - `Get-PSModuleFunction` — functions and filters, with export status resolved
@@ -54,6 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parses each file once instead of once per getter.
 - Graph serialisation helpers moved from `Public/` to `Private/`, one function
   per file. The exported surface is unchanged at ten commands.
+- The dev loader and the build now enumerate `Private/` recursively, so helpers
+  can be grouped into subfolders. `Public/` stays flat, because the export list
+  is derived from its filenames. Both loaders set `$script:ModuleRoot` at import
+  so assets resolve identically from source and from the built module, and the
+  build copies `Assets/` into the output.
 - Test run uses Pester's `Run.Throw` rather than `Run.Exit`, so a failing suite
   cannot terminate the host process running the build.
 - Classic Pester v5 `Should -Be` assertions are disabled; the suite uses the
