@@ -29,16 +29,33 @@ Describe 'The knowledge store' {
 
     It 'holds nothing PowerShell-shaped' {
         # PowerShell is the first reader of this store, not its owner. A Python
-        # or Go implementation must not have to reshape the data to read it.
-        $files = Get-ChildItem -Path $script:Knowledge -Recurse -File |
-            Where-Object { $_.Extension -in '.md', '.json' }
+        # or Go implementation must not have to reshape the DATA to read it.
+        #
+        # Scoped to the areas that carry data, which is the fix for 0004-t3.
+        # This used to grep every .md in the store and exempt NAMING.md by name
+        # "because it is the file that forbids them" - an exemption standing in
+        # for a principle. It then fired twice in one iteration on prose that
+        # quoted the rule: a pattern file, and the ledger entry describing that
+        # failure. Every prose file the store gains would trip it in turn.
+        #
+        # The principle is that a rule about the shape of stored data does not
+        # apply to prose ABOUT that shape. ledger/, patterns/ and NAMING.md are
+        # written for people and are not read by any machine but the front
+        # matter parser; the areas below are the store's data and are read by
+        # every implementation.
+        $dataAreas = 'facets', 'subjects', 'assignments', 'meta', 'SCHEMA'
+        $files = foreach ($area in $dataAreas) {
+            $dir = Join-Path $script:Knowledge $area
+            if (Test-Path -LiteralPath $dir) {
+                Get-ChildItem -Path $dir -Recurse -File | Where-Object { $_.Extension -in '.md', '.json' }
+            }
+        }
+        @($files).Count | Should-BeGreaterThan 0
 
         foreach ($file in $files) {
             $text = Get-Content -LiteralPath $file.FullName -Raw
-            # Named in prose in NAMING.md, which is the file that forbids them.
-            if ($file.Name -eq 'NAMING.md') { continue }
-            $text | Should-NotMatchString 'PSTypeName'
-            $text | Should-NotMatchString 'System\.(Management|Collections)\.'
+            $text | Should-NotMatchString 'PSTypeName' -Because "$($file.Name) carries a PowerShell type name"
+            $text | Should-NotMatchString 'System\.(Management|Collections)\.' -Because "$($file.Name) carries a .NET type name"
         }
     }
 
