@@ -6,10 +6,34 @@ BeforeAll {
 }
 
 Describe 'Show-GraphDocument' {
-    # Nothing here may launch a browser or an editor. Both exit paths run through
-    # Start-Process, which is mocked throughout; a real launch would hang CI.
-    It 'opens in VS Code when running inside VS Code' {
+    # Nothing here may launch a browser or an editor. Every exit path runs
+    # through Start-Process, which is mocked throughout; a real launch hangs CI.
+    It 'opens the OS handler even when running inside VS Code' {
         $probe = Join-Path $TestDrive 'report.html'
+        Set-Content -LiteralPath $probe -Value '<!DOCTYPE html><html></html>'
+
+        InModuleScope PSModuleGraph -Parameters @{ Probe = $probe } {
+            param($Probe)
+
+            # Being inside VS Code must NOT divert the report into the editor.
+            # A webview cannot follow a vscode:// URI, so opening the report
+            # there would disable the page's own click-to-source.
+            Mock Get-VSCodeLauncher { 'C:\fake\code.cmd' }
+            Mock Start-Process { }
+
+            Show-GraphDocument -Path $Probe
+
+            Should-Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
+                $FilePath -eq $Probe
+            }
+            Should-NotInvoke Start-Process -ParameterFilter {
+                $FilePath -eq 'C:\fake\code.cmd'
+            }
+        }
+    }
+
+    It 'writes a verbose hint when running inside VS Code' {
+        $probe = Join-Path $TestDrive 'report5.html'
         Set-Content -LiteralPath $probe -Value '<!DOCTYPE html><html></html>'
 
         InModuleScope PSModuleGraph -Parameters @{ Probe = $probe } {
@@ -18,13 +42,25 @@ Describe 'Show-GraphDocument' {
             Mock Get-VSCodeLauncher { 'C:\fake\code.cmd' }
             Mock Start-Process { }
 
-            Show-GraphDocument -Path $Probe
+            # The hint names the command rather than running it.
+            $output = Show-GraphDocument -Path $Probe -Verbose 4>&1
+            ($output | Out-String) | Should-MatchString 'code'
+        }
+    }
 
-            Should-Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
-                $FilePath -eq 'C:\fake\code.cmd' -and
-                $ArgumentList -contains '--reuse-window' -and
-                $ArgumentList -contains $Probe
-            }
+    It 'writes no verbose hint outside VS Code' {
+        $probe = Join-Path $TestDrive 'report6.html'
+        Set-Content -LiteralPath $probe -Value '<!DOCTYPE html><html></html>'
+
+        InModuleScope PSModuleGraph -Parameters @{ Probe = $probe } {
+            param($Probe)
+
+            Mock Get-VSCodeLauncher { $null }
+            Mock Start-Process { }
+
+            # Nothing to suggest: the user is not in an editor to open it in.
+            $output = Show-GraphDocument -Path $Probe -Verbose 4>&1
+            ($output | Out-String) | Should-NotMatchString 'reuse-window'
         }
     }
 
@@ -44,24 +80,6 @@ Describe 'Show-GraphDocument' {
             Should-Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
                 $FilePath -eq $Probe
             }
-        }
-    }
-
-    It 'falls back to the OS handler when the editor launch throws' {
-        $probe = Join-Path $TestDrive 'report3.html'
-        Set-Content -LiteralPath $probe -Value '<!DOCTYPE html><html></html>'
-
-        InModuleScope PSModuleGraph -Parameters @{ Probe = $probe } {
-            param($Probe)
-
-            Mock Get-VSCodeLauncher { 'C:\fake\code.cmd' }
-            Mock Start-Process { throw 'launch failed' } -ParameterFilter { $FilePath -eq 'C:\fake\code.cmd' }
-            Mock Start-Process { } -ParameterFilter { $FilePath -eq $Probe }
-
-            # A failed editor launch must not fail the export.
-            Show-GraphDocument -Path $Probe
-
-            Should-Invoke Start-Process -Times 1 -Exactly -ParameterFilter { $FilePath -eq $Probe }
         }
     }
 

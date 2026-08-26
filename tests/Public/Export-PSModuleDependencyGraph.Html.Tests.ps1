@@ -252,6 +252,13 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "location\.protocol === 'vscode-webview:'"
         $script:Html | Should-MatchString 'ancestorOrigins'
         $script:Html | Should-MatchString 'not available in an embedded viewer'
+
+        # Coarse substring checks, because this suite has no JS runtime. They
+        # exist because a silent revert of the frame check is exactly the
+        # regression that would otherwise ship: the protocol and ancestorOrigins
+        # checks alone miss Live Preview, which serves over http://127.0.0.1.
+        $script:Html | Should-MatchString 'window\.top !== window\.self'
+        $script:Html | Should-NotMatchString 'inVSCodeWebview'
     }
 
     It 'uses the supplied title' {
