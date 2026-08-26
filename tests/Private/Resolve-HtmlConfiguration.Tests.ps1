@@ -18,13 +18,13 @@ BeforeAll {
     }
 }
 
-Describe 'Resolve-HtmlConfiguration' {
+Describe 'Resolve-RenderConfiguration' {
     It 'reads the shipped configuration without warning' {
         InModuleScope PSModuleGraph {
             # The shipped data must satisfy its own schema. If it does not,
             # every export warns at the user about files they never touched.
             $warnings = @()
-            $config = Resolve-HtmlConfiguration -WarningVariable warnings -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -WarningVariable warnings -WarningAction SilentlyContinue
 
             $warnings.Count | Should-Be 0
             $config.ZoomSpeed | Should-Be 1.25
@@ -35,7 +35,7 @@ Describe 'Resolve-HtmlConfiguration' {
 
     It 'returns every key the schema declares' {
         InModuleScope PSModuleGraph {
-            $config = Resolve-HtmlConfiguration
+            $config = Resolve-RenderConfiguration
             # The page reads these by name; a missing key reaches the template
             # as undefined and becomes NaN in a layout calculation.
             foreach ($key in 'ZoomSpeed', 'ZoomSpeedMin', 'ZoomSpeedMax', 'ZoomSpeedStep',
@@ -55,7 +55,7 @@ Describe 'Resolve-HtmlConfiguration' {
         InModuleScope PSModuleGraph -Parameters @{ Dir = $dir } {
             param($Dir)
             $warnings = @()
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
 
             $config.ZoomSpeed | Should-Be 1.25
             ($warnings -join "`n") | Should-MatchString 'ZoomSpeed'
@@ -69,7 +69,7 @@ Describe 'Resolve-HtmlConfiguration' {
         InModuleScope PSModuleGraph -Parameters @{ Dir = $dir } {
             param($Dir)
             $warnings = @()
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
 
             $config.NodeFontSize | Should-Be 10
             ($warnings -join "`n") | Should-MatchString 'maximum'
@@ -82,7 +82,7 @@ Describe 'Resolve-HtmlConfiguration' {
 
         InModuleScope PSModuleGraph -Parameters @{ Dir = $dir } {
             param($Dir)
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningAction SilentlyContinue
             $config.FocusDepth | Should-Be 2
         }
     }
@@ -105,7 +105,7 @@ Describe 'Resolve-HtmlConfiguration' {
 
         InModuleScope PSModuleGraph -Parameters @{ Dir = $dir } {
             param($Dir)
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningAction SilentlyContinue
 
             # Every one is the wrong shape, so every one falls back.
             $config.Flag | Should-BeTrue
@@ -131,7 +131,7 @@ Describe 'Resolve-HtmlConfiguration' {
         InModuleScope PSModuleGraph -Parameters @{ Dir = $dir } {
             param($Dir)
             $warnings = @()
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
 
             $warnings.Count | Should-Be 0
             $config.Flag | Should-BeTrue
@@ -150,7 +150,7 @@ Describe 'Resolve-HtmlConfiguration' {
         InModuleScope PSModuleGraph -Parameters @{ Dir = $dir } {
             param($Dir)
             $warnings = @()
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
 
             $config.NodeFontSize | Should-Be 12
             ($warnings -join "`n") | Should-MatchString 'belongs in the Theme file'
@@ -165,7 +165,7 @@ Describe 'Resolve-HtmlConfiguration' {
             param($Dir)
             # A typo that vanishes silently is worse than one that speaks up.
             $warnings = @()
-            Resolve-HtmlConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue | Out-Null
+            Resolve-RenderConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue | Out-Null
 
             ($warnings -join "`n") | Should-MatchString 'ZoomSpead'
         }
@@ -179,7 +179,7 @@ Describe 'Resolve-HtmlConfiguration' {
             param($Dir)
             # A report the user can still read beats no report at all.
             $warnings = @()
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningVariable warnings -WarningAction SilentlyContinue
 
             $config.ZoomSpeed | Should-Be 1.25
             $warnings.Count | Should-BeGreaterThan 0
@@ -208,7 +208,7 @@ Describe 'Resolve-HtmlConfiguration' {
 
         InModuleScope PSModuleGraph -Parameters @{ Dir = $dir } {
             param($Dir)
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningAction SilentlyContinue
 
             # A slider whose value sits outside its own range cannot show it,
             # and a splitter cannot return to a width below its own minimum.
@@ -231,7 +231,7 @@ Describe 'Resolve-HtmlConfiguration' {
 
         InModuleScope PSModuleGraph -Parameters @{ Dir = $dir } {
             param($Dir)
-            $config = Resolve-HtmlConfiguration -ConfigPath $Dir -WarningAction SilentlyContinue
+            $config = Resolve-RenderConfiguration -ConfigPath $Dir -WarningAction SilentlyContinue
             $config.ZoomSpeedMin | Should-Be 0.25
             $config.ZoomSpeedMax | Should-Be 5
         }

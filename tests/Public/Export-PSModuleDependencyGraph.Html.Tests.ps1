@@ -288,7 +288,7 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
     It 'gives the opposite direction its own tier rather than the unrelated grey' {
         # Asking "what breaks if I change this" left the node's own dependencies
         # in the same grey as things with no connection at all. Verified in
-        # Chrome focusing Show-GraphDocument: Get-VSCodeLauncher, a dependency,
+        # Chrome focusing Show-RenderDocument: Get-VSCodeLauncher, a dependency,
         # comes back class 'related' at blacken 0.62 rather than dimmed.
         $script:Html | Should-MatchString "selector: 'node\.related'"
         $script:Html | Should-MatchString "selector: 'edge\.related-edge'"
@@ -444,7 +444,7 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
 }
 
 Describe 'Export-PSModuleDependencyGraph -Show' {
-    # Show-GraphDocument is mocked throughout. A test that actually launched a
+    # Show-RenderDocument is mocked throughout. A test that actually launched a
     # browser would hang a CI agent.
     It 'opens the written file when -OutputPath is given' {
         $sample = $script:Sample
@@ -455,13 +455,13 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
         InModuleScope PSModuleGraph -Parameters @{ Sample = $sample; Target = $target } {
             param($Sample, $Target)
 
-            Mock Show-GraphDocument { }
+            Mock Show-RenderDocument { }
 
             $graph = Get-PSModuleDependencyGraph -Path $Sample
             $item = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -OutputPath $Target -Show
 
             $item.FullName | Should-Be $Target
-            Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter { $Path -eq $Target }
+            Should-Invoke Show-RenderDocument -Times 1 -Exactly -ParameterFilter { $Path -eq $Target }
         }
     }
 
@@ -476,7 +476,7 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
             InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
                 param($Sample)
 
-                Mock Show-GraphDocument { }
+                Mock Show-RenderDocument { }
 
                 $graph = Get-PSModuleDependencyGraph -Path $Sample
                 $item = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
@@ -487,7 +487,7 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
                 $item.Name | Should-MatchString '^SampleModule-\d{8}-\d{6}\.html$'
                 Test-Path -LiteralPath $item.FullName | Should-BeTrue
 
-                Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter {
+                Should-Invoke Show-RenderDocument -Times 1 -Exactly -ParameterFilter {
                     $Path -eq $item.FullName
                 }
             }
@@ -504,12 +504,12 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
             InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
                 param($Sample)
 
-                Mock Show-GraphDocument { }
+                Mock Show-RenderDocument { }
 
                 $graph = Get-PSModuleDependencyGraph -Path $Sample
                 $null = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
 
-                Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter {
+                Should-Invoke Show-RenderDocument -Times 1 -Exactly -ParameterFilter {
                     $EditorLinkHelpCommand -eq 'Test-PSModuleGraphEditorLink'
                 }
             }
@@ -524,16 +524,16 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
             InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
                 param($Sample)
 
-                Mock Show-GraphDocument { }
+                Mock Show-RenderDocument { }
 
                 $graph = Get-PSModuleDependencyGraph -Path $Sample
                 $null = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show -BaseUrl 'http://127.0.0.1:9999'
-                Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter {
+                Should-Invoke Show-RenderDocument -Times 1 -Exactly -ParameterFilter {
                     $BaseUrl -eq 'http://127.0.0.1:9999'
                 }
 
                 $null = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show -NoServe
-                Should-Invoke Show-GraphDocument -Times 1 -Exactly -ParameterFilter { $NoServe }
+                Should-Invoke Show-RenderDocument -Times 1 -Exactly -ParameterFilter { $NoServe }
             }
         }
         finally { Pop-Location }
@@ -562,7 +562,7 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
             InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
                 param($Sample)
 
-                Mock Show-GraphDocument { }
+                Mock Show-RenderDocument { }
                 $graph = Get-PSModuleDependencyGraph -Path $Sample
                 { Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show -BaseUrl 'http://x' -NoServe } |
                     Should-Throw -ExceptionMessage '*cannot be combined*'
@@ -577,12 +577,12 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
         InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
             param($Sample)
 
-            Mock Show-GraphDocument { }
+            Mock Show-RenderDocument { }
 
             $graph = Get-PSModuleDependencyGraph -Path $Sample
             $null = Export-PSModuleDependencyGraph -InputObject $graph -Format Html
 
-            Should-NotInvoke Show-GraphDocument
+            Should-NotInvoke Show-RenderDocument
         }
     }
 }

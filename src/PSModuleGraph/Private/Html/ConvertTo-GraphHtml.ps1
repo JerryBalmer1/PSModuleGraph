@@ -49,7 +49,7 @@ function ConvertTo-GraphHtml {
     }
 
     # See docs/html-architecture.md.
-    $config = Resolve-HtmlConfiguration
+    $config = Resolve-RenderConfiguration
     $configJson = ConvertTo-EscapedHtmlJson -InputObject $config
 
     # The seam. Nothing below it may know what a PSModuleGraph command is, so
@@ -59,7 +59,7 @@ function ConvertTo-GraphHtml {
     # in PowerShell and display-time tokens in the page - only the browser knows
     # what origin the report ended up on, so the page fills it. The renderer
     # still learns nothing: it interpolates a string it was handed.
-    $strings = Resolve-HtmlString -Value @{
+    $strings = Resolve-RenderString -Value @{
         editorLinkHelpCommand         = 'Enable-PSModuleGraphEditorLink'
         editorLinkHelpCommandForOrigin = "Enable-PSModuleGraphEditorLink -AllowedOrigin '{origin}'"
     }
@@ -68,7 +68,7 @@ function ConvertTo-GraphHtml {
     $dataJson = ConvertTo-EscapedHtmlJson -InputObject $data
     $metaJson = ConvertTo-EscapedHtmlJson -InputObject $meta
 
-    $template = Get-HtmlTemplateSet
+    $template = Get-RenderTemplateSet
 
     # [string]::Replace, never the -replace operator. -replace is regex: the JSON
     # and the CSS both contain '$' and '\', which the regex engine treats as

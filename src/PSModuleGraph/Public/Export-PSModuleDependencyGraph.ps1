@@ -34,7 +34,7 @@ function Export-PSModuleDependencyGraph {
         The FileInfo is returned either way.
 
         The browser is handed the exact document URL when a local static server is
-        already serving it, and the file otherwise. See Show-GraphDocument.
+        already serving it, and the file otherwise. See Show-RenderDocument.
     .PARAMETER BaseUrl
         Origin to serve the report from with -Show, skipping the port scan.
     .PARAMETER NoServe
@@ -114,7 +114,7 @@ function Export-PSModuleDependencyGraph {
         elseif ($isHtml -and $Show) {
             # -Show needs a file to hand the browser, and it has to be somewhere
             # a local server could serve. The temp directory never is.
-            $targetPath = New-GraphReportPath -ModuleName ([string]$InputObject.ModuleName) `
+            $targetPath = New-RenderDocumentPath -ModuleName ([string]$InputObject.ModuleName) `
                 -BasePath $PSCmdlet.SessionState.Path.CurrentFileSystemLocation.ProviderPath
         }
 
@@ -122,7 +122,7 @@ function Export-PSModuleDependencyGraph {
             return $document
         }
 
-        # Same reason as in New-GraphReportPath: this command has no
+        # Same reason as in New-RenderDocumentPath: this command has no
         # ShouldProcess, so its write is not gated and the directory the write
         # needs must not be either.
         $dir = Split-Path -Path $targetPath -Parent
@@ -149,7 +149,7 @@ function Export-PSModuleDependencyGraph {
             $open = @{ Path = $targetPath; EditorLinkHelpCommand = 'Test-PSModuleGraphEditorLink' }
             if ($BaseUrl) { $open['BaseUrl'] = $BaseUrl }
             if ($NoServe) { $open['NoServe'] = $true }
-            Show-GraphDocument @open
+            Show-RenderDocument @open
         }
 
         $item

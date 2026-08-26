@@ -14,10 +14,10 @@ BeforeAll {
     }
 }
 
-Describe 'Resolve-HtmlString' {
+Describe 'Resolve-RenderString' {
     It 'reads the shipped strings without warning' {
         $warnings = @()
-        $result = InModuleScope PSModuleGraph { Resolve-HtmlString } -WarningVariable warnings
+        $result = InModuleScope PSModuleGraph { Resolve-RenderString } -WarningVariable warnings
 
         $warnings.Count | Should-Be 0
         $result.Count | Should-BeGreaterThan 0
@@ -28,7 +28,7 @@ Describe 'Resolve-HtmlString' {
 
         $result = InModuleScope PSModuleGraph -Parameters @{ Path = $config } {
             param($Path)
-            Resolve-HtmlString -ConfigPath $Path -Value @{ command = 'Do-Thing' }
+            Resolve-RenderString -ConfigPath $Path -Value @{ command = 'Do-Thing' }
         }
 
         $result['Greeting'] | Should-Be 'Run Do-Thing now'
@@ -46,7 +46,7 @@ Describe 'Resolve-HtmlString' {
 
         $result = InModuleScope PSModuleGraph -Parameters @{ Path = $config } {
             param($Path)
-            Resolve-HtmlString -ConfigPath $Path
+            Resolve-RenderString -ConfigPath $Path
         }
 
         $result['Scale'] | Should-Be 'This has {count} items'
@@ -59,7 +59,7 @@ Describe 'Resolve-HtmlString' {
 
         $result = InModuleScope PSModuleGraph -Parameters @{ Path = $config } {
             param($Path)
-            Resolve-HtmlString -ConfigPath $Path -Value @{ p = 'C:\temp\$1\x' }
+            Resolve-RenderString -ConfigPath $Path -Value @{ p = 'C:\temp\$1\x' }
         }
 
         $result['Line'] | Should-Be 'path is C:\temp\$1\x'
@@ -70,7 +70,7 @@ Describe 'Resolve-HtmlString' {
 
         $result = InModuleScope PSModuleGraph -Parameters @{ Path = $config } {
             param($Path)
-            Resolve-HtmlString -ConfigPath $Path -Value @{ command = 'Do-Thing' } -WarningAction SilentlyContinue
+            Resolve-RenderString -ConfigPath $Path -Value @{ command = 'Do-Thing' } -WarningAction SilentlyContinue
         }
 
         # Degraded, not dead: the caller's own values still come through.
@@ -81,7 +81,7 @@ Describe 'Resolve-HtmlString' {
         # strings.psd1 never holds markup - see docs/html-architecture.md. A
         # string that carried an element could inject one wherever the page
         # assigns innerHTML.
-        $result = InModuleScope PSModuleGraph { Resolve-HtmlString }
+        $result = InModuleScope PSModuleGraph { Resolve-RenderString }
 
         foreach ($key in $result.Keys) {
             $result[$key] | Should-NotMatchString '<[a-zA-Z/]'

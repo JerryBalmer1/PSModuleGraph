@@ -38,13 +38,13 @@ src/PSModuleGraph/
       theme.psd1                colours, fonts, spacing
       strings.psd1              user-visible strings
   Private/Html/                 <- moves out at extraction, minus the seam
-    Get-HtmlTemplateSet.ps1
-    Resolve-HtmlConfiguration.ps1
-    Resolve-HtmlString.ps1
+    Get-RenderTemplateSet.ps1
+    Resolve-RenderConfiguration.ps1
+    Resolve-RenderString.ps1
     ConvertTo-EscapedHtml*.ps1
     Resolve-LoopbackDocumentUrl.ps1   files, ports and HTTP; no graph vocabulary
-    New-GraphReportPath.ps1
-    Show-GraphDocument.ps1
+    New-RenderDocumentPath.ps1
+    Show-RenderDocument.ps1
     ConvertTo-GraphHtml.ps1     <- STAYS. This is the seam.
 ```
 
@@ -167,7 +167,7 @@ Rules that are easy to violate:
   cannot terminate the script block. HTML is written UTF-8 **without** a BOM; a
   BOM ahead of `<!DOCTYPE html>` can trigger quirks mode.
 - **Configuration is four data files under `Assets/Html/Config/`**, resolved by
-  `Resolve-HtmlConfiguration`. Adding a setting is a data change: an entry in
+  `Resolve-RenderConfiguration`. Adding a setting is a data change: an entry in
   `settings.schema.psd1`, a value in `settings.psd1` or `theme.psd1`, and a
   `cfg('Key', fallback)` in the template. Needing to edit a `.ps1` means the
   design has broken — report it. See `docs/html-architecture.md`.
@@ -271,7 +271,7 @@ more than it gains.
 
 ## Looks like a bug, but is not
 
-**`Show-GraphDocument` always opens the browser, never the editor** — even when
+**`Show-RenderDocument` always opens the browser, never the editor** — even when
 the session is running inside VS Code, and even though `Get-VSCodeLauncher` is
 still called. That is not an oversight, and the launcher is not vestigial: it
 decides whether to print a `-Verbose` hint naming the command that would open
@@ -364,7 +364,7 @@ change to make quietly.**
 - [x] No partial over 250 lines
 - [x] Template set resolvable from a caller-supplied directory
 - [ ] Token contract named generically (not `__GRAPH_*__`)
-- [ ] Renderer functions named without `Graph` or `PSModule`  (Get-PSModuleGraphAsset, Get-PSModuleGraphAssetPath, Show-GraphDocument remain)
+- [ ] Renderer functions named without `Graph` or `PSModule`  (Get-PSModuleGraphAsset, Get-PSModuleGraphAssetPath, Show-RenderDocument remain)
 - [ ] Tests for the subsystem run without building a dependency graph
 
 ## Decisions made and why
@@ -426,7 +426,7 @@ than either end state.
 exists to type and range-check values, and a schema entry per string would hold
 a `Default` that is a second copy of the string itself. The schema covers the
 two value files; strings are the third kind and are resolved separately by
-`Resolve-HtmlString`.
+`Resolve-RenderString`.
 
 **2026-08-25 - A string the page asks for and cannot find renders as its own
 key in brackets.** Every call site carrying its own fallback would put each
@@ -523,7 +523,7 @@ which can resolve to a v6 address a server is not bound to; not `0.0.0.0`; not
 a LAN address. An explicit `-BaseUrl` is the caller's decision and is used as
 given, and is the only way anything else is reached.
 
-**2026-08-26 - `Show-GraphDocument` takes `-EditorLinkHelpCommand` rather than
+**2026-08-26 - `Show-RenderDocument` takes `-EditorLinkHelpCommand` rather than
 naming a command.** The route taken decides whether the page's own editor links
 can work, so it is worth a `-Verbose` line either way - but naming
 `Test-PSModuleGraphEditorLink` below the seam would be the renderer learning

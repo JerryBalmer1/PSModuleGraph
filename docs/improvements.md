@@ -72,7 +72,7 @@ the next change to this cheaper**. Three concrete tests:
   which the extraction checklist forbids. The fix is the pattern the banner
   already uses: pass the command through config and interpolate. *Noticed while
   externalising strings.*
-- **`Show-GraphDocument`, `Get-PSModuleGraphAsset` and
+- **`Show-RenderDocument`, `Get-PSModuleGraphAsset` and
   `Get-PSModuleGraphAssetPath` carry graph vocabulary in their names.** On the
   checklist already; listed here so it is not forgotten between passes.
 
