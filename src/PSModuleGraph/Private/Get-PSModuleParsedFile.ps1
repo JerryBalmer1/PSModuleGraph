@@ -2,14 +2,41 @@ function Get-PSModuleParsedFile {
     <#
     .SYNOPSIS
         Parses a PowerShell file into an AST with tokens and parse errors.
+    .DESCRIPTION
+        Always uses [Parser]::ParseFile, never ParseInput: ParseInput leaves
+        $ast.Extent.File null, which strips the path off every downstream record.
+
+        Results are memoised for the lifetime of the module session, keyed on the
+        file's full path plus its last write time in UTC ticks. An unchanged file
+        is parsed once no matter how many callers ask for it; an edited file gets
+        a new key and is re-parsed. Get-PSModuleDependencyGraph alone drives seven
+        getters, each of which walks every file in the module, so without this the
+        same file is parsed seven times per graph.
+
+        Cache hits return the same object instance, so the AST is reference-equal
+        across calls. ASTs are immutable, so sharing them is safe.
+    .PARAMETER FilePath
+        Path to the file to parse.
+    .PARAMETER NoCache
+        Parse unconditionally, neither reading from nor writing to the cache.
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [Alias('FullName', 'Path')]
-        [string] $FilePath
+        [string] $FilePath,
+
+        [Parameter()]
+        [switch] $NoCache
     )
+
+    begin {
+        # Lazily created: Set-StrictMode makes reading an undefined variable fatal.
+        if (-not (Get-Variable -Name PSModuleParsedFileCache -Scope Script -ErrorAction SilentlyContinue)) {
+            $script:PSModuleParsedFileCache = @{}
+        }
+    }
 
     process {
         $full = $PSCmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FilePath)
@@ -17,11 +44,18 @@ function Get-PSModuleParsedFile {
             throw "File not found: $FilePath"
         }
 
+        $item = Get-Item -LiteralPath $full -ErrorAction SilentlyContinue
+        $key = if ($item) { "$full|$($item.LastWriteTimeUtc.Ticks)" } else { $null }
+
+        if (-not $NoCache -and $key -and $script:PSModuleParsedFileCache.ContainsKey($key)) {
+            return $script:PSModuleParsedFileCache[$key]
+        }
+
         $tokens = $null
         $errors = $null
         $ast = [System.Management.Automation.Language.Parser]::ParseFile($full, [ref]$tokens, [ref]$errors)
 
-        [pscustomobject]@{
+        $parsed = [pscustomobject]@{
             PSTypeName  = 'PSModuleGraph.ParsedFile'
             Path        = $full
             Ast         = $ast
@@ -30,6 +64,12 @@ function Get-PSModuleParsedFile {
             IsParsed    = ($null -ne $ast)
             HasErrors   = ($errors -and $errors.Count -gt 0)
         }
+
+        if (-not $NoCache -and $key) {
+            $script:PSModuleParsedFileCache[$key] = $parsed
+        }
+
+        $parsed
     }
 }
 
