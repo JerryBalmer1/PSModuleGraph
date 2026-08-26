@@ -81,12 +81,18 @@ opposite orientation, callers first.
 Anything caught in a dependency cycle has no valid position in the order, so it
 is called out separately rather than silently given one.
 
-`-Show` opens your **default web browser**, not VS Code. VS Code has no built-in
-HTML preview, so opening the file there shows the page source rather than the
-rendered graph; the Live Preview extension provides in-editor rendering.
+`-Show` opens the report where you already are. Run from inside VS Code, it opens
+the file in your existing window; click the editor's preview button to render it.
+The VS Code CLI has no flag for running an extension command, so the preview pane
+cannot be opened automatically, and VS Code has no built-in HTML preview - that
+needs an extension such as Live Preview (`ms-vscode.live-server`). Anywhere else,
+`-Show` hands the file to the OS default handler, which for `.html` is your
+browser.
 
-Without `-OutputPath` the page is written to a temp file and opened. With one, it
-is written there:
+Without `-OutputPath` the page goes to `<temp>/PSModuleGraph/<ModuleName>.html`
+and is overwritten every run, so an already-open tab or editor just needs a
+refresh rather than accumulating a new file each time. With `-OutputPath` it is
+written there:
 
 ```powershell
 Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |

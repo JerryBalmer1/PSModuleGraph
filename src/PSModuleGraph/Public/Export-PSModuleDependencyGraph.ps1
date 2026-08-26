@@ -16,15 +16,22 @@ function Export-PSModuleDependencyGraph {
         Page heading for -Format Html. Defaults to '<ModuleName> dependency graph'.
         Ignored by the other formats.
     .PARAMETER Show
-        Open the generated page in the system default web BROWSER. Only valid with
-        -Format Html.
+        Open the generated page. Only valid with -Format Html.
 
-        This opens a browser, not VS Code. VS Code has no built-in HTML preview, so
-        opening the file there shows the page source rather than the rendered graph.
-        To view it inside the editor instead, use the Live Preview extension.
+        Running inside VS Code, the file is opened in the existing window. That shows
+        the page SOURCE - click the editor's preview button to render it. The VS Code
+        CLI has no flag for running an extension command, so the preview pane cannot
+        be opened automatically; one click is as close as it gets. VS Code has no
+        built-in HTML preview, so rendering in the editor needs an extension such as
+        Live Preview (ms-vscode.live-server).
 
-        With -OutputPath the file is written there and opened. Without -OutputPath it is
-        written to a temp file and opened, and the temp FileInfo is returned.
+        Anywhere else, the system default handler opens it, which for .html is the
+        default web browser.
+
+        With -OutputPath the file is written there and opened. Without -OutputPath it
+        goes to <temp>/PSModuleGraph/<ModuleName>.html, which is overwritten on every
+        run, so an already-open tab or editor only needs a refresh. The FileInfo is
+        returned either way.
     .EXAMPLE
         Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
             Export-PSModuleDependencyGraph -Format Html -Show

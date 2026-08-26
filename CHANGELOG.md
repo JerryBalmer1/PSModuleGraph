@@ -24,9 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are relative to the module root, so a report can be attached to a PR without
   leaking usernames or directory layout.
 - **`-Show`** on `Export-PSModuleDependencyGraph`, which opens the generated page
-  in the default web browser — not VS Code, which has no built-in HTML preview.
-  Valid only with `-Format Html`; any other format is a terminating error. With
-  no `-OutputPath` the page goes to a temp file that is opened and returned.
+  where you already are: inside VS Code it opens in the existing window, and the
+  editor's preview button renders it, since the VS Code CLI exposes no way to
+  trigger an extension's preview pane. Everywhere else the OS default handler
+  gets it, which for `.html` is the browser. Valid only with `-Format Html`; any
+  other format is a terminating error.
+
+  With no `-OutputPath` the page goes to
+  `<temp>/PSModuleGraph/<ModuleName>.html` — one stable file per module,
+  overwritten on every run, so an already-open tab or editor only needs a
+  refresh instead of a new file piling up each time.
 - **`-Title`** on `Export-PSModuleDependencyGraph`, for the page heading.
   Defaults to `<ModuleName> dependency graph`.
 - **Test order as the HTML page's default view.** Nodes are ranked by a

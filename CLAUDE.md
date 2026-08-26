@@ -190,6 +190,12 @@ Rules that are easy to violate:
 - Paths in the HTML payload are module-relative. Generated reports get attached
   to PRs and tickets, where absolute paths leak usernames. The JSON export keeps
   them absolute.
+- **`-Show` opens VS Code when the session is in VS Code**, otherwise the OS
+  default handler. `Get-VSCodeLauncher` requires BOTH a VS Code environment
+  marker and the `code` CLI: finding the executable only proves VS Code is
+  installed, not that the user is sitting in it. The CLI has no `--command` and
+  no `--uri` flag, so an extension's preview pane cannot be opened from
+  PowerShell - do not add code that pretends otherwise.
 - `tests/Module.Quality.Tests.ps1` asserts `Assets/graph.html` reaches the built
   module. That is the only thing standing between a build change and a runtime
   failure in the export.
