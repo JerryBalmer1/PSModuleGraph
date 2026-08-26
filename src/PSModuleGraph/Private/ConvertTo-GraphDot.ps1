@@ -31,8 +31,8 @@ function ConvertTo-GraphDot {
             [void]$sb.AppendLine(('  {0} [label="{1}", shape=ellipse, fillcolor="orangered", style="filled", fontcolor="white"];' -f $safeId, (ConvertTo-EscapedDotText $ext)))
         }
         foreach ($u in $Graph.Unresolved) {
-            if (-not $u.From -or $u.From -like 'module:*' -or $u.From -like 'using:*') { continue }
-            $fromId = ConvertTo-DotId $u.From
+            if (-not $u.Source -or $u.Source -like 'module:*' -or $u.Source -like 'using:*') { continue }
+            $fromId = ConvertTo-DotId $u.Source
             $toId = ConvertTo-DotId "external:$($u.TargetName)"
             [void]$sb.AppendLine(('  {0} -> {1} [style=dashed, color="orangered"];' -f $fromId, $toId))
         }
@@ -40,7 +40,7 @@ function ConvertTo-GraphDot {
 
     foreach ($e in $Graph.Edges) {
         $style = if ($e.Kind -eq 'Inherits') { 'style=bold, color="darkgoldenrod"' } else { 'color="gray40"' }
-        [void]$sb.AppendLine(('  {0} -> {1} [{2}];' -f (ConvertTo-DotId $e.From), (ConvertTo-DotId $e.To), $style))
+        [void]$sb.AppendLine(('  {0} -> {1} [{2}];' -f (ConvertTo-DotId $e.Source), (ConvertTo-DotId $e.Target), $style))
     }
 
     [void]$sb.AppendLine('}')

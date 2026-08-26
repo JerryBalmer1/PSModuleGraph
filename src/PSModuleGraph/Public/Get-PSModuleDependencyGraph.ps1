@@ -148,10 +148,10 @@ function Get-PSModuleDependencyGraph {
                     $edgeSeen[$edgeKey] = $true
                     $edges.Add([pscustomobject]@{
                             PSTypeName = 'PSModuleGraph.GraphEdge'
-                            From       = $fromId
-                            To         = $toId
-                            FromName   = if ($fromName) { $fromName } else { '<script>' }
-                            ToName     = $toName
+                            Source     = $fromId
+                            Target     = $toId
+                            SourceName = if ($fromName) { $fromName } else { '<script>' }
+                            TargetName = $toName
                             Kind       = 'CommandReference'
                             Path       = $ref.Path
                             StartLine  = $ref.StartLine
@@ -164,8 +164,8 @@ function Get-PSModuleDependencyGraph {
                     $unresolvedSeen[$uKey] = $true
                     $unresolved.Add([pscustomobject]@{
                             PSTypeName        = 'PSModuleGraph.UnresolvedReference'
-                            From              = $fromId
-                            FromName          = if ($fromName) { $fromName } else { '<script>' }
+                            Source            = $fromId
+                            SourceName        = if ($fromName) { $fromName } else { '<script>' }
                             TargetName        = $toName
                             QualifiedName     = $ref.CommandName
                             ModuleQualifier   = $ref.ModuleQualifier
@@ -190,10 +190,10 @@ function Get-PSModuleDependencyGraph {
                         $edgeSeen[$edgeKey] = $true
                         $edges.Add([pscustomobject]@{
                                 PSTypeName = 'PSModuleGraph.GraphEdge'
-                                From       = $fromId
-                                To         = $toId
-                                FromName   = $c.Name
-                                ToName     = $simple
+                                Source     = $fromId
+                                Target     = $toId
+                                SourceName = $c.Name
+                                TargetName = $simple
                                 Kind       = 'Inherits'
                                 Path       = $c.Path
                                 StartLine  = $c.StartLine
@@ -208,8 +208,8 @@ function Get-PSModuleDependencyGraph {
             if (-not $rm -or -not $rm.Name) { continue }
             $unresolved.Add([pscustomobject]@{
                     PSTypeName      = 'PSModuleGraph.UnresolvedReference'
-                    From            = 'module:manifest'
-                    FromName        = $target.Name
+                    Source          = 'module:manifest'
+                    SourceName      = $target.Name
                     TargetName      = $rm.Name
                     QualifiedName   = $rm.Name
                     ModuleQualifier = $null
@@ -223,8 +223,8 @@ function Get-PSModuleDependencyGraph {
             if ($u.Kind -eq 'Module' -and $u.Name) {
                 $unresolved.Add([pscustomobject]@{
                         PSTypeName      = 'PSModuleGraph.UnresolvedReference'
-                        From            = 'using:module'
-                        FromName        = '<using>'
+                        Source          = 'using:module'
+                        SourceName      = '<using>'
                         TargetName      = $u.Name
                         QualifiedName   = $u.Name
                         ModuleQualifier = $null
@@ -243,8 +243,8 @@ function Get-PSModuleDependencyGraph {
             $outbound[$n.Id] = 0
         }
         foreach ($e in $edges) {
-            if ($outbound.ContainsKey($e.From)) { $outbound[$e.From]++ }
-            if ($inbound.ContainsKey($e.To)) { $inbound[$e.To]++ }
+            if ($outbound.ContainsKey($e.Source)) { $outbound[$e.Source]++ }
+            if ($inbound.ContainsKey($e.Target)) { $inbound[$e.Target]++ }
         }
 
         $roots = @($nodes | Where-Object { $inbound[$_.Id] -eq 0 })

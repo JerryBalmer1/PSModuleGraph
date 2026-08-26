@@ -22,7 +22,7 @@ Describe 'Get-PSModuleDependencyGraph' {
 
     It 'creates internal edges between functions' {
         $edge = $script:Graph.Edges | Where-Object {
-            $_.FromName -eq 'Get-SampleThing' -and $_.ToName -eq 'ConvertTo-SampleName'
+            $_.SourceName -eq 'Get-SampleThing' -and $_.TargetName -eq 'ConvertTo-SampleName'
         }
         $edge | Should-NotBeNull
     }
@@ -41,7 +41,7 @@ Describe 'Get-PSModuleDependencyGraph' {
 
     It 'includes class inheritance edges' {
         $inh = $script:Graph.Edges | Where-Object {
-            $_.Kind -eq 'Inherits' -and $_.FromName -eq 'SampleThing' -and $_.ToName -eq 'SampleBase'
+            $_.Kind -eq 'Inherits' -and $_.SourceName -eq 'SampleThing' -and $_.TargetName -eq 'SampleBase'
         }
         $inh | Should-NotBeNull
     }
@@ -62,6 +62,50 @@ Describe 'Export-PSModuleDependencyGraph' {
         $obj.nodes.Count | Should-BeGreaterThan 0
     }
 
+    It 'exports node-link JSON with source and target on every link' {
+        $obj = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Json |
+            ConvertFrom-Json
+
+        $links = @($obj.links)
+        $links.Count | Should-BeGreaterThan 0
+
+        $keys = @($links[0].PSObject.Properties.Name)
+        $keys | Should-ContainCollection 'source'
+        $keys | Should-ContainCollection 'target'
+        $keys | Should-ContainCollection 'sourceName'
+        $keys | Should-ContainCollection 'targetName'
+
+        $links[0].source | Should-NotBeNull
+        $links[0].target | Should-NotBeNull
+
+        # The old 'edges' key is gone, and 'from'/'to' with it.
+        @($obj.PSObject.Properties.Name) | Should-NotContainCollection 'edges'
+        $keys | Should-NotContainCollection 'from'
+        $keys | Should-NotContainCollection 'to'
+
+        # Every link's endpoints must reference real node ids.
+        $nodeIds = @($obj.nodes | ForEach-Object { $_.id })
+        foreach ($link in $links) {
+            $nodeIds | Should-ContainCollection $link.source
+            $nodeIds | Should-ContainCollection $link.target
+        }
+    }
+
+    It 'emits roots and leaves as id strings referencing nodes' {
+        $obj = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Json |
+            ConvertFrom-Json
+
+        $nodeIds = @($obj.nodes | ForEach-Object { $_.id })
+        foreach ($root in @($obj.roots)) {
+            $root | Should-HaveType ([string])
+            $nodeIds | Should-ContainCollection $root
+        }
+
+        # The PowerShell object deliberately keeps full node objects here.
+        $script:Graph.Roots[0].Id | Should-NotBeNull
+        $script:Graph.Roots[0].Kind | Should-NotBeNull
+    }
+
     It 'exports Dot to a file' {
         $path = Join-Path $script:OutDir 'graph.dot'
         $item = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Dot -OutputPath $path -IncludeUnresolved
@@ -78,6 +122,6 @@ Describe 'Export-PSModuleDependencyGraph' {
 
     It 'exports Csv edge list' {
         $csv = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Csv
-        $csv | Should-MatchString 'From,To,FromName'
+        $csv | Should-MatchString 'Source,Target,SourceName'
     }
 }
