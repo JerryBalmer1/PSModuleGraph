@@ -620,6 +620,8 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     // the label ellipsises on the node; the full name stays in search, in the
     // test-order list, and in the Details panel.
     var NODE_MAX_WIDTH = cfg('NodeMaxWidth', 340);
+    var EDGE_WIDTH = cfg('EdgeWidth', 1.4);
+    var FOCUS_EDGE_WIDTH = cfg('FocusEdgeWidth', 2.6);
 
     var NODE_WIDTH = (function () {
         var widest = 0;
@@ -695,7 +697,7 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
             {
                 selector: 'edge',
                 style: {
-                    'width': 1.4,
+                    'width': EDGE_WIDTH,
                     'line-color': '#6b7785',
                     'target-arrow-color': '#6b7785',
                     'target-arrow-shape': 'triangle',
@@ -730,6 +732,23 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
                 }
             },
             { selector: 'edge.dimmed', style: { 'opacity': 0.12 } },
+            // The connections inside a focused neighbourhood are the reason the
+            // node was clicked, so they brighten and thicken rather than merely
+            // failing to dim. Declared after the kind rules and after .dimmed so
+            // it wins on all three arrow colours; z-index lifts it clear of the
+            // dimmed edges it crosses.
+            {
+                selector: 'edge.focus-edge',
+                style: {
+                    'width': FOCUS_EDGE_WIDTH,
+                    'line-color': '#cfe6ff',
+                    'target-arrow-color': '#cfe6ff',
+                    'source-arrow-color': '#cfe6ff',
+                    'arrow-scale': 1.05,
+                    'opacity': 1,
+                    'z-index': 20
+                }
+            },
             { selector: 'node.selected-node', style: { 'border-color': '#4da3ff' } },
             { selector: '.hidden', style: { 'display': 'none' } }
         ]
@@ -934,15 +953,21 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     function reapplyFocus() {
         if (!focused || focused.removed() || focused.hasClass('hidden')) {
             cy.elements().removeClass('dimmed');
+            cy.edges().removeClass('focus-edge');
             return;
         }
         var keep = neighbourhood(focused, parseInt(depthEl.value, 10), currentDirection());
         cy.batch(function () {
             cy.elements().addClass('dimmed');
+            cy.edges().removeClass('focus-edge');
             keep.removeClass('dimmed');
+            // Edges with both ends inside the neighbourhood are the connections
+            // the user clicked to see, so they are highlighted rather than just
+            // left undimmed. An edge with one end outside stays dimmed: drawing
+            // it bright would imply a link to something not in the answer.
             keep.connectedEdges().filter(function (e) {
                 return keep.contains(e.source()) && keep.contains(e.target());
-            }).removeClass('dimmed');
+            }).removeClass('dimmed').addClass('focus-edge');
         });
     }
 
@@ -992,6 +1017,7 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     function clearFocus() {
         focused = null;
         cy.elements().removeClass('dimmed');
+        cy.edges().removeClass('focus-edge');
         cy.nodes().removeClass('selected-node');
         document.getElementById('focus-controls').hidden = true;
         document.getElementById('focus-hint').textContent = 'Select a node to focus its neighbourhood.';

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Focused connections are highlighted, not merely undimmed.** Selecting a node
+  now draws the edges inside its neighbourhood in a near-white blue at roughly
+  double thickness, above the dimmed ones. An edge with only one end inside the
+  neighbourhood stays dimmed - drawing it bright would imply a link to something
+  that is not part of the answer. `EdgeWidth` and `FocusEdgeWidth` are settable
+  in `graph.defaults.psd1`.
 - **`Assets/graph.defaults.psd1`** — the HTML page's starting values in one
   editable data file instead of scattered through the template: zoom speed and
   its slider range, node type size and width cap, dagre spacing, the large-graph

@@ -164,6 +164,16 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-NotMatchString "'opacity': 0\.15, 'text-opacity': 0\.15"
     }
 
+    It 'brightens and thickens the connections inside a focus' {
+        # Those edges are why the node was clicked. Verified in Chrome:
+        # width 2.6px against a 1.4px base, line-color rgb(207,230,255).
+        $script:Html | Should-MatchString "selector: 'edge\.focus-edge'"
+        $script:Html | Should-MatchString "'width': FOCUS_EDGE_WIDTH,"
+        $script:Html | Should-MatchString "addClass\('focus-edge'\)"
+        # Cleared on both paths, or a stale highlight outlives its focus.
+        $script:Html | Should-MatchString "removeClass\('focus-edge'\)"
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

@@ -36,6 +36,12 @@
     NodeSep         = 14
     RankSep         = 80
 
+    # Edge thickness. FocusEdgeWidth applies to the edges inside a focused
+    # neighbourhood, which also brighten - those are the connections the user
+    # selected a node to look at.
+    EdgeWidth       = 1.4
+    FocusEdgeWidth  = 2.6
+
     # Above this many nodes the page opens filtered to exported functions,
     # behind a dismissible banner, because the layout stops being readable.
     NodeLimit       = 400
