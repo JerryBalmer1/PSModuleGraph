@@ -154,6 +154,18 @@ PowerShell is the first reader and writer of this store. It is not its owner.
 The test is concrete: **if a Python or Go implementation would have to reshape
 the data to read it, the shape is wrong.**
 
+**As of v0.2.0 this is demonstrated rather than asserted.**
+`readers/read_store.py` reads `subjects/` and `assignments/` in **51 lines of
+Python, standard library only** — `sys` and `pathlib`, no YAML package — and
+reports the same 97 subjects and 188 assignments the PowerShell readers do. It
+is run by hand and is deliberately **not** in CI: a build dependency on a second
+runtime would defeat the thing it exists to prove.
+
+It reads the flat records only. `facets/` carries the one nested structure in
+the store, and that asymmetry is the design: the bulk data stays flat so any
+language can read it, while the handful of facet definitions carry the nesting
+that a reader only needs if it is resolving paths.
+
 ---
 
 ## Versioning below 1.0.0
