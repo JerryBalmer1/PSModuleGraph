@@ -639,6 +639,55 @@ The suite runs on Pester 6.1.0 exactly. Pester 6 is not Pester 5.
   `src/`, so line numbers in coverage reports refer to the generated file.
   `CoverageGutters` was removed in Pester 6 — do not add it back.
 
+### The verified assertion list
+
+**These are the `Should-*` assertions Pester 6.1.0 actually exports.** Enumerated
+from the installed module, not remembered. **If an assertion is not on this list,
+check before writing it** - `Should-Not-BeNullOrEmpty` and then
+`Should-NotBeNullOrEmpty` were both invented and both caught at runtime, twice in
+one session, and neither exists.
+
+```
+Should-All                   Should-Any                   Should-Be
+Should-BeAfter               Should-BeBefore              Should-BeCollection
+Should-BeEmptyString         Should-BeEquivalent          Should-BeFalse
+Should-BeFalsy               Should-BeFasterThan          Should-BeGreaterThan
+Should-BeGreaterThanOrEqual  Should-BeHashtable           Should-BeLessThan
+Should-BeLessThanOrEqual     Should-BeLikeString          Should-BeNull
+Should-BeSame                Should-BeSlowerThan          Should-BeString
+Should-BeTrue                Should-BeTruthy              Should-ContainCollection
+Should-HaveParameter         Should-HaveType              Should-Invoke
+Should-MatchString           Should-NotBe                 Should-NotBeEmptyString
+Should-NotBeLikeString       Should-NotBeNull             Should-NotBeSame
+Should-NotBeString           Should-NotBeWhiteSpaceString Should-NotContainCollection
+Should-NotHaveParameter      Should-NotHaveType           Should-NotInvoke
+Should-NotMatchString        Should-Throw
+```
+
+To re-derive it after a Pester upgrade:
+
+```powershell
+Get-Command -Module Pester -Name 'Should-*' | Select-Object -ExpandProperty Name | Sort-Object
+```
+
+Note what is **not** there: no `Should-NotThrow` (just call the code - an
+exception fails the test on its own), and **no `Should-NotBeNullOrEmpty`**. For
+"not null" use `Should-NotBeNull`; for "not an empty string" use
+`Should-NotBeEmptyString`. They are two assertions here, not one.
+
+**Piping an empty array sends nothing down the pipeline.** `@() | Should-NotBeNull`
+fails, because the assertion never receives a value at all - it is not asserting
+about the array, it is asserting about nothing. This reads as a product bug and
+is not one. **Compare, do not pipe:**
+
+```powershell
+($null -eq $value) | Should-BeFalse      # right
+$value | Should-NotBeNull                # wrong when $value may be @()
+```
+
+The same trap applies to any assertion fed from a collection that might be
+empty. `@($x).Count | Should-Be 0` is the safe form for asserting emptiness.
+
 A terminating error thrown inside a `BeforeAll` surfaces as a confusing
 "a 'break' or 'continue' statement ... escaped from your code" failure on the
 whole `Describe`, not as the underlying exception. When a `Describe` fails that
