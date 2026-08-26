@@ -418,14 +418,23 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         try {
             cy.layout({ name: 'dagre', rankDir: 'LR', nodeSep: 26, rankSep: 70, animate: false }).run();
         } catch (e) {
+            // Falling back is better than an empty canvas, but record why so the
+            // failure is diagnosable instead of just looking like a bad layout.
             name = 'cose';
+            document.documentElement.setAttribute('data-layout-error', String(e && e.message));
             cy.layout({ name: 'cose', animate: false }).run();
         }
+        document.documentElement.setAttribute('data-layout', name);
         return name;
     }
-    runLayout();
-    cy.fit(undefined, 30);
 
+    function fitVisible() {
+        // Fit to visible elements only. Hidden nodes are excluded from the
+        // layout but keep a position at the origin, and a bare cy.fit() would
+        // include them, shrinking the real graph into a corner.
+        var vis = cy.elements(':visible');
+        cy.fit(vis.empty() ? undefined : vis, 30);
+    }
     // ---- kind checkboxes, generated from the data ------------------------
     var kindCounts = {};
     cy.nodes().forEach(function (n) {
@@ -619,7 +628,7 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     document.getElementById('clear-focus').addEventListener('click', clearFocus);
     document.getElementById('fit').addEventListener('click', function () {
         runLayout();
-        cy.fit(undefined, 30);
+        fitVisible();
     });
 
     // ---- scale guard -----------------------------------------------------
@@ -634,10 +643,14 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
             ' the layout stops being readable, so the view starts filtered to exported functions. ' +
             'Uncheck "Exported only" to see everything.';
         banner.style.display = 'flex';
-        applyFilters();
-        runLayout();
-        cy.fit(undefined, 30);
     }
+
+    // First paint. Filters run before the first layout, so nodes that start
+    // hidden - unresolved externals are off by default - never occupy space in
+    // it. Cytoscape excludes display:none elements from layouts.
+    applyFilters();
+    runLayout();
+    fitVisible();
 }());
 </script>
 </body>
