@@ -4,6 +4,9 @@ tag: v0.0.1
 date: 2026-08-26
 prompt_intent: Stand up a language-neutral store for dimensions, prove the generalisation on two facets that already exist implicitly in the graph, and make the ledger and reflection habits permanent before anything larger is built on them.
 personas: [taxonomist, archivist, integrator, skeptic]
+open_threads: [0001-t1, 0001-t2, 0001-t3, 0001-t4, 0001-t5, 0001-t6, 0001-t7]
+closes: []
+carries_forward: []
 supersedes: []
 ---
 
@@ -122,21 +125,21 @@ failure its own body warns about.
 
 ## Open threads
 
-1. **Create the `namespace` facet** and make `NAMING.md` point at it rather than
+1. **[0001-t1] Create the `namespace` facet** and make `NAMING.md` point at it rather than
    listing namespaces in prose. Minor version bump.
-2. **Decide whether `facet-health` splits into three.** Needs assignments first;
+2. **[0001-t2] Decide whether `facet-health` splits into three.** Needs assignments first;
    proposal is in question 2 above.
-3. **Assign `facet-health` to `facet:structure`, `facet:surface` and
+3. **[0001-t3] Assign `facet-health` to `facet:structure`, `facet:surface` and
    `facet:facet-health`**, computed from the store rather than declared. This is
    the first real exercise of the recursion.
-4. **Make the store's write path real.** The generator is a scratch script;
+4. **[0001-t4] Make the store's write path real.** The generator is a scratch script;
    nothing shipped writes, and the read path has never seen what the write path
    produced.
-5. **Read subjects and assignments back**, which needs the parser to handle
+5. **[0001-t5] Read subjects and assignments back**, which needs the parser to handle
    nested lists inside list items. Either extend the subset deliberately or
    split bulk data into a shape the current subset covers.
-6. **Exercise the unexercised.** `structure:class`, `structure:enum` and
+6. **[0001-t6] Exercise the unexercised.** `structure:class`, `structure:enum` and
    `structure:external` have no assignments; a second module as a subject would
    fix that without any network access.
-7. **The facet seam in the report**, designed in `docs/html-architecture.md` and
+7. **[0001-t7] The facet seam in the report**, designed in `docs/html-architecture.md` and
    not built. `nodes[].kind` must be emitted alongside `facets`, not replaced.

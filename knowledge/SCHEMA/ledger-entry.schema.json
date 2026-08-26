@@ -2,9 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://psmodulegraph.invalid/knowledge/ledger-entry.schema.json",
   "title": "Ledger entry",
-  "description": "One implementation. Front matter is this document; the body carries five required sections named in NAMING.md. An implementation that produces no ledger entry did not happen, so this schema describes the smallest thing that counts as having happened.",
+  "description": "One implementation. Front matter is this document; the body carries five required sections named in NAMING.md. An implementation that produces no ledger entry did not happen, so this schema describes the smallest thing that counts as having happened.\n\nopen_threads, closes and carries_forward exist because presence-checking cannot tell whether a section says anything, and open-thread continuity can. The tell of an entry written at the end of a long session is not a short skeptic section - it is the threads that quietly vanish. Entry N must close or carry forward every thread entry N-1 left open, and a test enforces it.",
   "type": "object",
-  "required": ["id", "tag", "date", "prompt_intent", "personas"],
+  "required": ["id", "tag", "date", "prompt_intent", "personas", "open_threads", "closes", "carries_forward"],
   "additionalProperties": false,
   "properties": {
     "id": {
@@ -13,7 +13,7 @@
       "pattern": "^[0-9]{4}$"
     },
     "tag": {
-      "description": "The annotated git tag this entry was sealed with. Patch for a normal implementation, minor when a facet is added or split, major when a schema changes shape.",
+      "description": "The annotated git tag this entry was sealed with. See NAMING.md for the pre-1.0 rule: below 1.0.0 a schema shape change is a minor bump and everything else is patch.",
       "type": "string",
       "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
     },
@@ -33,11 +33,46 @@
       },
       "contains": { "const": "skeptic" }
     },
+    "open_threads": {
+      "description": "Ids of the threads THIS entry leaves open, for the next entry to close or carry. Machine-readable here; described in the body's 'Open threads' section under the same ids.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/threadId" }
+    },
+    "closes": {
+      "description": "Thread ids from earlier entries this implementation finished.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/threadId" }
+    },
+    "carries_forward": {
+      "description": "Thread ids from earlier entries still open, restated deliberately rather than allowed to lapse. Carrying a thread forever is visible; dropping it silently is not.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/threadId" }
+    },
     "supersedes": {
       "description": "Ledger ids this entry revises, when a later implementation applies a split or merge an earlier one only proposed.",
       "type": "array",
       "items": { "type": "string", "pattern": "^[0-9]{4}$" },
       "default": []
     }
+  },
+  "definitions": {
+    "threadId": {
+      "description": "<entry id>-t<n>, naming the entry that opened the thread. 0001-t5 is the fifth thread opened by entry 0001.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-t[0-9]+$"
+    }
+  },
+  "if": {
+    "properties": { "id": { "const": "0001" } }
+  },
+  "then": {
+    "description": "The first entry has nothing before it, so empty closes and carries_forward are legal."
+  },
+  "else": {
+    "description": "Every later entry must account for what came before. Empty on both would mean the previous entry's threads were dropped without a word, which is the failure this exists to catch.",
+    "anyOf": [
+      { "properties": { "closes": { "minItems": 1 } } },
+      { "properties": { "carries_forward": { "minItems": 1 } } }
+    ]
   }
 }
