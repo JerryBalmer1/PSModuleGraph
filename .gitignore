@@ -36,3 +36,6 @@ Pester*.xml
 
 # InvokeBuild / tools cache
 .tools/
+
+# Corpus build output (generated, not source).
+output/corpus/

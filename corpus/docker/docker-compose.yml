@@ -1,0 +1,58 @@
+# PSCorpus: a database, and a shell that can load it.
+#
+#   docker compose up -d db          bring up Postgres with the schema applied
+#   docker compose run --rm loader   ingest and load, then exit
+#   docker compose down -v           drop the volume, which is the ONLY way to
+#                                    re-run the init scripts after a schema edit
+#
+# The password below is a development default and is meant to be one. The port
+# is bound to 127.0.0.1 explicitly rather than to 0.0.0.0: this holds a
+# developer's own working record, and the default docker bind would publish it
+# to every interface on the machine.
+
+name: pscorpus
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pscorpus-db:local
+    environment:
+      POSTGRES_DB: pscorpus
+      POSTGRES_USER: pscorpus
+      POSTGRES_PASSWORD: ${PSCORPUS_PASSWORD:-pscorpus-dev}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pscorpus -d pscorpus"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+  # PowerShell, the corpus module, and psql - so a load is one command and needs
+  # nothing installed on the host. Mounted read-only: the loader reads the
+  # repository and writes only to the database, and a bind mount that cannot
+  # write is the cheapest way to keep that true.
+  loader:
+    image: mcr.microsoft.com/powershell:7.4-debian-bookworm
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /repo
+    volumes:
+      - ../..:/repo:ro
+    environment:
+      PSCORPUS_DSN: "postgresql://pscorpus:${PSCORPUS_PASSWORD:-pscorpus-dev}@db:5432/pscorpus"
+    entrypoint: ["/usr/bin/env", "bash", "-lc"]
+    command: >
+      "apt-get update -qq && apt-get install -y -qq postgresql-client >/dev/null &&
+       pwsh -NoProfile -File /repo/corpus/load.ps1 -SqlOut /tmp/corpus.sql &&
+       psql \"$$PSCORPUS_DSN\" -v ON_ERROR_STOP=1 -f /tmp/corpus.sql &&
+       psql \"$$PSCORPUS_DSN\" -c 'SELECT kind, count(*) FROM training_example GROUP BY kind ORDER BY 1;'"
+
+volumes:
+  pgdata:
