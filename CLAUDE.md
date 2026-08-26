@@ -200,6 +200,25 @@ Five questions at the end of every implementation, answered in the ledger's
 answer most of the time** - a reflection pass that finds a new dimension every
 time is a pass that is inventing them.
 
+**The evidence rule.** A "yes" to question 1, 2 or 3 **must name two specific
+subjects** that the existing facets cannot distinguish, or that the proposed
+split would separate. **No pair, no proposal - the answer is "no".**
+
+This exists because five questions that all ask "did you find something?" will
+find something: answering "no" five times looks like inattention, so the pass
+ratchets upward and the taxonomy grows on enthusiasm rather than need. Entry
+`0001` demonstrated exactly that, returning two yeses on a store containing two
+facets. Both were re-tried under this rule in `0002` and **both were withdrawn**.
+
+Naming the pair converts "did you notice anything" into "show me the thing", and
+a reader can check it in ten seconds. It also has to be a pair the *split would
+separate*: facets are multi-valued, so two axes can already coexist as two paths
+on one facet, and a split that separates nothing is a rename with extra files.
+
+**A proposal you withdraw is a successful reflection pass, not a failed one.** A
+pass that never retracts is a pass that only ratchets, and a taxonomy that only
+grows is one nobody can hold in their head.
+
 1. Did this reveal a dimension that does not exist yet?
 2. Is an existing facet doing two jobs?
 3. Did two facets turn out to be the same thing?
@@ -207,6 +226,13 @@ time is a pass that is inventing them.
    levels deeper than its siblings means the hierarchy is wrong, not that the
    subject is unusual.
 5. Could this facet classify facets? If so it belongs in `meta/` as well.
+
+Then, before the tag: **entry N must close or carry forward every thread entry
+N-1 left open.** `closes` and `carries_forward` in the front matter, thread ids
+of the form `0001-t5`, and a test that fails naming any id that vanished. This
+is the mechanism that replaces the instruction "the skeptic section is never
+empty" - presence-checking cannot tell whether a section says anything, but a
+thread that silently disappears is checkable.
 
 ## Build
 
