@@ -29,6 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no `-OutputPath` the page goes to a temp file that is opened and returned.
 - **`-Title`** on `Export-PSModuleDependencyGraph`, for the page heading.
   Defaults to `<ModuleName> dependency graph`.
+- **Test order as the HTML page's default view.** Nodes are ranked by a
+  topological sort of the dependency edges: step 1 depends on nothing internal
+  and can be tested in isolation, and nothing in a step depends on anything in a
+  later step. The layout puts step 1 leftmost so a node's column is its step, and
+  the sidebar lists the steps in order for driving a Pester run. Testing in that
+  order means the first failure is the cause rather than an echo of something
+  earlier. A **Call flow** toggle gives the opposite orientation, callers first.
+
+  Ordering uses Kahn's algorithm, so a dependency cycle cannot hang it: members
+  of a cycle have no valid position and are reported separately instead of being
+  given a misleading one.
 
 - Initial command set, all static: nothing is imported, dot-sourced, or
   executed, and every result carries a file path and line number.

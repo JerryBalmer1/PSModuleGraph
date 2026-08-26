@@ -60,8 +60,8 @@ header .counts b { color: var(--fg); font-weight: 600; }
 #main { flex: 1 1 auto; display: flex; min-height: 0; }
 
 #sidebar {
-    flex: 0 0 280px;
-    width: 280px;
+    flex: 0 0 300px;
+    width: 300px;
     overflow-y: auto;
     background: var(--panel);
     border-right: 1px solid var(--line);
@@ -113,8 +113,24 @@ button:hover { background: #2b3340; }
 
 input[type="range"] { width: 100%; }
 .radio-row { display: flex; flex-direction: column; gap: 2px; }
-.radio-row label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.radio-row label { display: flex; align-items: baseline; gap: 7px; cursor: pointer; }
 .hint { color: var(--fg-dim); font-size: 11px; margin: 2px 0 0; }
+
+/* Test order ---------------------------------------------------------- */
+#order-list { max-height: 250px; overflow-y: auto; user-select: all; }
+.order-step { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid #232a35; }
+.order-step:last-child { border-bottom: 0; }
+.order-step .lvl {
+    flex: 0 0 20px;
+    text-align: right;
+    color: var(--accent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.order-step .names { flex: 1 1 auto; font-size: 11px; word-break: break-word; }
+.order-step .names .exp { color: var(--fg); font-weight: 600; }
+.order-step .names .priv { color: var(--fg-dim); }
+.order-cycle { margin-top: 8px; padding: 7px 9px; background: #3a2016; border: 1px solid var(--danger); border-radius: 4px; font-size: 11px; }
 
 #details { border-top: 1px solid var(--line); padding-top: 12px; }
 #details dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
@@ -134,7 +150,7 @@ input[type="range"] { width: 100%; }
 .legend { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--fg-dim); }
 .legend .row { display: flex; align-items: center; gap: 7px; }
 .legend .line { width: 22px; height: 0; border-top-width: 2px; flex: 0 0 auto; }
-.legend .ring { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
+.legend .chip { width: 26px; height: 14px; border-radius: 3px; flex: 0 0 auto; }
 
 #banner {
     position: absolute;
@@ -179,11 +195,24 @@ input[type="range"] { width: 100%; }
         <div class="counts">
             <span><b id="c-nodes">0</b> nodes</span>
             <span><b id="c-edges">0</b> edges</span>
-            <span><b id="c-roots">0</b> roots</span>
+            <span><b id="c-steps">0</b> test steps</span>
         </div>
     </header>
     <div id="main">
         <aside id="sidebar">
+            <div class="section">
+                <h2>Order</h2>
+                <div class="radio-row">
+                    <label><input type="radio" name="flow" value="testorder" checked> Test order <span class="hint">(dependencies first)</span></label>
+                    <label><input type="radio" name="flow" value="callflow"> Call flow <span class="hint">(callers first)</span></label>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Test order</h2>
+                <p class="hint" id="order-intro"></p>
+                <div id="order-list"></div>
+                <div id="order-cycle" class="order-cycle" hidden></div>
+            </div>
             <div class="section">
                 <h2>Search</h2>
                 <input type="search" id="search" placeholder="Filter by name" autocomplete="off">
@@ -292,10 +321,6 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
 
     var NODE_LIMIT = 400;
     var ZOOM_SPEED_DEFAULT = 1.5;
-    var KIND_COLOR = {
-        Function: 'var(--fn)', Class: 'var(--cls)', Enum: 'var(--enum)',
-        Script: 'var(--script)', External: 'var(--ext)'
-    };
     var KIND_HEX = {
         Function: '#4da3ff', Class: '#f2c14e', Enum: '#6ddf6d',
         Script: '#9b8cff', External: '#ff7043'
@@ -306,39 +331,119 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     var links = GRAPH_DATA.links || [];
     var unresolved = GRAPH_DATA.unresolved || [];
 
+    function uniq(arr) {
+        return arr.filter(function (v, i, a) { return a.indexOf(v) === i; });
+    }
+
+    function escapeHtml(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ---- test order ------------------------------------------------------
+    // An edge source -> target means source calls target, so source DEPENDS ON
+    // target. Anything that depends on nothing can be tested in isolation, so it
+    // goes first; everything else waits for what it rests on. Test in this order
+    // and the first failure is the cause, not an echo of something earlier.
+    //
+    //   level(n) = 0                        if n depends on nothing internal
+    //   level(n) = 1 + max(level(deps(n)))  otherwise
+    //
+    // Kahn's algorithm, so a cycle cannot spin forever: anything still
+    // unassigned when the queue drains is part of one, and gets reported rather
+    // than given a fake position in the order.
+    function computeTestOrder(nodeList, edgeList) {
+        var ids = nodeList.map(function (n) { return n.id; });
+        var known = {};
+        ids.forEach(function (id) { known[id] = true; });
+
+        var deps = {};
+        var dependents = {};
+        ids.forEach(function (id) { deps[id] = []; dependents[id] = []; });
+
+        edgeList.forEach(function (e) {
+            if (e.source === e.target) { return; }   // self-call is not a dependency
+            if (!known[e.source] || !known[e.target]) { return; }
+            deps[e.source].push(e.target);
+            dependents[e.target].push(e.source);
+        });
+
+        // Parallel edges would otherwise decrement the in-degree more than once.
+        ids.forEach(function (id) {
+            deps[id] = uniq(deps[id]);
+            dependents[id] = uniq(dependents[id]);
+        });
+
+        var remaining = {};
+        var level = {};
+        var queue = [];
+        ids.forEach(function (id) {
+            remaining[id] = deps[id].length;
+            if (remaining[id] === 0) { level[id] = 0; queue.push(id); }
+        });
+
+        for (var head = 0; head < queue.length; head++) {
+            var current = queue[head];
+            dependents[current].forEach(function (d) {
+                if (level[d] !== undefined) { return; }
+                remaining[d] -= 1;
+                if (remaining[d] > 0) { return; }
+                var max = -1;
+                deps[d].forEach(function (x) {
+                    if (level[x] !== undefined && level[x] > max) { max = level[x]; }
+                });
+                level[d] = max + 1;
+                queue.push(d);
+            });
+        }
+
+        var cyclic = ids.filter(function (id) { return level[id] === undefined; });
+        return { level: level, deps: deps, dependents: dependents, cyclic: cyclic };
+    }
+
+    var internal = nodes.filter(function (n) { return n.kind !== 'External'; });
+    var order = computeTestOrder(internal, links);
+
+    var maxLevel = -1;
+    Object.keys(order.level).forEach(function (id) {
+        if (order.level[id] > maxLevel) { maxLevel = order.level[id]; }
+    });
+    var stepCount = maxLevel + 1;
+
     // ---- header ----------------------------------------------------------
     document.getElementById('hdr-version').textContent =
         (meta.moduleVersion ? 'v' + meta.moduleVersion : '') +
         (meta.generatedAt ? '  ·  generated ' + meta.generatedAt : '');
     document.getElementById('c-nodes').textContent = nodes.length;
     document.getElementById('c-edges').textContent = links.length;
-    document.getElementById('c-roots').textContent = (GRAPH_DATA.roots || []).length;
-
-    // ---- inbound counts drive node size ----------------------------------
-    var inbound = {};
-    nodes.forEach(function (n) { inbound[n.id] = 0; });
-    links.forEach(function (l) {
-        if (inbound[l.target] !== undefined) { inbound[l.target] += 1; }
-    });
-    var maxIn = 1;
-    Object.keys(inbound).forEach(function (k) { if (inbound[k] > maxIn) { maxIn = inbound[k]; } });
-
-    function sizeFor(id) {
-        // Clamped so one hot node cannot dominate the canvas.
-        var t = maxIn > 0 ? (inbound[id] || 0) / maxIn : 0;
-        return 20 + Math.round(Math.sqrt(t) * 34);
-    }
+    document.getElementById('c-steps').textContent = stepCount;
 
     // ---- build elements --------------------------------------------------
+    function borderFor(id) {
+        // Border thickness is the blast radius: how many things break if this
+        // changes. Width rather than fill so it survives greyscale, and clamped
+        // so one hot node cannot dominate.
+        var n = (order.dependents[id] || []).length;
+        return Math.min(1 + n, 7);
+    }
+
     var els = [];
     nodes.forEach(function (n) {
+        var lvl = order.level[n.id];
         els.push({
             data: {
-                id: n.id, name: n.name, kind: n.kind,
-                isExported: !!n.isExported, path: n.path || '',
-                startLine: n.startLine, size: sizeFor(n.id),
+                id: n.id,
+                name: n.name,
+                kind: n.kind,
+                isExported: !!n.isExported,
+                path: n.path || '',
+                startLine: n.startLine,
                 color: KIND_HEX[n.kind] || '#8895a7',
-                inbound: inbound[n.id] || 0
+                border: n.kind === 'External' ? 2 : borderFor(n.id),
+                level: lvl === undefined ? null : lvl,
+                dependents: (order.dependents[n.id] || []).length,
+                dependencies: (order.deps[n.id] || []).length
             }
         });
     });
@@ -365,7 +470,8 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
                 data: {
                     id: extId, name: u.targetName, kind: 'External',
                     isExported: false, path: u.path || '', startLine: u.startLine,
-                    size: 20, color: KIND_HEX.External, inbound: 0, unresolved: true
+                    color: KIND_HEX.External, border: 2, level: null,
+                    dependents: 0, dependencies: 0
                 },
                 classes: 'unresolved'
             });
@@ -389,29 +495,34 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         wheelSensitivity: ZOOM_SPEED_DEFAULT,
         style: [
             {
+                // The name sits inside the box, which is sized to it. A circle
+                // with the label underneath cost roughly double the space and
+                // put the text where it could collide with the next node.
                 selector: 'node',
                 style: {
+                    'shape': 'round-rectangle',
                     'background-color': 'data(color)',
                     'label': 'data(name)',
-                    'color': '#e6edf6',
+                    'color': '#0b0f14',
                     'font-size': 10,
-                    'text-valign': 'bottom',
-                    'text-margin-y': 4,
-                    'text-outline-color': '#12161c',
-                    'text-outline-width': 2,
-                    'width': 'data(size)',
-                    'height': 'data(size)',
-                    'border-width': 1,
-                    'border-color': '#12161c'
+                    'font-weight': 600,
+                    'text-valign': 'center',
+                    'text-halign': 'center',
+                    'text-wrap': 'none',
+                    'width': 'label',
+                    'height': 'label',
+                    'padding': '7px',
+                    'border-width': 'data(border)',
+                    'border-color': '#0b0f14'
                 }
             },
             {
-                // Export status is a border, not a fill, so it survives greyscale
-                // and colourblindness.
+                // Export status is border colour, blast radius is border width.
+                // Neither is a fill, so both survive greyscale.
                 selector: 'node[?isExported]',
-                style: { 'border-width': 4, 'border-color': '#e6edf6' }
+                style: { 'border-color': '#ffffff' }
             },
-            { selector: 'node.unresolved', style: { 'shape': 'diamond', 'border-style': 'dashed', 'border-width': 2, 'border-color': '#ff7043' } },
+            { selector: 'node.unresolved', style: { 'border-style': 'dashed', 'border-color': '#7a2f14' } },
             {
                 selector: 'edge',
                 style: {
@@ -419,22 +530,41 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
                     'line-color': '#6b7785',
                     'target-arrow-color': '#6b7785',
                     'target-arrow-shape': 'triangle',
-                    'arrow-scale': 0.8,
+                    'arrow-scale': 0.9,
                     'curve-style': 'bezier'
                 }
             },
             { selector: 'edge[kind = "Inherits"]', style: { 'line-color': '#f2c14e', 'target-arrow-color': '#f2c14e', 'line-style': 'dashed', 'width': 2 } },
             { selector: 'edge[kind = "Unresolved"]', style: { 'line-color': '#ff7043', 'target-arrow-color': '#ff7043', 'line-style': 'dotted' } },
             { selector: '.dimmed', style: { 'opacity': 0.15, 'text-opacity': 0.15 } },
-            { selector: 'node.selected-node', style: { 'border-color': '#4da3ff', 'border-width': 5 } },
+            { selector: 'node.selected-node', style: { 'border-color': '#4da3ff' } },
             { selector: '.hidden', style: { 'display': 'none' } }
         ]
     });
 
+    function currentFlow() {
+        var checked = document.querySelector('input[name="flow"]:checked');
+        return checked ? checked.value : 'testorder';
+    }
+
     function runLayout() {
         var name = 'dagre';
+        // Edges point caller -> callee. For test order the callee has to come
+        // first, so rank right-to-left: the graph then reads left-to-right as
+        // the order to test in. longest-path makes dagre's rank equal the level
+        // computed above, so a node's column IS its test step.
+        var testOrder = currentFlow() === 'testorder';
+        var opts = {
+            name: 'dagre',
+            rankDir: testOrder ? 'RL' : 'LR',
+            ranker: testOrder ? 'longest-path' : 'network-simplex',
+            nodeDimensionsIncludeLabels: true,
+            nodeSep: 14,
+            rankSep: 80,
+            animate: false
+        };
         try {
-            cy.layout({ name: 'dagre', rankDir: 'LR', nodeSep: 26, rankSep: 70, animate: false }).run();
+            cy.layout(opts).run();
         } catch (e) {
             // Falling back is better than an empty canvas, but record why so the
             // failure is diagnosable instead of just looking like a bad layout.
@@ -453,6 +583,47 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         var vis = cy.elements(':visible');
         cy.fit(vis.empty() ? undefined : vis, 30);
     }
+
+    // ---- test order list -------------------------------------------------
+    function renderOrder() {
+        var byLevel = [];
+        var i;
+        for (i = 0; i < stepCount; i++) { byLevel.push([]); }
+
+        internal.forEach(function (n) {
+            var lvl = order.level[n.id];
+            if (lvl === undefined) { return; }
+            byLevel[lvl].push(n);
+        });
+
+        var html = byLevel.map(function (group, index) {
+            group.sort(function (a, b) { return a.name.localeCompare(b.name); });
+            var names = group.map(function (n) {
+                return '<span class="' + (n.isExported ? 'exp' : 'priv') + '">' +
+                       escapeHtml(n.name) + '</span>';
+            }).join(', ');
+            return '<div class="order-step"><span class="lvl">' + (index + 1) + '</span>' +
+                   '<span class="names">' + names + '</span></div>';
+        }).join('');
+
+        document.getElementById('order-list').innerHTML = html;
+        document.getElementById('order-intro').textContent =
+            'Test step 1 first. Nothing in a step depends on anything in a later step, ' +
+            'so the first failure is the cause rather than an echo of it.';
+
+        var cycleBox = document.getElementById('order-cycle');
+        if (order.cyclic.length > 0) {
+            var byId = {};
+            internal.forEach(function (n) { byId[n.id] = n.name; });
+            var names = order.cyclic.map(function (id) { return byId[id] || id; }).sort().join(', ');
+            cycleBox.innerHTML = '<b>' + order.cyclic.length + ' in a dependency cycle.</b> ' +
+                'These have no valid order, because each waits on the other: ' + escapeHtml(names);
+            cycleBox.hidden = false;
+        } else {
+            cycleBox.hidden = true;
+        }
+    }
+
     // ---- kind checkboxes, generated from the data ------------------------
     var kindCounts = {};
     cy.nodes().forEach(function (n) {
@@ -481,15 +652,15 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     // ---- legend ----------------------------------------------------------
     var legend = document.getElementById('legend');
     var legendRows = kinds.map(function (k) {
-        return '<div class="row"><span class="ring" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' + k + '</div>';
+        return '<div class="row"><span class="chip" style="background:' + (KIND_HEX[k] || '#8895a7') + '"></span>' + k + '</div>';
     });
-    legendRows.push('<div class="row"><span class="ring" style="background:#2b3340;border:3px solid #e6edf6"></span>exported</div>');
+    legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:2px solid #fff"></span>exported</div>');
+    legendRows.push('<div class="row"><span class="chip" style="background:#4da3ff;border:5px solid #0b0f14"></span>thicker border = more dependents</div>');
     legendRows.push('<div class="row"><span class="line" style="border-top:2px solid #6b7785"></span>calls</div>');
     legendRows.push('<div class="row"><span class="line" style="border-top:2px dashed #f2c14e"></span>inherits</div>');
     if (unresolved.length > 0) {
         legendRows.push('<div class="row"><span class="line" style="border-top:2px dotted #ff7043"></span>unresolved</div>');
     }
-    legendRows.push('<div class="row"><span class="ring" style="background:#8895a7"></span>size = inbound edges</div>');
     legend.innerHTML = legendRows.join('');
 
     // ---- filtering -------------------------------------------------------
@@ -581,16 +752,19 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     }
 
     function showDetails(n) {
-        var deps = n.outgoers().nodes().length;
-        var dependents = n.incomers().nodes().length;
+        var lvl = n.data('level');
         var rows = [
             ['Name', escapeHtml(n.data('name'))],
             ['Kind', escapeHtml(n.data('kind'))],
-            ['Exported', n.data('kind') === 'External' ? 'n/a' : (n.data('isExported') ? 'yes' : 'no')],
-            ['Dependents', String(dependents)],
-            ['Dependencies', String(deps)]
+            ['Exported', n.data('kind') === 'External' ? 'n/a' : (n.data('isExported') ? 'yes' : 'no')]
         ];
+        if (n.data('kind') !== 'External') {
+            rows.push(['Test step', lvl === null ? 'in a cycle' : (lvl + 1) + ' of ' + stepCount]);
+            rows.push(['Dependents', String(n.data('dependents'))]);
+            rows.push(['Dependencies', String(n.data('dependencies'))]);
+        }
         if (n.data('startLine')) { rows.push(['Line', String(n.data('startLine'))]); }
+
         var html = rows.map(function (r) {
             return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>';
         }).join('');
@@ -604,12 +778,6 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
         list.innerHTML = html;
         list.hidden = false;
         document.getElementById('details-empty').hidden = true;
-    }
-
-    function escapeHtml(s) {
-        return String(s === null || s === undefined ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     cy.on('tap', 'node', function (evt) {
@@ -643,6 +811,15 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     Array.prototype.forEach.call(document.querySelectorAll('input[name="dir"]'), function (r) {
         r.addEventListener('change', reapplyFocus);
     });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="flow"]'), function (r) {
+        r.addEventListener('change', function () { runLayout(); fitVisible(); });
+    });
+    document.getElementById('clear-focus').addEventListener('click', clearFocus);
+    document.getElementById('fit').addEventListener('click', function () {
+        runLayout();
+        fitVisible();
+    });
+
     // Wheel sensitivity lives on the renderer and is read at event time, so it
     // can be changed live. It is not part of Cytoscape's public API, hence the
     // guard: if a future version moves it, the slider goes inert rather than
@@ -664,12 +841,6 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     zoomSpeedEl.addEventListener('input', applyZoomSpeed);
     applyZoomSpeed();
 
-    document.getElementById('clear-focus').addEventListener('click', clearFocus);
-    document.getElementById('fit').addEventListener('click', function () {
-        runLayout();
-        fitVisible();
-    });
-
     // ---- scale guard -----------------------------------------------------
     var banner = document.getElementById('banner');
     document.getElementById('banner-close').addEventListener('click', function () {
@@ -687,6 +858,7 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     // First paint. Filters run before the first layout, so nodes that start
     // hidden - unresolved externals are off by default - never occupy space in
     // it. Cytoscape excludes display:none elements from layouts.
+    renderOrder();
     applyFilters();
     runLayout();
     fitVisible();

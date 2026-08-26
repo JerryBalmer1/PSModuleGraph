@@ -63,7 +63,23 @@ Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
 Produces a single self-contained page: search, filter by kind or export status,
 click a node to focus its neighbourhood at a chosen depth in either direction —
 *Dependents* (what breaks if I change this) or *Dependencies* (what this needs).
-Node size tracks inbound edge count, so the big nodes are the risky ones.
+Border thickness tracks how many things depend on a node, so the heavy-bordered
+ones are the risky ones.
+
+#### Test order is the default view
+
+The page opens in **Test order**: dependencies first, laid out left to right, so
+a node's column is the step it belongs to. Step 1 is everything that depends on
+nothing internal and can be tested in isolation; nothing in a step depends on
+anything in a later one.
+
+The sidebar lists the steps in order, ready to drive a Pester run. Test in that
+order and the first failure is the cause rather than an echo — you stop sifting
+a wall of red to find what actually broke. Switch to **Call flow** for the
+opposite orientation, callers first.
+
+Anything caught in a dependency cycle has no valid position in the order, so it
+is called out separately rather than silently given one.
 
 `-Show` opens your **default web browser**, not VS Code. VS Code has no built-in
 HTML preview, so opening the file there shows the page source rather than the
