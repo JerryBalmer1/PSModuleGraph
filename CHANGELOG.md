@@ -254,6 +254,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **An assignment file was keyed by subject and facet, which silently lost
+  data.** Facets are multi-valued — that is the very property the `facet-health`
+  split was withdrawn over — but the layout gave each subject one file per
+  facet. `facet-health` assigns three paths to one facet, so two of every three
+  grades were overwritten by the third and the store reported only the last one
+  written. Assignments are now keyed by subject, facet **and** path.
+- **`source:` paths were computed relative to the store's parent directory**, so
+  a record's content depended on where the store happened to sit. Regenerating
+  the same source into a different directory produced different files, which the
+  freshness test could not tell apart from real drift. Paths are now relative to
+  the containing artefact — a module's base for a definition, the store root for
+  a facet file.
 - **A report opened in a VS Code preview pane claimed the browser was blocking
   `vscode://` links.** It was not; no browser was involved. An editor preview
   runs the page in the editor's own Electron renderer, which swallows a custom

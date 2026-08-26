@@ -31,6 +31,7 @@ cd PSModuleGraph
 | `Export-PSModuleDependencyGraph` | JSON, Graphviz DOT, Mermaid, or CSV edge list |
 | `Test-PSModuleGraphEditorLink` | Why `vscode://` links do or do not open from a browser. Read-only |
 | `Enable-PSModuleGraphEditorLink` | Grants Chrome or Edge permission to open them. Prompts; `-Revert` undoes it |
+| `Update-KnowledgeStore` | Regenerates a module's records in `knowledge/`. Prompts; `-WhatIf` lists every file |
 
 ## Parameter sets
 

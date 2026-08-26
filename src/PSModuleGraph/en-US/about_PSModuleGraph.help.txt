@@ -124,6 +124,39 @@ LONG DESCRIPTION
             Export-PSModuleDependencyGraph -Format Dot -OutputPath ./graph.dot
         dot -Tsvg ./graph.dot -o graph.svg
 
+    Update-KnowledgeStore
+        Regenerates a module's subjects and assignments in the knowledge store.
+        See THE KNOWLEDGE STORE below.
+
+    THE KNOWLEDGE STORE
+
+    knowledge/ at the repository root holds dimensions, the things they
+    classify, and the evidence behind each classification. It is Markdown with
+    YAML front matter validated by JSON Schema, with no PowerShell types in it:
+    PowerShell is its first reader and writer, not its owner. A 51-line Python
+    reader in knowledge/readers/ demonstrates that rather than asserting it.
+
+    A dimension - a facet - is Kind generalised: open-ended rather than closed,
+    hierarchical rather than flat, multi-valued rather than single, and backed by
+    evidence rather than asserted. Two ship today, both restatements of data the
+    graph already produces:
+
+        structure   structure:function, :class, :enum, :script, :external
+        surface     surface:exported, surface:internal
+
+    Update-KnowledgeStore writes a module's records. It prompts, -WhatIf lists
+    every file it would touch, and every record is validated against its schema
+    BEFORE it is written. The store is committed data, so it goes stale when the
+    source moves; ./build.ps1 -Task Knowledge is the fix and the test that
+    catches staleness says so by name.
+
+        Update-KnowledgeStore -Path ./src/PSModuleGraph
+        Update-KnowledgeStore -Path ./src/PSModuleGraph -WhatIf
+
+    Confidence is required on every assignment and never defaults to 1. An
+    inference from an absence is not the same fact as a declared entry, and the
+    store must always be able to say which it holds.
+
     EDITOR LINKS
 
     The HTML report can hand a file and line to VS Code over a vscode:// URI.
@@ -180,5 +213,6 @@ SEE ALSO
     Export-PSModuleDependencyGraph
     Test-PSModuleGraphEditorLink
     Enable-PSModuleGraphEditorLink
+    Update-KnowledgeStore
     about_Modules
     https://github.com/JerryBalmer1/PSModuleGraph
