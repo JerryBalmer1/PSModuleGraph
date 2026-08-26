@@ -42,6 +42,8 @@ src/PSModuleGraph/
     Resolve-HtmlConfiguration.ps1
     Resolve-HtmlString.ps1
     ConvertTo-EscapedHtml*.ps1
+    Resolve-LoopbackDocumentUrl.ps1   files, ports and HTTP; no graph vocabulary
+    New-GraphReportPath.ps1
     Show-GraphDocument.ps1
     ConvertTo-GraphHtml.ps1     <- STAYS. This is the seam.
 ```
@@ -492,3 +494,49 @@ answer - what they all rest on, what they break between them - so the contract
 takes the collection rather than iterating one at a time. Same `check` returning
 null-or-reason as `NODE_ACTIONS`, so an inapplicable action greys out with the
 reason.
+
+**2026-08-26 - `-Show` hands the browser a URL when a local server is serving
+the file, and the file otherwise.** A static server given a directory returns a
+listing, and clicking through one to reach the report is a step the tool should
+have removed. The second reason is larger: a `file://` page has no origin a
+browser policy can match, and `http://127.0.0.1:PORT` has a real one, so the
+report's own `vscode://` links can be granted from where it actually lives.
+
+**2026-08-26 - The served root is inferred by walking ancestors, and a 200 is
+not enough.** Nothing can ask a static server what it serves, so
+`Resolve-LoopbackDocumentUrl` requests the path the file would have under each
+ancestor, nearest first. A 200 says a resource exists there, not that it is
+ours - something answering 200 to every path would otherwise capture the
+browser - so the first 120 characters of the body are compared with the file.
+
+**2026-08-26 - Only the `127.0.0.1` literal is ever probed.** Not `localhost`,
+which can resolve to a v6 address a server is not bound to; not `0.0.0.0`; not
+a LAN address. An explicit `-BaseUrl` is the caller's decision and is used as
+given, and is the only way anything else is reached.
+
+**2026-08-26 - `Show-GraphDocument` takes `-EditorLinkHelpCommand` rather than
+naming a command.** The route taken decides whether the page's own editor links
+can work, so it is worth a `-Verbose` line either way - but naming
+`Test-PSModuleGraphEditorLink` below the seam would be the renderer learning
+what program generated the report. Same pattern, and same reason, as
+`editorLinkHelpCommand`.
+
+**2026-08-26 - The origin-scoped enabler command reaches the page as a template
+with `{origin}` unfilled.** `Enable-PSModuleGraphEditorLink -AllowedOrigin
+'{origin}'` is caller vocabulary substituted in PowerShell; the origin is known
+only to the browser and is filled by `fmt()`. The renderer interpolates a string
+it was handed and learns nothing, which is the two-place token contract working
+exactly as written.
+
+**2026-08-26 - `showBanner` takes a copy-label key.** One button now serves two
+payloads - a command and the page's own URL - and a fixed 'Copy command' label
+on a button that copies a URL is a message that lies, which this log has already
+ruled worse than no message.
+
+**2026-08-26 - The directory a report is written into is created with
+`[System.IO.Directory]::CreateDirectory`, not `New-Item`.** `New-Item` supports
+ShouldProcess, so under `-WhatIf` it declined to create the directory while the
+write that followed - which has no ShouldProcess - went ahead and failed on a
+missing path. Gating half of a two-step operation turns a preview into a hard
+error. The open is the step `-WhatIf` is actually asking about, and it is still
+gated.

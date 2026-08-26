@@ -1,0 +1,34 @@
+{
+    // Live Server (ritwickdey.LiveServer). Setting names verified against
+    // https://github.com/ritwickdey/vscode-live-server/blob/master/docs/settings.md
+    //
+    // Serve the reports directory, not the workspace root. Pointing a static
+    // server at the repository is what produced a directory listing of the
+    // whole repo, which the reader then had to click through to reach a report.
+    //
+    // Paths are workspace-relative and start with "/". output/ is gitignored
+    // and is wiped by the Clean build task, so this directory may not exist
+    // until the first `Export-PSModuleDependencyGraph -Format Html -Show`.
+    "liveServer.settings.root": "/output/reports",
+
+    // 5500 is the extension default, and the first port PSModuleGraph's own
+    // loopback probe tries. Pinned rather than left implicit so the two agree
+    // by having been written down together.
+    "liveServer.settings.port": 5500,
+
+    // Also the default, and also pinned deliberately. The probe only ever
+    // contacts the 127.0.0.1 literal - never "localhost", which can resolve to
+    // a v6 address a server is not bound to. A server on a different host would
+    // simply never be found.
+    "liveServer.settings.host": "127.0.0.1",
+
+    // There is no default-file setting that fits here. `liveServer.settings.file`
+    // exists, but it names a single entry point for a single-page application
+    // and would answer every path with that one file - which would break serving
+    // individual reports, and could not name the right one anyway now that
+    // report file names carry a timestamp. Root-only turns the listing into a
+    // listing of reports, and -Show does not go via the listing at all.
+
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
+}

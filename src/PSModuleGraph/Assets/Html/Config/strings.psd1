@@ -20,8 +20,18 @@
     # message below, so the sentence never reads "Run  in PowerShell".
     EditorLinkNoLaunch            = 'Nothing opened. Your browser is blocking vscode:// links. Run {editorLinkHelpCommand} in PowerShell, restart your browser, and try again. Or use Copy Editor Link and paste it into the Run dialog.'
     EditorLinkNoLaunchNoCommand   = 'Nothing opened. Your browser is blocking vscode:// links. Use Copy Editor Link and paste it into the Run dialog.'
+    # Used instead of the above when the page is on an http origin a browser
+    # policy can actually match. {origin} is filled by the page: only the
+    # browser knows where the report was served from. A command the reader has
+    # to edit is a step that did not need to exist.
+    EditorLinkNoLaunchOrigin      = 'Nothing opened. Your browser is blocking vscode:// links from {origin}. Run {editorLinkHelpCommandForOrigin} in PowerShell, restart your browser, and try again.'
     BannerCopyLabel               = 'Copy command'
+    BannerCopyUrlLabel            = 'Copy URL'
     EmbeddedViewer                = 'Opened in an embedded viewer, which cannot hand a vscode:// link to the operating system - no prompt appears and nothing reports the failure. Open File Location is disabled here. Re-open this report in a real browser, or use Copy Editor Link and paste the URI into the Run dialog.'
+    # Shown instead of the above when the page knows its own address, which is
+    # every case except a file:// document. The reader should not have to
+    # reconstruct a URL the page is already sitting on.
+    EmbeddedViewerUrl             = 'Opened in an embedded viewer, which cannot hand a vscode:// link to the operating system - no prompt appears and nothing reports the failure. Open File Location is disabled here. Re-open this report at {url} in a real browser, or use Copy Editor Link and paste the URI into the Run dialog.'
     ScaleGuard                    = 'This module has {count} nodes. Above ~{limit} the layout stops being readable, so the view starts filtered to exported functions. Uncheck "Exported only" to see everything.'
 
     # -- Header ------------------------------------------------------------

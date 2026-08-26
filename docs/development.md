@@ -143,6 +143,22 @@ turns a missing key or property into a terminating error. Reading manifest data
 with a plain property access will throw on any manifest that omits an optional
 key. Use the helper.
 
+## Serving reports locally
+
+`.vscode/settings.json` points Live Server (`ritwickdey.LiveServer`) at
+`/output/reports` rather than the workspace root, so a hand-typed
+`127.0.0.1:5500` lands on a list of reports instead of a listing of the whole
+repository. Setting names were checked against the extension's own
+`docs/settings.md`; `liveServer.settings.file` exists but names a single
+entry-point file for a single-page app, which cannot fit report names that carry
+a timestamp.
+
+`-Show` does not go via any listing. It probes 127.0.0.1 on 5500, 3000, 8080 and
+8000, works out whether the report is under a served root, and hands the browser
+the exact document URL. Changing `liveServer.settings.root` requires stopping
+and restarting Live Server - the probe follows either way, because it infers the
+root rather than being told it.
+
 ## Tooling traps
 
 These cost a round each and are not discoverable from the error message.
@@ -163,6 +179,14 @@ the document instead of the schema.
 **`Import-PowerShellDataFile` needs `-ErrorAction Stop`.** A `.psd1` that will
 not parse raises a **non-terminating** error, so without it the `catch` never
 runs and a broken config falls back in total silence.
+
+**A `-WhatIf` that reaches only half an operation is worse than none.**
+`New-Item -ItemType Directory` supports ShouldProcess; `[System.IO.File]::WriteAllText`
+does not. A command with no ShouldProcess of its own that calls both under a
+session with `$WhatIfPreference` set skips the directory and then fails on the
+write. Create a directory that a non-gated write depends on with
+`[System.IO.Directory]::CreateDirectory`, and gate the step the user is actually
+asking about.
 
 **Parameter shadowing is case-insensitive.** A local `$name` **is** the `$Name`
 parameter. Assigning to it re-runs the parameter's validation attributes, and

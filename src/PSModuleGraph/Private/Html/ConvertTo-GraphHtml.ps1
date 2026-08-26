@@ -55,8 +55,13 @@ function ConvertTo-GraphHtml {
     # The seam. Nothing below it may know what a PSModuleGraph command is, so
     # the name of the one that fixes a blocked editor link is handed down as a
     # generic value and interpolated into a string the renderer was given.
+    # {origin} is deliberately left unfilled here. Caller tokens are substituted
+    # in PowerShell and display-time tokens in the page - only the browser knows
+    # what origin the report ended up on, so the page fills it. The renderer
+    # still learns nothing: it interpolates a string it was handed.
     $strings = Resolve-HtmlString -Value @{
-        editorLinkHelpCommand = 'Enable-PSModuleGraphEditorLink'
+        editorLinkHelpCommand         = 'Enable-PSModuleGraphEditorLink'
+        editorLinkHelpCommandForOrigin = "Enable-PSModuleGraphEditorLink -AllowedOrigin '{origin}'"
     }
     $stringsJson = ConvertTo-EscapedHtmlJson -InputObject $strings
 

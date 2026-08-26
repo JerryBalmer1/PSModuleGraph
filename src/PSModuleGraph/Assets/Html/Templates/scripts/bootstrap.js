@@ -182,7 +182,6 @@ const GRAPH_STRINGS = /*__GRAPH_STRINGS__*/ null;
     var bannerMessages = [];
     var bannerCopyEl = document.getElementById('banner-copy');
     var bannerCopyValue = null;
-    bannerCopyEl.textContent = str('BannerCopyLabel');
     bannerCopyEl.addEventListener('click', function () {
         if (bannerCopyValue) { copyText(bannerCopyValue); }
     });
@@ -194,11 +193,17 @@ const GRAPH_STRINGS = /*__GRAPH_STRINGS__*/ null;
     // elsewhere gets a button, and the rest do not. The button is the whole
     // point of the no-launch message - a user reading it cannot click a link
     // that has just been shown not to work.
-    function showBanner(text, copyValue) {
+    //
+    // copyLabelKey travels with it. Two different messages now want a copy
+    // button for two different things - a command, and this page's own URL -
+    // and a fixed 'Copy command' label on a button that copies a URL is a
+    // message that lies.
+    function showBanner(text, copyValue, copyLabelKey) {
         bannerMessages.push(text);
         document.getElementById('banner-text').textContent = bannerMessages.join(' ');
         if (copyValue) {
             bannerCopyValue = copyValue;
+            bannerCopyEl.textContent = str(copyLabelKey || 'BannerCopyLabel');
             bannerCopyEl.hidden = false;
         }
         banner.style.display = 'flex';
@@ -213,8 +218,19 @@ const GRAPH_STRINGS = /*__GRAPH_STRINGS__*/ null;
     // ---- embedded viewer guard -------------------------------------------
     // Said on load, not only in the context menu: a user who never right-clicks
     // would otherwise never learn the page is running degraded.
+    //
+    // "Re-open this report in a real browser" leaves the reader to work out
+    // WHERE. The page is sitting on the answer, so it shows it with a copy
+    // button - the same mechanism, and the same reason, as the command button
+    // on the no-launch message. A file:// document has an address worth
+    // pasting too, so this is not limited to the served case.
     if (isEmbeddedContext()) {
-        showBanner(str('EmbeddedViewer'));
+        if (location.href) {
+            showBanner(fmt('EmbeddedViewerUrl', { url: location.href }), location.href, 'BannerCopyUrlLabel');
+        }
+        else {
+            showBanner(str('EmbeddedViewer'));
+        }
     }
 
     // First paint. Filters run before the first layout, so nodes that start

@@ -115,13 +115,31 @@
     // The command name is supplied by whatever generated the report. Without
     // one there is nothing to run, so the message says so rather than reading
     // "Run  in PowerShell".
+    // An http origin is one a browser policy can match, and the page knows its
+    // own. Offering the command already scoped to it removes the step where the
+    // reader edits a generic command to insert a port they have to go and read
+    // off the address bar. A file:// document has no origin worth naming, so it
+    // gets the generic form.
+    function servedOrigin() {
+        if (location.protocol !== 'http:' && location.protocol !== 'https:') { return null; }
+        return location.origin || null;
+    }
+
     function reportNoLaunch(uri) {
+        var origin = servedOrigin();
+        if (origin && hasStr('editorLinkHelpCommandForOrigin')) {
+            // {editorLinkHelpCommandForOrigin} inside the message was already
+            // substituted in PowerShell, because it is a caller token. What is
+            // left in both places is {origin}, which only the browser knows.
+            var command = fmt('editorLinkHelpCommandForOrigin', { origin: origin });
+            showBanner(fmt('EditorLinkNoLaunchOrigin', { origin: origin }), command);
+            return;
+        }
         if (hasStr('editorLinkHelpCommand')) {
             showBanner(str('EditorLinkNoLaunch'), str('editorLinkHelpCommand'));
+            return;
         }
-        else {
-            showBanner(str('EditorLinkNoLaunchNoCommand'));
-        }
+        showBanner(str('EditorLinkNoLaunchNoCommand'));
     }
 
     function copyText(text) {

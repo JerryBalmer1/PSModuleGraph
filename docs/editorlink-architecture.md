@@ -170,3 +170,14 @@ machine is the property that pays, so that is what the checklist measures.
 `HKLM` access in the module and it is read-only. Knowing a machine policy would
 override the user one is the difference between "your setting did not apply" and
 "your setting is wrong", and neither is guessable from `HKCU` alone.
+
+**2026-08-26 - The scoped default already contains `http://127.0.0.1:*`, and
+that is not the same as a matchable origin.** Chrome's URL pattern reference
+gives the port as a number; `*` in the port position is not a documented form,
+so `http://127.0.0.1:*` may be accepted and then ignored - the identical failure
+shape already recorded for `file:///*`. A report served from a real port can be
+granted exactly, which is why the report now offers
+`-AllowedOrigin 'http://127.0.0.1:PORT'` filled in for the origin it was served
+from rather than a generic command. Whether the wildcard form works is an
+experiment, not a code change; nothing here has been altered on the strength of
+it.
