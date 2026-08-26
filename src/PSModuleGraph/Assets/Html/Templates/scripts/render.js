@@ -128,24 +128,34 @@
         ]
     });
 
+    // Gravity. Edges point caller -> callee, and dagre gives a target a higher
+    // rank than its source, so rankDir 'TB' sinks the callees - the things
+    // everything else rests on - to the foot of the page. longest-path makes a
+    // node's rank equal the test level computed above, so a row IS a test step.
+    //
+    // The arrowhead follows the reading direction in every view. Read bottom to
+    // top and an arrow means "this comes first, then the one it points at",
+    // which is the source end - the same flip test order uses. Call flow reads
+    // the other way and keeps the arrow on the callee.
+    var FLOW_LAYOUT = {
+        foundation: { rankDir: 'TB', ranker: 'longest-path', flip: true },
+        testorder: { rankDir: 'RL', ranker: 'longest-path', flip: true },
+        callflow: { rankDir: 'LR', ranker: 'network-simplex', flip: false }
+    };
+
     function currentFlow() {
         var checked = document.querySelector('input[name="flow"]:checked');
-        return checked ? checked.value : 'testorder';
+        return checked ? checked.value : cfgText('DefaultFlow', 'foundation');
     }
 
     function runLayout() {
         var name = 'dagre';
-        // Edges point caller -> callee. For test order the callee has to come
-        // first, so rank right-to-left: the graph then reads left-to-right as
-        // the order to test in. longest-path makes dagre's rank equal the level
-        // computed above, so a node's column IS its test step.
-        var testOrder = currentFlow() === 'testorder';
-        // Arrowheads follow the reading direction, so they move with rankDir.
-        cy.edges().toggleClass('flip', testOrder);
+        var flow = FLOW_LAYOUT[currentFlow()] || FLOW_LAYOUT.foundation;
+        cy.edges().toggleClass('flip', flow.flip);
         var opts = {
             name: 'dagre',
-            rankDir: testOrder ? 'RL' : 'LR',
-            ranker: testOrder ? 'longest-path' : 'network-simplex',
+            rankDir: flow.rankDir,
+            ranker: flow.ranker,
             nodeDimensionsIncludeLabels: true,
             nodeSep: cfg('NodeSep', 14),
             rankSep: cfg('RankSep', 80),

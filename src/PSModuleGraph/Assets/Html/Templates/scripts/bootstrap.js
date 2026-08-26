@@ -26,6 +26,14 @@ const GRAPH_STRINGS = /*__GRAPH_STRINGS__*/ null;
         return (typeof v === 'number' && isFinite(v)) ? v : fallback;
     }
 
+    // cfg() is numeric only, so a string or enum setting needs its own reader:
+    // a perfectly valid value would otherwise fail the isFinite test and fall
+    // back to the default every time.
+    function cfgText(key, fallback) {
+        var v = GRAPH_CONFIG ? GRAPH_CONFIG[key] : null;
+        return (typeof v === 'string' && v.length) ? v : fallback;
+    }
+
     // User-visible text comes from Assets/Html/Config/strings.psd1, substituted
     // above. A missing key renders as its own name in brackets rather than as
     // nothing: a silently blank label is the one failure mode nobody notices.

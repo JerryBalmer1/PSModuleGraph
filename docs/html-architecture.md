@@ -166,3 +166,25 @@ rendering "Run  in PowerShell".
 `strings.psd1` holds no markup, so the dependency-cycle notice is two strings
 that the page wraps and escapes. A string that could carry an element would be
 an injection point wherever the page assigns `innerHTML`.
+
+**2026-08-26 - The report opens on a vertical foundation view, and that default
+lives in `settings.psd1`.** Edges point caller to callee and dagre ranks a
+target below its source, so `rankDir: 'TB'` sinks what everything rests on to
+the foot of the page. See the gravity rule in CLAUDE.md: it is an invariant to
+extend to future views, not a default to revisit.
+
+**2026-08-26 - `DefaultFlow` is the first shipped `Enum` setting, and it needed
+`cfgText()`.** `cfg()` returns numbers only, so a valid string would have failed
+its `isFinite` test and fallen back on every load. The Enum validator already
+existed; the page simply had no way to read a non-numeric setting. Adding the
+setting itself stayed a data change, which is the rule holding.
+
+**2026-08-26 - The flow radios carry no `checked` attribute.** `controls.js`
+sets the starting view from config, so editing the `.psd1` actually changes what
+the report opens on. Markup deciding it would make the setting decorative -
+present, validated, and ignored.
+
+**2026-08-26 - The third radio's label stays in the partial with its two
+siblings.** Partial text is one open checklist item and belongs in one pass;
+migrating one of three labels to `strings.psd1` while the others stay in markup
+is the half-rename this log has already rejected once.

@@ -8,6 +8,13 @@
         document.getElementById('details-empty').hidden = false;
     }
 
+    // Which view the report opens in is a data decision, so the markup carries
+    // no checked attribute. An unrecognised value leaves nothing checked, and
+    // currentFlow() falls back to the same default rather than to whichever
+    // radio happens to be first.
+    var startFlow = document.querySelector('input[name="flow"][value="' + cfgText('DefaultFlow', 'foundation') + '"]');
+    if (startFlow) { startFlow.checked = true; }
+
     depthEl.value = String(cfg('FocusDepth', 2));
     depthVal.textContent = depthEl.value;
     depthEl.addEventListener('input', function () {

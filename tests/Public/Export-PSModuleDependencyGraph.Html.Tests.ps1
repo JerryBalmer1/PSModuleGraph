@@ -189,12 +189,29 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "\['navigator.userAgent', navigator.userAgent\]"
     }
 
-    It 'flips the arrowheads for test order' {
-        # Test order ranks right-to-left so the page reads left-to-right in the
-        # order to test. An arrow pointing at the callee would point backwards
-        # through that reading order.
+    It 'opens on the foundation view, with what everything rests on at the bottom' {
+        # Gravity. Edges point caller -> callee and dagre ranks a target below
+        # its source, so 'TB' sinks the most depended-upon to the foot of the
+        # page. This is the default and is meant to stay the default; see the
+        # gravity rule in CLAUDE.md before changing it.
+        $script:Html | Should-MatchString "foundation: \{ rankDir: 'TB', ranker: 'longest-path', flip: true \}"
+        $script:Html | Should-MatchString '"DefaultFlow": "foundation"'
+        $script:Html | Should-MatchString 'value="foundation"'
+    }
+
+    It 'lets the data file decide which view the report opens in' {
+        # No checked attribute in the markup: the starting view is a data
+        # decision, or editing the .psd1 would silently do nothing.
+        $script:Html | Should-NotMatchString 'name="flow" value="testorder" checked'
+        $script:Html | Should-MatchString "cfgText\('DefaultFlow'"
+    }
+
+    It 'flips the arrowheads to follow the reading direction' {
+        # An arrow pointing at the callee would point backwards through the
+        # order the view is read in. Call flow reads the other way and keeps it.
         $script:Html | Should-MatchString "selector: 'edge\.flip'"
-        $script:Html | Should-MatchString "cy\.edges\(\)\.toggleClass\('flip', testOrder\)"
+        $script:Html | Should-MatchString "cy\.edges\(\)\.toggleClass\('flip', flow\.flip\)"
+        $script:Html | Should-MatchString "callflow: \{ rankDir: 'LR', ranker: 'network-simplex', flip: false \}"
     }
 
     It 'dims out-of-focus nodes instead of blanking them' {

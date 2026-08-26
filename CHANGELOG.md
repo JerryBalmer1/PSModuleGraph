@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The report opens on a vertical Foundation view.** What everything rests on
+  is stacked at the bottom and its dependents rise above it, so the shape of the
+  module reads before a single label does. The two previous horizontal views,
+  Test order and Call flow, are unchanged and one radio away.
+
+  Which view a report opens in is now the `DefaultFlow` setting in
+  `settings.psd1` — the first shipped `Enum` setting — rather than a `checked`
+  attribute in the markup, so changing it is a data change. See the gravity rule
+  in `CLAUDE.md`: foundation-at-the-bottom is an invariant meant to extend to
+  anything else that gains a spatial arrangement, not a default to revisit.
 - **`Test-PSModuleGraphEditorLink`** — says why **Open File Location** does or
   does not open VS Code. Read-only, with no `ShouldProcess`, because there is
   nothing to confirm: it reports whether the `vscode` scheme is registered, what

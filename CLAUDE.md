@@ -371,6 +371,42 @@ rules on them are not negotiable and are not stylistic:
 asked. Collapsing `$null` into `$false` hides the only case where neither
 mechanism explains a link that does nothing.
 
+## Gravity
+
+**What everything rests on goes at the bottom, and the report opens that way.**
+
+This is a standing invariant, not a preference and not a default someone picked.
+A dependency graph has a direction whether or not the layout admits it: the
+things with the most inbound edges are the things everything else is built on
+top of, and a reader looking for what to trust, what to test first, or what
+breaks the most if it changes is looking for exactly those. Putting them at the
+foot of a vertical stack makes that structural, so it reads correctly before any
+label is read at all.
+
+The rules:
+
+- **`DefaultFlow` in `settings.psd1` is `foundation`, and stays `foundation`.**
+  Do not change the shipped default to `testorder` or `callflow` as a side
+  effect of other work. Changing which view a report opens in is a deliberate
+  decision, and this one is made.
+- **Foundation is vertical.** `rankDir: 'TB'` with `ranker: 'longest-path'`.
+  Edges point caller to callee and dagre ranks a target below its source, so
+  top-to-bottom is what sinks the depended-upon. `'BT'` inverts it and puts the
+  foundation in the air; that is the bug to watch for.
+- **The arrowhead follows the reading direction.** Foundation reads bottom to
+  top, so the arrow sits on the source end: it means "this one first, then the
+  one it points at". Only `callflow` keeps the arrow on the callee.
+- **The layout table is `FLOW_LAYOUT` in `scripts/render.js`.** A new view is one
+  entry - `rankDir`, `ranker`, `flip`. Do not add a branch beside it.
+- **Nothing may leave the starting view to the markup.** The radios carry no
+  `checked` attribute; `controls.js` sets it from config. A `checked` in the
+  partial would make editing the `.psd1` silently do nothing.
+
+Extend gravity to anything else that gains a spatial arrangement - a tree, a
+list, a timeline. Foundation at the bottom, dependents above. Consistency across
+views is the point; a second view that stacks the other way costs the reader
+more than it gains.
+
 ## Report, do not drop
 
 Anything that cannot be resolved statically is **surfaced**, never silently

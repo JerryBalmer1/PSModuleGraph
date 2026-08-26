@@ -13,5 +13,8 @@
 
     FocusDepth    = 2
 
+    # Gravity: what everything rests on sits at the foot of the page.
+    DefaultFlow   = 'foundation'
+
     NodeLimit     = 400
 }

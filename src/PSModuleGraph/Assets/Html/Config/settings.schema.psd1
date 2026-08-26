@@ -43,6 +43,14 @@
             Description = 'Hops from the selected item included when focusing.'
         }
 
+        # -- Layout --------------------------------------------------------
+        DefaultFlow      = @{
+            Type = 'Enum'; Default = 'foundation'
+            Values = @('foundation', 'testorder', 'callflow')
+            In = 'Settings'; Group = 'Layout'
+            Description = 'View the report opens in. foundation is vertical and sinks what everything rests on to the bottom.'
+        }
+
         # -- Scale ---------------------------------------------------------
         NodeLimit        = @{
             Type = 'Integer'; Default = 400; Min = 1; Max = 100000
