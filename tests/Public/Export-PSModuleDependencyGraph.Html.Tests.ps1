@@ -100,6 +100,14 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString '#cy \{[^}]*overflow: hidden;'
     }
 
+    It 'keeps the sidebar scrollbar wide enough to grab' {
+        # The sidebar is taller than the viewport on any real module, so its
+        # scrollbar is a control the user has to hit. The platform default is a
+        # ~5px fading overlay bar; these rules are what make it draggable.
+        $script:Html | Should-MatchString '#sidebar::-webkit-scrollbar[^{]*\{[^}]*width: 14px;'
+        $script:Html | Should-MatchString '#sidebar::-webkit-scrollbar-thumb[^{]*\{[^}]*min-height:'
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

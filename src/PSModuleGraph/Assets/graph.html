@@ -20,6 +20,9 @@
     --enum: #6ddf6d;
     --script: #9b8cff;
     --ext: #ff7043;
+    --scroll-track: #12161c;
+    --scroll-thumb: #47536a;
+    --scroll-thumb-hover: #61708c;
 }
 
 * { box-sizing: border-box; }
@@ -72,6 +75,64 @@ header .counts b { color: var(--fg); font-weight: 600; }
    document. See the note on html, body above. */
 #canvas-wrap { flex: 1 1 auto; position: relative; min-width: 0; overflow: hidden; }
 #cy { position: absolute; inset: 0; overflow: hidden; }
+
+/* Scrollbars ---------------------------------------------------------- */
+/* The platform default here is a ~5px overlay bar that fades out - close to
+   un-grabbable with a mouse. Every scrollable pane gets a wide, always-visible
+   thumb instead. Panes are listed explicitly rather than styled globally so the
+   Cytoscape canvas, which must never scroll, cannot pick this up.
+   scrollbar-gutter reserves the track so content does not shift when the thumb
+   appears or disappears. */
+#sidebar,
+#order-list,
+#template-notice,
+.fatal {
+    scrollbar-gutter: stable;
+}
+#sidebar::-webkit-scrollbar,
+#order-list::-webkit-scrollbar,
+#template-notice::-webkit-scrollbar,
+.fatal::-webkit-scrollbar { width: 14px; height: 14px; }
+
+#sidebar::-webkit-scrollbar-track,
+#order-list::-webkit-scrollbar-track,
+#template-notice::-webkit-scrollbar-track,
+.fatal::-webkit-scrollbar-track { background: var(--scroll-track); }
+
+#sidebar::-webkit-scrollbar-thumb,
+#order-list::-webkit-scrollbar-thumb,
+#template-notice::-webkit-scrollbar-thumb,
+.fatal::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    /* Border of the track colour insets the thumb without shrinking the
+       draggable hit area, which stays the full 14px. */
+    border: 3px solid var(--scroll-track);
+    border-radius: 7px;
+    /* A long list otherwise produces a thumb a few pixels tall. */
+    min-height: 44px;
+}
+#sidebar::-webkit-scrollbar-thumb:hover,
+#order-list::-webkit-scrollbar-thumb:hover,
+#template-notice::-webkit-scrollbar-thumb:hover,
+.fatal::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
+
+#sidebar::-webkit-scrollbar-thumb:active,
+#order-list::-webkit-scrollbar-thumb:active,
+#template-notice::-webkit-scrollbar-thumb:active,
+.fatal::-webkit-scrollbar-thumb:active { background: var(--accent); }
+
+/* Firefox has no ::-webkit-scrollbar. Its standard properties are scoped to
+   engines that lack the pseudo-element, because in Chrome 121+ setting
+   scrollbar-color silently disables every ::-webkit-scrollbar rule above. */
+@supports not selector(::-webkit-scrollbar) {
+    #sidebar,
+    #order-list,
+    #template-notice,
+    .fatal {
+        scrollbar-width: auto;
+        scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+    }
+}
 
 .section { margin-bottom: 18px; }
 .section > h2 {

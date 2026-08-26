@@ -105,6 +105,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The HTML page's sidebar and test-order list used the platform default
+  scrollbar — a thin overlay bar that fades out — which was close to impossible
+  to grab with a mouse. Both now draw a 14px track with an always-visible thumb
+  that has a minimum height, so a long list still leaves something to drag.
 - `Get-PSModuleFileInventory` matched its `.git`/`output`/`tests`/`.tools`
   exclusion list against the absolute path, so a module located under a
   directory with one of those names lost its entire filesystem scan and
