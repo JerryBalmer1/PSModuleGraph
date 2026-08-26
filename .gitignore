@@ -28,6 +28,9 @@ Desktop.ini
 
 # Test / coverage
 coverage/
+# The build writes coverage under output/. A copy at the root means something
+# ran Invoke-Pester directly, which defaults to the working directory.
+coverage.xml
 TestResults/
 Pester*.xml
 
