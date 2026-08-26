@@ -114,7 +114,7 @@ function Export-PSModuleDependencyGraph {
         elseif ($isHtml -and $Show) {
             # -Show needs a file to hand the browser, and it has to be somewhere
             # a local server could serve. The temp directory never is.
-            $targetPath = New-RenderDocumentPath -ModuleName ([string]$InputObject.ModuleName) `
+            $targetPath = New-RenderDocumentPath -Name ([string]$InputObject.ModuleName) `
                 -BasePath $PSCmdlet.SessionState.Path.CurrentFileSystemLocation.ProviderPath
         }
 
