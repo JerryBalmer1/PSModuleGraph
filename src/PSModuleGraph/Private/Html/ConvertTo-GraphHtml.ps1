@@ -54,12 +54,20 @@ function ConvertTo-GraphHtml {
         }
     }
 
+    # New names only. The renderer still reads moduleName, moduleVersion and
+    # moduleRoot and warns when it has to - a rename never deletes - but a
+    # producer emitting the name it was told to stop using is a producer keeping
+    # the alias alive for nobody's benefit.
+    #
+    # meta.title rather than meta.moduleName is the whole argument in one field:
+    # a payload describing infrastructure was filling moduleName with a region.
     $meta = [ordered]@{
-        moduleName    = $Graph.ModuleName
-        moduleVersion = [string]$Graph.ModuleVersion
-        generatedAt   = (Get-Date).ToString('o')
-        moduleRoot    = $moduleRoot
-        stats         = $Graph.Stats
+        contractVersion = '1.0.0'
+        title           = $Graph.ModuleName
+        version         = [string]$Graph.ModuleVersion
+        generatedAt     = (Get-Date).ToString('o')
+        rootPath        = $moduleRoot
+        stats           = $Graph.Stats
     }
 
     # THE SEAM, and it is one call. Everything below it - escaping, the

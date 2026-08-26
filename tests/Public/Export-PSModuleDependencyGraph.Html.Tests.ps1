@@ -5,20 +5,20 @@ BeforeAll {
     Import-PSModuleGraphUnderTest
     $script:Sample = Get-SampleModulePath
 
-    # Pulls the GRAPH_DATA literal back out of the rendered page so the payload
+    # Pulls the DATA literal back out of the rendered page so the payload
     # can be parsed and asserted on. Assertions are on structure only; nothing
     # here depends on how the page looks.
     function Get-EmbeddedGraphData {
         param([string] $Html)
 
-        $marker = 'const GRAPH_DATA = '
+        $marker = 'const DATA = '
         $start = $Html.IndexOf($marker)
-        if ($start -lt 0) { throw 'GRAPH_DATA declaration not found in output.' }
+        if ($start -lt 0) { throw 'DATA declaration not found in output.' }
         $start += $marker.Length
 
         $end = $Html.IndexOf(";`n", $start)
         if ($end -lt 0) { $end = $Html.IndexOf(';', $start) }
-        if ($end -lt 0) { throw 'Could not find the end of the GRAPH_DATA declaration.' }
+        if ($end -lt 0) { throw 'Could not find the end of the DATA declaration.' }
 
         $Html.Substring($start, $end - $start).Trim()
     }
@@ -141,7 +141,7 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         # The template carries no starting values of its own beyond unreachable
         # fallbacks; if this substitution stops happening, editing the .psd1
         # silently does nothing.
-        $script:Html | Should-MatchString 'const GRAPH_CONFIG = \{'
+        $script:Html | Should-MatchString 'const CONFIG = \{'
         $script:Html | Should-MatchString '"ZoomSpeed"'
         $script:Html | Should-MatchString '"SidebarWidth"'
         $script:Html | Should-MatchString "cfg\('NodeLimit'"
@@ -151,7 +151,7 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         # Every user-visible string in the scripts comes from the data file. A
         # literal left behind in a script would still render, so this asserts
         # the substitution happened rather than that any one string is present.
-        $script:Html | Should-MatchString 'const GRAPH_STRINGS = \{'
+        $script:Html | Should-MatchString 'const STRINGS = \{'
         $script:Html | Should-MatchString '"MenuOpenFileLocation"'
         $script:Html | Should-MatchString '"EditorLinkNoLaunch"'
     }
@@ -312,10 +312,10 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
     It 'builds the VS Code URI from the module root, not from a stored absolute path' {
         # Payload paths stay module-relative so a report attached to a PR does
         # not carry the author's username. The absolute path is rebuilt in the
-        # browser from meta.moduleRoot at the moment it is needed.
+        # browser from meta.rootPath at the moment it is needed.
         $script:Html | Should-MatchString 'function vsCodeUriFor'
         $script:Html | Should-MatchString "'vscode://file/'"
-        $script:Html | Should-MatchString 'meta\.moduleRoot'
+        $script:Html | Should-MatchString 'meta\.rootPath'
         # Every payload path must still be relative - see the dedicated test
         # above; this guards that the menu did not introduce absolute ones.
         $script:Html | Should-NotMatchString '"path": "[A-Za-z]:'
