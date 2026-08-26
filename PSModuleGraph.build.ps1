@@ -132,6 +132,11 @@ task Test Build, {
     # Classic 'Should -Be' throws, so the suite cannot drift back to v5 style.
     $config.Should.DisableV5 = $true
 
+    # PreTag tests are seals on a FINISHED iteration, not checks on work in
+    # progress. The build should stay green while an iteration is half done;
+    # the tag should not. ./build.ps1 -Task PreTag runs them.
+    $config.Filter.ExcludeTag = 'PreTag'
+
     $config.TestResult.Enabled = $true
     $config.TestResult.OutputPath = Join-Path $outputParent 'testResults.xml'
     $config.TestResult.OutputFormat = 'NUnitXml'
@@ -162,6 +167,35 @@ task Test Build, {
         }
         Write-Build Green "Line coverage: $percent% (target $target%)"
     }
+}
+
+task PreTag Build, {
+    # The gates that seal an iteration, run before `git tag -a` and not before
+    # anything else. Deliberately a separate task rather than part of Test: a
+    # half-finished iteration should still be able to run a green build, which
+    # is most of what a build is for.
+    $pesterModule = Get-Module -Name Pester -ListAvailable |
+        Where-Object { $_.Version -ge [version]'6.0.0' -and $_.Version -lt [version]'7.0.0' } |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+
+    if (-not $pesterModule) {
+        throw 'Pester 6.x is required. Run ./build.ps1 -Bootstrap'
+    }
+
+    Import-Module -Name $pesterModule.Path -Force
+
+    $config = New-PesterConfiguration
+    $config.Run.Path = $TestsRoot
+    $config.Run.Throw = $true
+    $config.Output.Verbosity = 'Detailed'
+    $config.Should.DisableV5 = $true
+    $config.Filter.Tag = 'PreTag'
+
+    $env:PSModulePath = (Join-Path $BuildRoot 'output') + [System.IO.Path]::PathSeparator + $env:PSModulePath
+
+    Invoke-Pester -Configuration $config
+    Write-Build Green 'Pre-tag gates passed. Safe to tag.'
 }
 
 task Knowledge Build, {

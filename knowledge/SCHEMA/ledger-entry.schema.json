@@ -48,6 +48,12 @@
       "type": "array",
       "items": { "$ref": "#/definitions/threadId" }
     },
+    "prune_proposals": {
+      "description": "Thread ids in open_threads that are PRUNE proposals - instruction text this entry judged obsolete rather than merely misplaced, and deliberately did not delete in the turn that judged it.\n\nA move down a tier is not a proposal and does not appear here; it is applied in-turn, because a move loses nothing and there is nothing to review. Only a genuine deletion waits.\n\nEntry N+1 must CLOSE every id entry N listed here. Carrying one forward is not enough, and that is the whole point: the first version of this mechanism proposed a deletion and let a later iteration decide, so it idled one turn behind a file that grew every turn. tests/PreTag.Tests.ps1 blocks the annotated tag - not the build - when an id here survives a second entry unclosed. Explicit rejection closes it: a considered decision to keep the text is an answer, and silence is not.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/threadId" },
+      "default": []
+    },
     "supersedes": {
       "description": "Ledger ids this entry revises, when a later implementation applies a split or merge an earlier one only proposed.",
       "type": "array",
