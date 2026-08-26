@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PSModuleGraph.psm1'
-    ModuleVersion        = '0.7.0'
+    ModuleVersion        = '0.8.0'
     GUID                 = 'a7c3e8f1-4b2d-4e9a-9c1f-6d8e5a0b3f72'
     Author               = 'Jerry Balmer'
     CompanyName          = 'Community'
@@ -12,8 +12,15 @@
     # The HTML renderer. Export-PSModuleDependencyGraph -Format Html hands it a
     # view model; it knows nothing about modules or ASTs. Declared here so the
     # dependency fails at import rather than at the moment someone exports.
+    #
+    # 0.2.0, not 0.1.0. ModuleVersion here is a FLOOR, so leaving it at 0.1.0
+    # would have accepted a renderer whose public surface was seven differently
+    # named functions - and failed at the call rather than at the import, which
+    # is the failure this entry exists to prevent. The floor moves whenever the
+    # renderer's surface changes, and .github/workflows/ci.yml pins the same
+    # version; tests/PreTag.Tests.ps1 asserts the two agree.
     RequiredModules      = @(
-        @{ ModuleName = 'PSGraphRender'; ModuleVersion = '0.1.0' }
+        @{ ModuleName = 'PSGraphRender'; ModuleVersion = '0.2.0' }
     )
     FunctionsToExport    = @(
         'Get-PSModuleFunction'

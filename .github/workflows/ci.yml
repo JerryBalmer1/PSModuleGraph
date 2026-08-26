@@ -36,10 +36,19 @@ jobs:
       # resolves a sibling checkout - see the Dependencies task. Checking it out
       # beside this repository is what makes that path the same locally and in
       # CI.
+      #
+      # PINNED to a tag. Tracking the default branch meant a change there could
+      # turn this red with nothing changed here and, worse, a green run proved
+      # compatibility with whatever happened to be on main that morning rather
+      # than with the version the manifest declares.
+      #
+      # The ref must match the RequiredModules floor in PSModuleGraph.psd1.
+      # tests/PreTag.Tests.ps1 asserts they agree, so this cannot drift.
       - name: Checkout PSGraphRender
         uses: actions/checkout@v4
         with:
           repository: JerryBalmer1/PSGraphRender
+          ref: v0.2.0
           path: PSGraphRender-checkout
 
       - name: Cache PowerShell modules

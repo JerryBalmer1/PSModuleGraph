@@ -82,3 +82,30 @@ Describe 'Sealing an iteration' -Tag 'PreTag' {
         }
     }
 }
+
+Describe 'The renderer this module is pinned to' -Tag 'PreTag' {
+    It 'agrees between the manifest floor and what CI checks out' {
+        # 0009-t2, closed. CI used to track the renderer's default branch, so a
+        # green run proved compatibility with whatever was on main that morning
+        # rather than with the version the manifest declares - and a change
+        # there could turn this red with nothing changed here.
+        #
+        # Pinning alone would not have been enough. Two numbers that must agree
+        # and are edited in different files drift, and the drift is silent
+        # because both halves keep working on a machine where the two
+        # repositories happen to move together. This is the assertion that makes
+        # them one fact.
+        $repo = Split-Path -Path $PSScriptRoot -Parent
+
+        $manifest = Import-PowerShellDataFile -LiteralPath (
+            Join-Path $repo 'src/PSModuleGraph/PSModuleGraph.psd1')
+        $required = @($manifest.RequiredModules | Where-Object { $_.ModuleName -eq 'PSGraphRender' })
+        $required.Count | Should-Be 1
+
+        $workflow = Get-Content -LiteralPath (Join-Path $repo '.github/workflows/ci.yml') -Raw
+        $match = [regex]::Match($workflow, '(?s)repository:\s*\S*PSGraphRender\s*.*?ref:\s*v(?<version>[0-9.]+)')
+
+        $match.Success | Should-BeTrue -Because 'ci.yml must pin PSGraphRender to a tag, not track a branch'
+        $match.Groups['version'].Value | Should-Be $required[0].ModuleVersion
+    }
+}
