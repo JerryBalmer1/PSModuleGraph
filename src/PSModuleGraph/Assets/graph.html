@@ -112,6 +112,49 @@ header .counts b { color: var(--fg); font-weight: 600; }
    leaving the 6px strip mid-drag. */
 body.resizing { cursor: col-resize; user-select: none; }
 
+/* Node context menu ---------------------------------------------------- */
+#node-menu {
+    position: fixed;
+    z-index: 50;
+    display: none;
+    min-width: 190px;
+    padding: 4px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .55);
+}
+#node-menu.open { display: block; }
+#node-menu .menu-title {
+    padding: 5px 9px 6px;
+    margin-bottom: 3px;
+    border-bottom: 1px solid var(--line);
+    color: var(--fg-dim);
+    font-size: 11px;
+    /* A long function name must not stretch the menu off-screen. */
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#node-menu button {
+    display: block;
+    width: 100%;
+    padding: 6px 9px;
+    background: transparent;
+    border: 0;
+    border-radius: 3px;
+    color: var(--fg);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+#node-menu button:hover:not(:disabled),
+#node-menu button:focus-visible { background: #2f3a4a; outline: none; }
+/* Disabled rather than hidden: an action that is missing looks like a bug,
+   an action that is greyed out with a reason explains itself. */
+#node-menu button:disabled { color: var(--fg-dim); cursor: default; }
+
 /* Scrollbars ---------------------------------------------------------- */
 /* The platform default here is a ~5px overlay bar that fades out - close to
    un-grabbable with a mouse. Every scrollable pane gets a wide, always-visible
@@ -374,6 +417,10 @@ input[type="range"] { width: 100%; }
     </div>
 </div>
 
+
+<!-- Built from NODE_ACTIONS at open time, not written out here, so a new
+     action is one registry entry rather than markup plus wiring. -->
+<div id="node-menu" role="menu" aria-hidden="true"></div>
 <div id="template-notice" hidden>
     <h2>Raw template</h2>
     <p>This is the unpopulated <code>graph.html</code> template from PSModuleGraph, opened directly.
@@ -1104,6 +1151,152 @@ const GRAPH_CONFIG = /*__GRAPH_CONFIG__*/ null;
     cy.on('tap', function (evt) {
         if (evt.target === cy) { clearFocus(); }
     });
+
+    // ---- node context menu -----------------------------------------------
+    // Actions are a registry, not hardcoded markup: a new entry here is the
+    // whole change. Each one declares whether it applies to the node under the
+    // cursor and why not, so an inapplicable action greys out with a reason
+    // instead of silently vanishing.
+    //
+    //   id       stable key, used for nothing yet but worth having
+    //   label    menu text, or a function of the node returning it
+    //   check    returns null when applicable, or the reason it is not
+    //   run      performs the action for that node
+
+    // Payload paths are module-relative on purpose - a report gets attached to
+    // a PR, and absolute paths carry the author's username. The module root
+    // comes back from the meta block, so absolute paths are rebuilt only here,
+    // in the browser, at the moment they are needed.
+    function absolutePathFor(node) {
+        var rel = node.data('path');
+        if (!rel) { return null; }
+        var root = meta.moduleRoot;
+        if (!root) { return null; }
+        var joined = root.replace(/[\\/]+$/, '') + '/' + rel;
+        return joined.replace(/\\/g, '/');
+    }
+
+    // vscode://file/{path}:{line}:{column}. Kept separate from the action that
+    // navigates to it, so the construction can be exercised without handing the
+    // browser a URI and launching an editor.
+    //
+    // The path carries no leading slash: on Windows it starts with the drive
+    // letter, and on POSIX VS Code expects vscode://file/Users/... rather than
+    // a doubled slash. encodeURI leaves / and : alone while escaping spaces,
+    // which are common in Windows paths.
+    function vsCodeUriFor(node) {
+        var abs = absolutePathFor(node);
+        if (!abs) { return null; }
+        var line = node.data('startLine') || 1;
+        return 'vscode://file/' + encodeURI(abs.replace(/^\/+/, '')) + ':' + line + ':1';
+    }
+
+    var NODE_ACTIONS = [
+        {
+            id: 'open-in-vscode',
+            // An external target has no definition inside this module, so the
+            // path recorded against it is the CALL SITE. Opening that is still
+            // useful, but calling it "file location" would be a lie about what
+            // the page knows - the definition is exactly what static analysis
+            // could not resolve.
+            label: function (node) {
+                return node.data('kind') === 'External' ? 'Open Call Site' : 'Open File Location';
+            },
+            check: function (node) {
+                if (!node.data('path')) { return 'no file recorded'; }
+                if (!meta.moduleRoot) { return 'module root unknown'; }
+                return null;
+            },
+            run: function (node) {
+                var uri = vsCodeUriFor(node);
+                if (!uri) { return; }
+                // Navigating to the scheme is what hands it to VS Code. The
+                // browser shows its own "open external application" prompt, and
+                // there is no callback for the user declining it or for the
+                // scheme not being registered at all - so nothing here can
+                // report failure.
+                window.location.href = uri;
+            }
+        }
+    ];
+
+    var menuEl = document.getElementById('node-menu');
+    var menuNode = null;
+
+    function closeNodeMenu() {
+        menuEl.classList.remove('open');
+        menuEl.setAttribute('aria-hidden', 'true');
+        menuNode = null;
+    }
+
+    function openNodeMenu(node, clientX, clientY) {
+        menuNode = node;
+        menuEl.textContent = '';
+
+        var title = document.createElement('div');
+        title.className = 'menu-title';
+        title.textContent = node.data('name');
+        menuEl.appendChild(title);
+
+        NODE_ACTIONS.forEach(function (action) {
+            var reason = action.check ? action.check(node) : null;
+            var label = (typeof action.label === 'function') ? action.label(node) : action.label;
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('role', 'menuitem');
+            btn.textContent = reason ? label + ' \u2014 ' + reason : label;
+            btn.disabled = !!reason;
+            if (!reason) {
+                btn.addEventListener('click', function () {
+                    closeNodeMenu();
+                    action.run(node);
+                });
+            }
+            menuEl.appendChild(btn);
+        });
+
+        // Show before measuring; a display:none element has no dimensions.
+        menuEl.classList.add('open');
+        menuEl.setAttribute('aria-hidden', 'false');
+        var box = menuEl.getBoundingClientRect();
+        // Flip rather than clamp: a menu pinned to the edge under the cursor
+        // covers the node that was right-clicked.
+        var x = (clientX + box.width > window.innerWidth) ? clientX - box.width : clientX;
+        var y = (clientY + box.height > window.innerHeight) ? clientY - box.height : clientY;
+        menuEl.style.left = Math.max(0, x) + 'px';
+        menuEl.style.top = Math.max(0, y) + 'px';
+
+        var first = menuEl.querySelector('button:not(:disabled)');
+        if (first) { first.focus(); }
+    }
+
+    cy.on('cxttap', 'node', function (evt) {
+        var oe = evt.originalEvent;
+        if (oe && oe.preventDefault) { oe.preventDefault(); }
+        openNodeMenu(evt.target, oe ? oe.clientX : 0, oe ? oe.clientY : 0);
+    });
+
+    // Right-clicking the background closes it; so does anything else that moves
+    // the view out from under it.
+    cy.on('cxttap', function (evt) {
+        if (evt.target === cy) { closeNodeMenu(); }
+    });
+    cy.on('tap zoom pan', closeNodeMenu);
+
+    // The browser menu would otherwise appear on top of ours.
+    document.getElementById('cy').addEventListener('contextmenu', function (ev) {
+        ev.preventDefault();
+    });
+
+    document.addEventListener('mousedown', function (ev) {
+        if (menuEl.classList.contains('open') && !menuEl.contains(ev.target)) {
+            closeNodeMenu();
+        }
+    });
+    document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') { closeNodeMenu(); }
+    });
+    window.addEventListener('blur', closeNodeMenu);
 
     function clearFocus() {
         focused = null;

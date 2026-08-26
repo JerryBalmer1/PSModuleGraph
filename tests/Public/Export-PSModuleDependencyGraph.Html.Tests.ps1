@@ -198,6 +198,30 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "removeClass\('related-edge'\)\.addClass\('focus-edge'\)"
     }
 
+
+    It 'ships a node context menu driven by an action registry' {
+        # Actions come from NODE_ACTIONS rather than markup, so adding one is a
+        # single entry. Verified in Chrome right-clicking Resolve-BoundParameter:
+        # the menu opens titled with the node name and one enabled item.
+        $script:Html | Should-MatchString 'var NODE_ACTIONS = \['
+        $script:Html | Should-MatchString "id: 'open-in-vscode'"
+        $script:Html | Should-MatchString "cy\.on\('cxttap', 'node'"
+        # Without this the browser's own menu covers ours.
+        $script:Html | Should-MatchString "addEventListener\('contextmenu'"
+    }
+
+    It 'builds the VS Code URI from the module root, not from a stored absolute path' {
+        # Payload paths stay module-relative so a report attached to a PR does
+        # not carry the author's username. The absolute path is rebuilt in the
+        # browser from meta.moduleRoot at the moment it is needed.
+        $script:Html | Should-MatchString 'function vsCodeUriFor'
+        $script:Html | Should-MatchString "'vscode://file/'"
+        $script:Html | Should-MatchString 'meta\.moduleRoot'
+        # Every payload path must still be relative - see the dedicated test
+        # above; this guards that the menu did not introduce absolute ones.
+        $script:Html | Should-NotMatchString '"path": "[A-Za-z]:'
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

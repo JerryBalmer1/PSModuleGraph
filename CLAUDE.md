@@ -204,6 +204,18 @@ Rules that are easy to violate:
 - Paths in the HTML payload are module-relative. Generated reports get attached
   to PRs and tickets, where absolute paths leak usernames. The JSON export keeps
   them absolute.
+- **Node context-menu actions live in the `NODE_ACTIONS` registry** in
+  `graph.html`, not in markup. An entry is `{ id, label, check, run }`, where
+  `label` may be a function of the node and `check` returns `null` when the
+  action applies or the reason it does not — an inapplicable action greys out
+  with that reason rather than disappearing. Adding an action means adding one
+  entry; nothing else needs touching.
+- **The page rebuilds absolute paths in the browser** from `meta.moduleRoot`,
+  which is how the `vscode://file/` link works while payload paths stay
+  relative. Note that `meta.moduleRoot` is itself absolute, so the "no absolute
+  paths in a shared report" rule above is already weaker than it sounds — a
+  report does carry the module's own base path. Do not add absolute paths to
+  `nodes`/`links` on the assumption that it makes no difference.
 - **`-Show` opens VS Code when the session is in VS Code**, otherwise the OS
   default handler. `Get-VSCodeLauncher` requires BOTH a VS Code environment
   marker and the `code` CLI: finding the executable only proves VS Code is

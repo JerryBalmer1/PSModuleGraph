@@ -79,6 +79,12 @@ per hop from the one you clicked, so the chain reads as a sequence. Nodes
 connected the other way round - a dependency when you asked about dependents -
 keep their colour too, darker still: related, but not the answer.
 
+Right-click a node for **Open File Location**, which hands the file and line to
+VS Code over a `vscode://file/` URI. The absolute path is rebuilt in the browser
+from the module root, so the payload itself keeps relative paths. On an
+unresolved external target the item reads *Open Call Site* — the only path the
+page has for one is where it is called from.
+
 #### Changing the page defaults
 
 The page's starting values live in `Assets/graph.defaults.psd1` inside the

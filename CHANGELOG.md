@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Right-click a node for a context menu**, starting with **Open File
+  Location** — hands the file and line to VS Code over a `vscode://file/` URI.
+  Actions come from a registry in the template rather than from markup, so a
+  second one is a single entry: a label, a rule for when it applies, and what it
+  does. An action that does not apply greys out with the reason rather than
+  disappearing.
+
+  On an unresolved external target the item reads **Open Call Site**, because
+  the only path the page has for one is where it is called from — its definition
+  is precisely what static analysis could not find.
 - **Connections the other way round from the chosen direction get their own
   tier.** Asking *Dependents* ("what breaks if I change this") used to leave the
   node's own dependencies in the same grey as things with no connection at all.
