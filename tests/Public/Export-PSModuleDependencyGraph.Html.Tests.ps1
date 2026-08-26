@@ -108,6 +108,20 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString '#sidebar::-webkit-scrollbar-thumb[^{]*\{[^}]*min-height:'
     }
 
+    It 'ships a draggable sidebar splitter' {
+        # The sidebar is a fixed 300px and holds long function names, so the
+        # width has to be the reader's call. Verified draggable with synthesized
+        # mouse events through the DevTools Protocol; this only guards that the
+        # element and its drag handler survive edits to the template.
+        $script:Html | Should-MatchString 'id="splitter"'
+        $script:Html | Should-MatchString "splitterEl\.addEventListener\('pointerdown'"
+        # Pointer capture is what keeps the drag alive once the cursor crosses
+        # onto the Cytoscape canvas, which otherwise swallows the moves.
+        $script:Html | Should-MatchString 'setPointerCapture'
+        # Cytoscape does not notice container resizes on its own.
+        $script:Html | Should-MatchString 'cy\.resize\(\)'
+    }
+
     It 'uses the supplied title' {
         $doc = Export-PSModuleDependencyGraph -InputObject $script:Graph -Format Html -Title 'Custom Heading'
         $doc | Should-MatchString 'Custom Heading'

@@ -67,7 +67,6 @@ header .counts b { color: var(--fg); font-weight: 600; }
     width: 300px;
     overflow-y: auto;
     background: var(--panel);
-    border-right: 1px solid var(--line);
     padding: 12px;
 }
 
@@ -75,6 +74,43 @@ header .counts b { color: var(--fg); font-weight: 600; }
    document. See the note on html, body above. */
 #canvas-wrap { flex: 1 1 auto; position: relative; min-width: 0; overflow: hidden; }
 #cy { position: absolute; inset: 0; overflow: hidden; }
+
+/* Sidebar splitter ---------------------------------------------------- */
+/* Drag left or right to resize the sidebar. The test-order list holds long
+   function names at 300px, so the width has to be the user's call.
+   Double-click resets it. */
+#splitter {
+    flex: 0 0 6px;
+    position: relative;
+    background: var(--line);
+    cursor: col-resize;
+    /* Without this a touch drag scrolls the page instead of resizing. */
+    touch-action: none;
+}
+/* A 6px strip is a poor mouse target. This widens the grab area either side
+   without taking any layout space from the graph. */
+#splitter::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: -4px; right: -4px;
+    z-index: 5;
+}
+/* The grip marks it as draggable; a plain divider reads as decoration. */
+#splitter::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 1px;
+    width: 4px; height: 44px;
+    margin-top: -22px;
+    border-left: 1px solid var(--fg-dim);
+    border-right: 1px solid var(--fg-dim);
+    opacity: 0.55;
+}
+#splitter:hover, #splitter.dragging { background: var(--accent); }
+#splitter:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Held on <body> so the cursor and the selection block survive the pointer
+   leaving the 6px strip mid-drag. */
+body.resizing { cursor: col-resize; user-select: none; }
 
 /* Scrollbars ---------------------------------------------------------- */
 /* The platform default here is a ~5px overlay bar that fades out - close to
@@ -322,6 +358,9 @@ input[type="range"] { width: 100%; }
                 <dl id="details-list" hidden></dl>
             </div>
         </aside>
+        <div id="splitter" role="separator" aria-orientation="vertical"
+             aria-label="Resize sidebar" tabindex="0"
+             title="Drag to resize the sidebar. Double-click to reset."></div>
         <div id="canvas-wrap">
             <div id="banner">
                 <span id="banner-text"></span>
@@ -901,6 +940,79 @@ const GRAPH_META = /*__GRAPH_META__*/ null;
     zoomSpeedEl.value = String(ZOOM_SPEED_DEFAULT);
     zoomSpeedEl.addEventListener('input', applyZoomSpeed);
     applyZoomSpeed();
+
+    // ---- sidebar splitter ------------------------------------------------
+    // Cytoscape only notices a container size change when it is told, so every
+    // width change ends in cy.resize(). The layout is deliberately NOT re-run:
+    // re-ranking mid-drag would move the nodes the user is reading.
+    var splitterEl = document.getElementById('splitter');
+    var sidebarEl = document.getElementById('sidebar');
+    var SIDEBAR_MIN = 200;
+    var SIDEBAR_DEFAULT = 300;
+    var CANVAS_MIN = 320;
+    var resizeFrame = null;
+
+    function setSidebarWidth(px) {
+        // Never let the drag squeeze the graph out of existence, and never let
+        // the clamp itself push the sidebar below its own minimum.
+        var max = Math.max(SIDEBAR_MIN, window.innerWidth - CANVAS_MIN);
+        var w = Math.round(Math.min(Math.max(px, SIDEBAR_MIN), max));
+        sidebarEl.style.flexBasis = w + 'px';
+        sidebarEl.style.width = w + 'px';
+        splitterEl.setAttribute('aria-valuenow', String(w));
+        // Coalesce to one resize per frame; pointermove fires far faster.
+        if (resizeFrame !== null) { return; }
+        resizeFrame = requestAnimationFrame(function () {
+            resizeFrame = null;
+            cy.resize();
+        });
+    }
+
+    splitterEl.addEventListener('pointerdown', function (ev) {
+        // Pointer capture keeps the drag alive over the canvas, where
+        // Cytoscape would otherwise swallow the move events.
+        ev.preventDefault();
+        splitterEl.setPointerCapture(ev.pointerId);
+        splitterEl.classList.add('dragging');
+        document.body.classList.add('resizing');
+    });
+
+    splitterEl.addEventListener('pointermove', function (ev) {
+        if (!splitterEl.classList.contains('dragging')) { return; }
+        setSidebarWidth(ev.clientX - sidebarEl.getBoundingClientRect().left);
+    });
+
+    function endResize(ev) {
+        if (!splitterEl.classList.contains('dragging')) { return; }
+        splitterEl.classList.remove('dragging');
+        document.body.classList.remove('resizing');
+        try { splitterEl.releasePointerCapture(ev.pointerId); } catch (err) { /* already gone */ }
+        cy.resize();
+    }
+    splitterEl.addEventListener('pointerup', endResize);
+    splitterEl.addEventListener('pointercancel', endResize);
+
+    splitterEl.addEventListener('dblclick', function () {
+        setSidebarWidth(SIDEBAR_DEFAULT);
+    });
+
+    splitterEl.addEventListener('keydown', function (ev) {
+        var step = ev.shiftKey ? 40 : 10;
+        var current = sidebarEl.getBoundingClientRect().width;
+        if (ev.key === 'ArrowLeft') { setSidebarWidth(current - step); }
+        else if (ev.key === 'ArrowRight') { setSidebarWidth(current + step); }
+        else if (ev.key === 'Home') { setSidebarWidth(SIDEBAR_DEFAULT); }
+        else { return; }
+        ev.preventDefault();
+    });
+
+    // A window narrow enough to violate the clamp has to be re-clamped, or the
+    // sidebar keeps a width that leaves no canvas at all.
+    window.addEventListener('resize', function () {
+        setSidebarWidth(sidebarEl.getBoundingClientRect().width);
+    });
+
+    setSidebarWidth(SIDEBAR_DEFAULT);
 
     // ---- scale guard -----------------------------------------------------
     var banner = document.getElementById('banner');

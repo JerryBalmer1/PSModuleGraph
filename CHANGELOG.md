@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A draggable splitter between the HTML page's sidebar and the graph.** The
+  sidebar was a fixed 300px, which truncates the long function names in the
+  test-order list. Drag the divider to resize, double-click it to reset to
+  300px, or focus it and use the arrow keys. The sidebar clamps at 200px and
+  never squeezes the graph below 320px.
 - **`Export-PSModuleDependencyGraph -Format Html`** — a single self-contained
   interactive page. Search, filter by node kind or export status, optionally show
   unresolved targets, and click any node to focus its neighbourhood at a chosen

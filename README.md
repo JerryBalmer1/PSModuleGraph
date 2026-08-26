@@ -66,6 +66,10 @@ click a node to focus its neighbourhood at a chosen depth in either direction â€
 Border thickness tracks how many things depend on a node, so the heavy-bordered
 ones are the risky ones.
 
+The divider between the sidebar and the graph is draggable â€” the test-order list
+holds long function names that do not fit 300px. Double-click it to reset, or
+focus it and use the arrow keys.
+
 #### Test order is the default view
 
 The page opens in **Test order**: dependencies first, laid out left to right, so
