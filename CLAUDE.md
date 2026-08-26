@@ -162,6 +162,10 @@ record carries `Path` and `StartLine`.
 
 ## The HTML export
 
+> Before planning any work here, read **"HTML subsystem — standing directive"**
+> below and `docs/html-architecture.md`. This subsystem is being built toward
+> extraction; the rules in this section are the local details, not the design.
+
 `Export-PSModuleDependencyGraph -Format Html` renders a self-contained page.
 Rules that are easy to violate:
 
@@ -338,6 +342,45 @@ turns a missing key or property into a terminating error. Reading manifest data
 with a plain property access will throw on any manifest that omits an optional
 key. Use the helper.
 
+## HTML subsystem — standing directive
+
+`docs/html-architecture.md` is the authority for this subsystem. **Read that
+file, not the templates, before planning any work here.** Open a partial only
+when editing that partial.
+
+The subsystem is being built toward extraction into its own repository. It is
+not finished when the build is green; it is finished when the extraction
+checklist in that document is fully ticked.
+
+**The seam.** `ConvertTo-GraphHtml` is the only function that knows what a
+dependency graph is; nothing below it may reference `Node`, `Edge`, `Module`,
+`Ast`, or any PSModuleGraph type.
+
+**Data files only.** Adding a new setting must require editing data files only.
+If it requires editing a `.ps1`, the design is wrong — report that as a bug
+rather than working around it.
+
+**Every change opens with a one-paragraph architectural delta** — what it moves
+toward or away from the target state — before any code. One paragraph, not a
+plan document.
+
+### Token discipline
+
+1. Read `docs/html-architecture.md`, not the templates, when planning.
+2. Never rewrite an asset file wholesale to change part of it. Targeted edits.
+3. Never re-derive the architecture. It is written down. To disagree, propose an
+   amendment in one paragraph and wait — do not silently build to a different
+   design.
+4. Do not restate the plan before starting. The prompt is the plan.
+5. One architectural delta paragraph, then code. No plan documents, no phased
+   roadmaps, no summaries of what you are about to do.
+6. Do not add comments explaining what the architecture document already
+   explains. Link to it. Long comment blocks re-justifying settled decisions are
+   a cost paid on every read.
+7. When something is ambiguous, ask one specific question. Do not implement both
+   options, and do not implement the safer one and mention the other.
+
+This directive stays until the repository owner removes it.
 ## Open decisions
 
 Not settled. Do not resolve one of these unilaterally as part of an unrelated
