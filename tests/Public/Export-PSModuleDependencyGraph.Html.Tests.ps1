@@ -155,6 +155,33 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
         }
     }
 
+    It 'reuses one stable temp path and overwrites it' {
+        $sample = $script:Sample
+
+        InModuleScope PSModuleGraph -Parameters @{ Sample = $sample } {
+            param($Sample)
+
+            Mock Show-GraphDocument { }
+
+            $graph = Get-PSModuleDependencyGraph -Path $Sample
+            $first = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
+
+            # Count around the second call rather than globbing the directory:
+            # it is the real system temp, shared with other runs and with
+            # leftovers from previous naming schemes.
+            $dir = Split-Path $first.FullName -Parent
+            $before = @(Get-ChildItem -LiteralPath $dir -Filter '*.html' -File).Count
+            $second = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -Show
+            $after = @(Get-ChildItem -LiteralPath $dir -Filter '*.html' -File).Count
+
+            # Same path both times, so an already-open browser tab only needs a
+            # refresh and the directory cannot grow without bound.
+            $second.FullName | Should-Be $first.FullName
+            $second.Name | Should-Be 'SampleModule.html'
+            $after | Should-Be $before
+        }
+    }
+
     It 'does not open anything when -Show is absent' {
         $sample = $script:Sample
 
