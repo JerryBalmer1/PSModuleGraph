@@ -98,6 +98,7 @@ const GRAPH_STRINGS = /*__GRAPH_STRINGS__*/ null;
 /*__SLOT_SCRIPT_FOCUS__*/
 /*__SLOT_SCRIPT_EDITOR_LINK__*/
 /*__SLOT_SCRIPT_DIAGNOSTICS__*/
+/*__SLOT_SCRIPT_SELECTION__*/
 /*__SLOT_SCRIPT_MENU__*/
 /*__SLOT_SCRIPT_CONTROLS__*/
     // ---- sidebar splitter ------------------------------------------------

@@ -226,6 +226,35 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
         $script:Html | Should-MatchString "cfgText\('DefaultFlow'"
     }
 
+    It 'answers questions about a selection that one item cannot' {
+        # Selecting several things is only worth doing if the panel says
+        # something a single Details pane could not - what they all rest on
+        # being the one that follows from gravity.
+        $script:Html | Should-MatchString 'function sharedFoundation'
+        $script:Html | Should-MatchString 'shared\.intersection\(reach\)'
+        $script:Html | Should-MatchString "cy\.on\('select unselect', 'node', renderSelection\)"
+        $script:Html | Should-MatchString '"SelectionSharedFoundation"'
+    }
+
+    It 'keeps selection facts and actions as registries' {
+        # Same contract as NODE_ACTIONS: adding one is a single entry, and an
+        # inapplicable action greys out with its reason rather than vanishing.
+        $script:Html | Should-MatchString 'var SELECTION_FACTS = \['
+        $script:Html | Should-MatchString 'var SELECTION_ACTIONS = \['
+        $script:Html | Should-MatchString 'button\.disabled = !!action\.reason'
+    }
+
+    It 'drives one overlay from rows, text and actions' {
+        # The panel was a title and a block of text. Generalising it is what let
+        # the selection panel exist without a second overlay; a third caller
+        # should need no markup either.
+        $script:Html | Should-MatchString 'id="info-rows"'
+        $script:Html | Should-MatchString 'id="info-actions"'
+        $script:Html | Should-MatchString 'function showInfoPanel\(title, text, options\)'
+        # Copy hands over whatever is on screen, rows included.
+        $script:Html | Should-MatchString 'panelCopyText'
+    }
+
     It 'flips the arrowheads to follow the reading direction' {
         # An arrow pointing at the callee would point backwards through the
         # order the view is read in. Call flow reads the other way and keeps it.

@@ -29,6 +29,7 @@
         SCRIPT_FOCUS     = @('scripts/focus.js')
         SCRIPT_EDITOR_LINK = @('scripts/editor-link.js')
         SCRIPT_DIAGNOSTICS = @('scripts/diagnostics.js')
+        SCRIPT_SELECTION = @('scripts/selection.js')
         SCRIPT_MENU      = @('scripts/menu.js')
         SCRIPT_CONTROLS  = @('scripts/controls.js')
     }

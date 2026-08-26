@@ -170,6 +170,6 @@
         }
     });
     document.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Escape') { closeNodeMenu(); infoPanel.hidden = true; }
+        if (ev.key === 'Escape') { closeNodeMenu(); hideInfoPanel(); }
     });
     window.addEventListener('blur', closeNodeMenu);

@@ -72,6 +72,25 @@
     color: var(--fg-dim);
 }
 .info-head #info-title { margin-right: auto; }
+#info-rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 12px;
+}
+#info-rows[hidden] { display: none; }
+#info-rows dt { color: var(--fg-dim); }
+#info-rows dd { margin: 0; }
+#info-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 12px 10px;
+}
+#info-actions[hidden] { display: none; }
+#info-body[hidden] { display: none; }
 #info-body {
     margin: 0;
     padding: 10px 12px;

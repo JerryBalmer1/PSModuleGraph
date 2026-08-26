@@ -371,6 +371,65 @@ rules on them are not negotiable and are not stylistic:
 asked. Collapsing `$null` into `$false` hides the only case where neither
 mechanism explains a link that does nothing.
 
+## Kaizen
+
+**Every iteration leaves this repository slightly better shaped than it found
+it, and writes down what it noticed but did not do.**
+
+This is a standing instruction. It applies to every task, whether or not the
+prompt mentions it, and it is not licence to widen scope - it is the opposite.
+Scope creep is doing extra work nobody asked for. Kaizen is *noticing* while you
+work, taking only what is genuinely small, and recording the rest so the next
+pass starts ahead of where this one did. The backlog is `docs/improvements.md`.
+
+### On every iteration
+
+1. **Notice one thing.** While reading code for whatever the task actually is,
+   something will be shaped worse than it could be: a branch that wants to be a
+   registry, a literal that wants to be data, a message that lies, a panel that
+   is nearly general. You do not have to hunt. It presents itself.
+2. **Classify it honestly** as Small, Medium or Large, by the rules at the top of
+   `docs/improvements.md`. The classification decides what you may do:
+   - **Small** - fits inside work already happening and needs no new decision.
+     Do it. Mention it in one line.
+   - **Medium** - its own change, its own commit. Say in one line that you are
+     doing it and why, then do it.
+   - **Large** - changes a contract, a data shape, or the user's mental model.
+     **Log it and stop.** Do not take it unprompted. This is the boundary that
+     keeps kaizen from becoming scope creep.
+3. **Record it either way.** Something you did goes to **Done** with what
+   prompted it. Something you did not goes to **Open** under its size. An
+   improvement noticed and not written down is an improvement lost.
+4. **Prefer extensibility over the feature.** When the same shape appears a
+   second time, the improvement is usually not "add the second one" but "make
+   adding the third one one entry". `NODE_ACTIONS`, `SELECTION_FACTS`,
+   `SELECTION_ACTIONS` and `FLOW_LAYOUT` all came from this and all read the
+   same way, deliberately.
+
+### What good looks like here
+
+The question to hold is not *what else could I build* - it is **what would make
+the next change to this cheaper**. Three concrete tests:
+
+- **Would a second one of these be one entry, or a second branch?** If a branch,
+  the registry is the improvement.
+- **Is this text, number or colour a decision, or data?** If a user would ever
+  want it different, it belongs in a `.psd1`, not in a `.js` or `.ps1`.
+- **Does this message say something true?** A banner that names the wrong cause
+  is worse than no banner, because it is confidently wrong and people act on it.
+
+### What kaizen is not
+
+- **Not a licence to refactor code you are not otherwise touching.** Read it,
+  log it, move on.
+- **Not a reason to add options nobody asked for.** A new setting is a new
+  decision imposed on the reader; extensibility is not the same as configurability.
+- **Not exempt from the standing directives.** The HTML subsystem's rules still
+  hold, `docs/html-architecture.md` is still the authority, and an improvement
+  that contradicts a recorded decision is an amendment to propose, not to make.
+- **Not a running commentary.** One line per improvement taken. The backlog
+  carries the detail; the response does not.
+
 ## Gravity
 
 **What everything rests on goes at the bottom, and the report opens that way.**

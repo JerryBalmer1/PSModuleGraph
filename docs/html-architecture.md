@@ -71,6 +71,40 @@ Each has one validator, dispatched from the entry's `Type`.
 > editing a `.ps1`, the design is wrong. Report that as a bug; do not work
 > around it.
 
+## Kaizen in this subsystem
+
+The general rule is the **Kaizen** section of `CLAUDE.md`. Here it has a
+specific shape, because this subsystem is being built toward extraction and
+"better shaped" has a definition: **closer to a renderer that knows nothing
+about dependency graphs.**
+
+Every pass through this code should ask, in this order:
+
+1. **Does this belong above the seam?** Any graph vocabulary below it -
+   in code, comments, file names, setting names, or a string that names a
+   PSModuleGraph command - is the improvement. The banner's
+   `editorLinkHelpCommand` is the pattern: the caller supplies it, the renderer
+   interpolates it.
+2. **Is this a decision or is it data?** Text belongs in `strings.psd1`,
+   colours in `theme.psd1`, behaviour in `settings.psd1`, and their types in
+   `settings.schema.psd1`. **If adding a setting requires editing a `.ps1`, that
+   is a bug in the design - report it, do not work around it.**
+3. **Would a second one of these be one entry?** The registries here -
+   `NODE_ACTIONS`, `SELECTION_FACTS`, `SELECTION_ACTIONS`, `FLOW_LAYOUT` -
+   exist because the answer was no and became yes. New surfaces should join
+   them rather than sit beside them as branches.
+4. **Does an overlay, panel or control want to be general?** The info panel took
+   a title and a block of text until the selection panel needed rows and
+   actions; generalising it was cheaper than a second overlay and is why a third
+   caller needs no markup.
+5. **What does the checklist below still say is open?** It is the backlog for
+   this subsystem specifically. `docs/improvements.md` carries the rest.
+
+Anything taken gets a line in the decision log below. Anything noticed and not
+taken gets a line in `docs/improvements.md`. **An improvement that contradicts a
+decision already in this log is an amendment to propose in one paragraph, not a
+change to make quietly.**
+
 ## Extraction checklist
 
 - [ ] No graph vocabulary below the seam  (setting names, template ids, GRAPH_* tokens, partials/template-notice.html)
@@ -206,3 +240,16 @@ setting per screen size is not a design.
 large graph to the window is what turns labels into dashes, and a report nobody
 can read has failed whatever its layout. Past the floor the view stops shrinking
 and the reader pans; foundation opens at the bottom, where reading starts.
+
+**2026-08-26 - The info panel takes rows, text and actions instead of only
+text.** The selection panel needed label/value pairs and buttons, and a second
+overlay would have duplicated the head, the copy button and the dismiss
+handling. Generalising the one that existed was smaller than adding another, and
+a third caller now needs no markup at all.
+
+**2026-08-26 - Selection facts and actions are registries taking a collection.**
+The interesting questions about several items are the ones a single item cannot
+answer - what they all rest on, what they break between them - so the contract
+takes the collection rather than iterating one at a time. Same `check` returning
+null-or-reason as `NODE_ACTIONS`, so an inapplicable action greys out with the
+reason.

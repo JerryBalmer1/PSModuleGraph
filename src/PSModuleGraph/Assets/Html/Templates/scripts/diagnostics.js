@@ -18,20 +18,66 @@
         }).join('\n');
     }
 
+    // One overlay, several occupants. It takes a title plus any of: a block of
+    // preformatted text, a list of label/value rows, and a row of actions.
+    // Diagnostics uses the text; the selection panel uses rows and actions. A
+    // third caller should need no markup either - see the kaizen note in
+    // docs/html-architecture.md.
     var infoPanel = document.getElementById('info-panel');
     var infoBody = document.getElementById('info-body');
+    var infoRows = document.getElementById('info-rows');
+    var infoActions = document.getElementById('info-actions');
+    var panelOwner = null;
+    var panelCopyText = '';
 
-    function showInfoPanel(title, text) {
+    function hideInfoPanel() {
+        infoPanel.hidden = true;
+        panelOwner = null;
+    }
+
+    function showInfoPanel(title, text, options) {
+        var opts = options || {};
         document.getElementById('info-title').textContent = title;
-        infoBody.textContent = text;
+        panelOwner = opts.owner || null;
+
+        infoBody.textContent = text || '';
+        infoBody.hidden = !text;
+
+        infoRows.textContent = '';
+        infoRows.hidden = !opts.rows || !opts.rows.length;
+        (opts.rows || []).forEach(function (row) {
+            var dt = document.createElement('dt');
+            dt.textContent = row[0];
+            var dd = document.createElement('dd');
+            dd.textContent = row[1];
+            infoRows.appendChild(dt);
+            infoRows.appendChild(dd);
+        });
+
+        infoActions.textContent = '';
+        infoActions.hidden = !opts.actions || !opts.actions.length;
+        (opts.actions || []).forEach(function (action) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.disabled = !!action.reason;
+            button.textContent = action.reason
+                ? action.label + str('MenuReasonSeparator') + action.reason
+                : action.label;
+            if (!action.reason) { button.addEventListener('click', action.run); }
+            infoActions.appendChild(button);
+        });
+
+        // Whatever is on screen is what Copy hands over, rows included.
+        panelCopyText = text || (opts.rows || []).map(function (row) {
+            return row[0] + ': ' + row[1];
+        }).join('\n');
+
         infoPanel.hidden = false;
     }
 
-    document.getElementById('info-close').addEventListener('click', function () {
-        infoPanel.hidden = true;
-    });
+    document.getElementById('info-close').addEventListener('click', hideInfoPanel);
     document.getElementById('info-copy').addEventListener('click', function () {
-        copyText(infoBody.textContent);
+        copyText(panelCopyText);
     });
 
     // A custom-scheme navigation reports nothing on failure - no error, no

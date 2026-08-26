@@ -41,7 +41,7 @@
     LegendUnresolved              = 'unresolved'
 
     # -- Focus and details -------------------------------------------------
-    FocusHintEmpty                = 'Select a node to focus its neighbourhood.'
+    FocusHintEmpty                = 'Select a node to focus its neighbourhood. Shift-click, or shift-drag a box, to select several.'
     FocusHintSelected             = 'Focused: {name}'
     DetailName                    = 'Name'
     DetailKind                    = 'Kind'
@@ -68,6 +68,22 @@
     ReasonNoFile                  = 'no file recorded'
     ReasonNoModuleRoot            = 'module root unknown'
     ReasonEmbedded                = 'not available in an embedded viewer, open the report in a browser'
+
+    # -- Selection ---------------------------------------------------------
+    SelectionTitle                = '{count} selected'
+    SelectionCount                = 'Selected'
+    SelectionSharedFoundation     = 'Shared foundation'
+    SelectionNoneShared           = 'nothing in common'
+    SelectionInternalLinks        = 'Links between them'
+    SelectionDependencies         = 'Depend on, in total'
+    SelectionDependents           = 'Depended on by, in total'
+    SelectionTestSteps            = 'Test steps'
+    SelectionMore                 = 'and {count} more'
+    SelectionActionSelectFoundation = 'Select shared foundation'
+    SelectionActionCopyNames      = 'Copy names'
+    SelectionActionCopyPaths      = 'Copy paths'
+    SelectionActionCopyLinks      = 'Copy editor links'
+    SelectionActionClear          = 'Clear selection'
 
     # -- Controls ----------------------------------------------------------
     ZoomSpeedSuffix               = 'x'

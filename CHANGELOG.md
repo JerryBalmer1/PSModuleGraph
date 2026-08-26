@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Select several nodes and a panel answers what one of them could not.**
+  Shift-click, or shift-drag a box, and the overlay reports what the selection
+  shares: the **shared foundation** — everything all of them rest on, however
+  indirectly, so changing any of it changes all of them — along with how many
+  links run between them, what they depend on and are depended on by in total,
+  and the span of test steps they cover. Actions copy the names, the paths or
+  the editor links, or extend the selection to the shared foundation itself.
+
+  Facts and actions are registries, the same contract the context menu uses: a
+  new one is a single entry, and an action that does not apply greys out with
+  the reason rather than disappearing.
+- **The info overlay is now general.** It took a title and a block of text; it
+  now takes rows and actions too, which is what let the selection panel exist
+  without a second overlay. Copy hands over whatever is on screen.
 - **The Foundation view bounds how wide a layer may get.** A layered drawing is
   only as readable as its aspect ratio, and no dagre ranker can bound a layer:
   `longest-path` pins every node with no dependencies to one extreme layer,
