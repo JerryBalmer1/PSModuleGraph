@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A corpus of real modules, and a committed record of what the parser does
+  with them.** `gallery/` holds eight modules from the PowerShell Gallery pinned
+  by version — a plain script module, one with shipped assemblies, an Azure
+  module whose exports are C# cmdlets, a generated single-file `.psm1`, a
+  class-based module, a `using module` chain, one built on name-based dispatch,
+  and a manifest with no code at all. Each entry names what it is expected to
+  stress and what was predicted of it, written before the first run.
+
+  The source is never committed: `corpus.lock.json` pins a URI and a SHA-256 per
+  package and `gallery/fetch.ps1` refuses bytes that do not match, so the corpus
+  is reproducible without being a redistribution. `gallery/run.ps1` writes one
+  JSON file per module per run under `gallery/results/`, shaped by
+  `gallery/contract/run-result.schema.json` — counts, wall time, toolchain, and
+  every error or warning raised. A run that throws, hangs or was never fetched
+  still produces a record with the failure in it.
+
+  Nothing in it imports a corpus module. These are modules nobody vetted, which
+  is the situation the core constraint exists for.
 - **Select several nodes and a panel answers what one of them could not.**
   Shift-click, or shift-drag a box, and the overlay reports what the selection
   shares: the **shared foundation** — everything all of them rest on, however
@@ -254,6 +272,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A `using module` line made a module unreadable.** `UsingStatementAst` carries
+  `Name` and `ModuleSpecification` and has never had a `ModuleName`; reading one
+  under `Set-StrictMode` raised `PropertyNotFoundStrict` from inside
+  `Get-PSModuleUsingStatement` and took the whole dependency graph down with it.
+  Class-based DSC modules could not be parsed at all. The hashtable form is now
+  read as text out of the AST, never evaluated.
+- **`Add-Type -Path (an expression)` made a module unreadable.**
+  `Get-PSModuleAssembly` handed the argument's extent text to `Split-Path`, which
+  is provider-aware, so `([System.IO.Path]::Combine($root, 'x.dll'))` failed as
+  "Cannot find a provider with the name '([System.IO.Path]'" — with nothing
+  naming the module that caused it. An argument that is an expression is now
+  reported as an assembly with a computed path rather than resolved or dropped.
 - **An assignment file was keyed by subject and facet, which silently lost
   data.** Facets are multi-valued — that is the very property the `facet-health`
   split was withdrawn over — but the layout gave each subject one file per

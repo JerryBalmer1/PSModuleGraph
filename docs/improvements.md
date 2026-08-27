@@ -78,6 +78,43 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Medium
 
+- **`PreTag` here has no guard against selecting nothing.** It filters by tag and
+  reports success on whatever it finds; a filter that matches zero tests would
+  pass. It selected three this iteration, so nothing is wrong today. The sibling
+  repository shipped four tags behind exactly this before anyone noticed, which
+  is the argument for the guard rather than for watching the number.
+- **A "root" can be an artefact of the name index.** `Get-PSModuleDependencyGraph`
+  keys the node index on the lowercased bare name, so the last definition parsed
+  wins and every earlier one becomes unreachable by any edge — then reported as a
+  root. SqlServerDsc 17.5.1: 53 duplicated names, 144 of 496 nodes shadowed, 186
+  roots. The narrow fix is to detect the collision and say so; the real fix is
+  `0012-t5`, which is Large. *Ledger `0012`.*
+- **The unresolved report drops a third of Pester's call sites.** A call through
+  a variable yields no command name, the fallback takes the extent text, and the
+  graph's leading-sigil filter removes it — 491 of 1,552 sites, reported nowhere.
+  "Report, do not drop" names this case explicitly. The leftovers are worse: four
+  "command names" hold thirty lines of script block. *Ledger `0012`.*
+- **A base type outside the module is dropped, not surfaced.** SqlServerDsc has 9
+  classes with a base type and 7 `Inherits` edges; the two crossing a
+  `using module` boundary vanish. An unresolvable call becomes an `Unresolved`
+  entry and an unresolvable base type becomes nothing, which is the same rule
+  applied twice with two answers. *Ledger `0012`.*
+- **Two root manifests in a version-named directory refuse to resolve.**
+  `Resolve-PSModuleTarget` falls back to matching the manifest against the
+  containing folder name, which for an installed module is the version. PSDepend
+  0.5.0 ships two root manifests and cannot be pointed at. Which one wins is a
+  decision — `RootModule` and the parent folder name are both candidates — which
+  is why it is here and not fixed. *Ledger `0012`.*
+- **The parser writes an error record on the first file of every module.**
+  `Get-Variable -Scope Script -ErrorAction SilentlyContinue` suppresses the
+  action and still records the error, so `Get-PSModuleDependencyGraph
+  -ErrorAction Stop` fails on every input. Every result file in
+  `gallery/results/` carries it. *Ledger `0012`.*
+- **`gallery/` is outside lint and outside the build, and so is `corpus/`.** Two
+  directories of `.ps1` that the analyzer never sees, because it is scoped to
+  `src/`. It was one for four tags (`0008-t3`); a second instance is the signal
+  that the lint scope is the thing to change rather than the directory.
+  *Ledger `0012`.*
 - **Hot and external are nearly the same colour.** `External` fill and
   unresolved edges are `#ff7043`; the hot end of `HeatRamp` is `#ff3b2f`.
   Colouring by a metric makes a heavily depended-on internal function look like
@@ -126,6 +163,11 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Large
 
+- **A node's identity is its name.** The node index maps a lowercased bare name
+  to one id, so two definitions of `Get-TargetResource` are two nodes and one
+  addressable target. Everything downstream rests on it: edges, roots, leaves,
+  the metrics, and the view the report opens in. Changing it changes the payload
+  and the user's mental model of what a node is. *Ledger `0012-t5`.*
 - **The token contract is still `__GRAPH_*__`.** Renaming is a breaking change to
   the template contract and belongs in one deliberate pass. *Checklist item.*
 - **Should the graph types be real PowerShell classes?** Open decision in
