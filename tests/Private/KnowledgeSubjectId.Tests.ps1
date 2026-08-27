@@ -322,19 +322,26 @@ Describe 'The move itself did not lose or duplicate a file' {
     }
 
     It 'keeps every store path inside a ceiling, rather than discovering MAX_PATH' {
-        # Qualifying an id with its file lengthened every path in the tree. The
-        # ceiling is asserted rather than met: a write that fails at 260
-        # characters produces a store missing records, which is this migration's
-        # own version of writing fewer files than it thinks it did.
+        # Qualifying an id with its file lengthened every path in the tree, and
+        # this is not a hypothetical: checking this commit out into a worktree
+        # 121 characters deep failed with "Filename too long" before git had
+        # written the store. A write that fails at 260 leaves a store missing
+        # records, which is this migration's own version of the defect it fixes.
         #
-        # 200 leaves room for the repository to sit deeper than it does here and
-        # is well inside the 260 a machine without long paths enabled enforces.
+        # Measured REPO-relative rather than store-relative, because 260 is
+        # spent by the checkout root too and the store-relative number cannot
+        # see that. 180 here leaves 80 characters for wherever the repository
+        # sits, which 'C:\__Code\PSModuleGraph' spends 23 of.
+        #
+        # git core.longpaths lifts this and is unset on the machine that took
+        # the measurement, so it is not something to rely on.
+        $repo = $script:Repo
         $longest = @(Get-ChildItem -LiteralPath $script:Store -Filter *.md -File -Recurse |
-                ForEach-Object {
-                    $_.FullName.Substring($script:Store.Length).TrimStart([char]92, [char]47)
-                } | Sort-Object { $_.Length } -Descending)
+                ForEach-Object { $_.FullName.Substring($repo.Length).TrimStart([char]92, [char]47) } |
+                Sort-Object { $_.Length } -Descending)
 
         $longest.Count | Should-BeGreaterThan 0
-        $longest[0].Length | Should-BeLessThan 200 -Because "the longest store-relative path is '$($longest[0])'"
+        $longest[0].Length | Should-BeLessThan 180 -Because (
+            "the longest repo-relative store path is $($longest[0].Length) characters: '$($longest[0])'")
     }
 }
