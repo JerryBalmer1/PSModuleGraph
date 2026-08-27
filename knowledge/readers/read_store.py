@@ -17,6 +17,14 @@ Run by hand. This is not in CI - a build dependency on a second runtime would
 defeat the point of proving the format needs no particular one.
 
     python knowledge/readers/read_store.py knowledge
+    python knowledge/readers/read_store.py knowledge psmodule:PSModuleGraph/function/Get-PSModuleClass
+
+The second form resolves one identifier, current or former. `resolve` is five
+lines, which is the neutrality claim staying true at the point it started to
+matter: v0.16.0 qualified every subject id with the file it is defined in, so
+every identifier this store issued before then lives only in an `aliases` list.
+If following one required PowerShell, the claim would have become false in the
+release that made it load-bearing.
 """
 import sys
 import pathlib
@@ -61,6 +69,17 @@ def load(root, area):
     return records, failed
 
 
+def resolve(subjects, wanted):
+    """Subjects whose id IS wanted, or which claim it as a former id.
+
+    One or more. A collapsed identifier names several subjects now, and
+    answering with one would restore the wrong answer the split removed.
+    Comparison is exact: a URN path segment preserves case.
+    """
+    hit = [s for s in subjects if s.get("id") == wanted]
+    return hit or [s for s in subjects if wanted in s.get("aliases", [])]
+
+
 def main(argv):
     root = pathlib.Path(argv[1] if len(argv) > 1 else "knowledge")
     subjects, bad_subjects = load(root, "subjects")
@@ -69,6 +88,14 @@ def main(argv):
 
     print("subjects:    %d" % len(subjects))
     print("assignments: %d" % len(assignments))
+
+    if len(argv) > 2:
+        found = resolve(subjects, argv[2])
+        print("")
+        print("%s resolves to %d subject(s):" % (argv[2], len(found)))
+        for record in found:
+            print("  %s  %s" % (record["id"], record.get("source", "")))
+        return 1 if problems or not found else 0
     print("\nassignments the store is least sure of:")
     for record in assignments:
         if float(record.get("confidence", 1)) < 1:

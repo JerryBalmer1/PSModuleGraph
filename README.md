@@ -31,16 +31,22 @@ cd PSModuleGraph
 | `Export-PSModuleDependencyGraph` | JSON, Graphviz DOT, Mermaid, or CSV edge list |
 | `Test-PSModuleGraphEditorLink` | Why `vscode://` links do or do not open from a browser. Read-only |
 | `Enable-PSModuleGraphEditorLink` | Grants Chrome or Edge permission to open them. Prompts; `-Revert` undoes it |
-| `Update-KnowledgeStore` | Regenerates a module's records in `knowledge/`. Prompts; `-WhatIf` lists every file. **See the caveat below** |
+| `Update-KnowledgeStore` | Regenerates a module's records in `knowledge/`. Prompts; `-WhatIf` lists every file |
+| `Resolve-KnowledgeSubject` | Finds the subject a URN names, current or former. Returns one **or more** |
 
-**`Update-KnowledgeStore` records one subject per NAME, and a name is not an
-identity.** Run against SqlServerDsc it writes 327 subjects for 469 function
-definitions - 142 get no record at all - and the one that survives names an
-arbitrary file: `Get-TargetResource` is recorded as living in
-`DSC_SqlWindowsFirewall`, for a function that exists in 32 files. That is a wrong
-path rather than a missing one, and following it lands you in the wrong resource.
-The graph stopped collapsing same-named definitions in v0.11.0; the store has not
-caught up. Open, with the measurement, as ledger `0014-t1`.
+**A subject's identity is its kind, its file and its name** - since v0.16.0.
+Before that it was the name alone, and a name is not an identity: run against
+SqlServerDsc the store wrote 327 subjects for 469 function definitions, and the
+one that survived each collision named an arbitrary file, so following
+`Get-TargetResource` landed you in `DSC_SqlWindowsFirewall` for a function that
+exists in 32 of them. A wrong path rather than a missing one. It now writes 469.
+
+Every identifier the store issued before then still resolves.
+`Resolve-KnowledgeSubject` tries the path an id names and then the records
+claiming it as a former one, and **a collapsed id resolves to several subjects**
+- all 32, rather than the one that used to win. `knowledge/readers/read_store.py`
+does the same in five lines, which is the language-neutrality claim staying true
+where it started to matter.
 
 ## Parameter sets
 

@@ -128,6 +128,10 @@ LONG DESCRIPTION
         Regenerates a module's subjects and assignments in the knowledge store.
         See THE KNOWLEDGE STORE below.
 
+    Resolve-KnowledgeSubject
+        Finds the subject an identifier names, current or former. Returns one
+        OR MORE. See THE KNOWLEDGE STORE below.
+
     THE KNOWLEDGE STORE
 
     knowledge/ at the repository root holds dimensions, the things they
@@ -156,6 +160,23 @@ LONG DESCRIPTION
     Confidence is required on every assignment and never defaults to 1. An
     inference from an absence is not the same fact as a declared entry, and the
     store must always be able to say which it holds.
+
+    IDENTIFIERS, AND THE ONES THAT STOPPED BEING ISSUED
+
+    A subject's identity is its kind, the file it is defined in, and its name.
+    Until v0.16.0 it was the name alone, so two functions of the same name in
+    two folders were one record naming one arbitrary file - a wrong answer
+    rather than a missing one.
+
+    A rename never deletes, so every identifier the store used to issue is
+    recorded on the record that replaced it and still resolves:
+
+        Resolve-KnowledgeSubject psmodule:PSModuleGraph/function/Get-PSModuleClass
+
+    It returns ONE OR MORE. Where a name was shared, the old identifier meant
+    whichever definition was written last, which was never a fact about any of
+    them; all of them claim it now and the caller chooses. See
+    knowledge/NAMING.md.
 
     EDITOR LINKS
 
@@ -214,5 +235,6 @@ SEE ALSO
     Test-PSModuleGraphEditorLink
     Enable-PSModuleGraphEditorLink
     Update-KnowledgeStore
+    Resolve-KnowledgeSubject
     about_Modules
     https://github.com/JerryBalmer1/PSModuleGraph
