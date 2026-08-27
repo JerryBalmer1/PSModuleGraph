@@ -39,3 +39,7 @@ Pester*.xml
 
 # Corpus build output (generated, not source).
 output/corpus/
+
+# Vendored corpus modules. Pinned by gallery/corpus.lock.json and fetched by
+# gallery/fetch.ps1 - reproducible without being a redistribution.
+gallery/modules/

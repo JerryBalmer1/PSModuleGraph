@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "1.0.0",
+  "repository": "PSGallery",
+  "note": "Every entry names what it is expected to stress and what is predicted, written before the first run. A prediction that turns out wrong is worth more than an observation with no prediction behind it. Source is never committed: gallery/fetch.ps1 downloads and gallery/corpus.lock.json pins the bytes.",
+  "modules": [
+    {
+      "name": "posh-git",
+      "version": "1.1.0",
+      "role": "control",
+      "stresses": "Nothing. A plain script module of moderate size: a manifest with an explicit export list, a .psm1 that dot-sources a dozen .ps1 files, no assemblies, no classes, no dynamic dispatch.",
+      "predicted": "Succeeds in well under a second. Node count within a few of the number of function definitions on disk, edges dense between them, unresolved dominated by built-in cmdlets. If this one is wrong, nothing else in the corpus can be read."
+    },
+    {
+      "name": "ImportExcel",
+      "version": "7.8.10",
+      "role": "binary assemblies",
+      "stresses": "RequiredAssemblies and shipped DLLs beside a large script surface. The file inventory has to carry .dll entries it cannot parse without treating them as parse failures.",
+      "predicted": "Succeeds. Roughly ninety exported functions become nodes; the DLLs appear in the assembly list and contribute no nodes and no diagnostics. The risk is that an unparseable .dll is counted as a file that failed to parse, which would make every binary module look broken."
+    },
+    {
+      "name": "Az.Accounts",
+      "version": "5.5.2",
+      "role": "azure-style, cmdlets from a binary",
+      "stresses": "A large Azure module whose exports are cmdlets implemented in C#, not functions written in PowerShell. Nothing the parser looks for is present in the source it can read.",
+      "predicted": "Succeeds with a near-empty node set and no error at all: the manifest declares dozens of exports and the graph reports a handful of nodes or none. This is the empty-graph-with-no-error case, deliberately included. Predicted as a parser defect rather than a property of the module, because a graph that reports nothing must be able to say why."
+    },
+    {
+      "name": "Pester",
+      "version": "5.7.1",
+      "role": "generated single file, very large",
+      "stresses": "A .psm1 generated at build time, holding several hundred functions in one file, with nested helper functions inside other functions. Size, single-file attribution, and the difference between a top-level function and a local one.",
+      "predicted": "Succeeds and is the slowest run in the corpus by a wide margin. Node count exceeds the declared export count several times over, because functions defined inside other functions are found by the same recursive search and become top-level nodes. Two functions sharing a name in different scopes collapse to one entry in the name index."
+    },
+    {
+      "name": "Microsoft.PowerShell.Crescendo",
+      "version": "1.1.0",
+      "role": "classes and enums",
+      "stresses": "A script module built on PowerShell classes and enums, which also emits PowerShell source as strings at runtime.",
+      "predicted": "Succeeds. Classes and enums appear as nodes; inheritance edges appear only between types defined in the same module. The generated commands it produces are invisible, correctly, because they do not exist until it runs."
+    },
+    {
+      "name": "SqlServerDsc",
+      "version": "17.5.1",
+      "role": "using module chain and class inheritance",
+      "stresses": "Class-based DSC resources that inherit from a base class in another module, reached through a using module chain more than one deep. Inheritance that crosses a module boundary.",
+      "predicted": "Succeeds. Classes appear as nodes but their base types do not, because the base is defined in a module that is never followed; the inheritance edge is dropped rather than reported as unresolved. The using module statements appear as unresolved module references, which is the one place the chain is visible."
+    },
+    {
+      "name": "PSDepend",
+      "version": "0.5.0",
+      "role": "dynamic dispatch",
+      "stresses": "A module whose whole design is name-based dispatch: a dependency type in a data file names a .ps1 handler that is located and invoked at runtime, so the real call graph is written nowhere the AST can see it.",
+      "predicted": "Succeeds and returns a confidently wrong graph. The handler scripts are files in the module and become nodes, but nothing points at them, so they appear as roots or as unreachable. The dispatch is not surfaced as unresolved either, because there is no command name to be unresolved about. This is the worst outcome shape in the corpus: not an error, a misrepresentation."
+    },
+    {
+      "name": "Az",
+      "version": "16.2.0",
+      "role": "manifest only",
+      "stresses": "A rollup module with no code at all: a manifest listing eighty RequiredModules and nothing else. An empty graph that is correct.",
+      "predicted": "Succeeds with zero nodes, zero edges, and around eighty unresolved entries of kind RequiredModule. The pair with Az.Accounts is the point: both report almost no nodes, one legitimately and one not, and the result files must make the two distinguishable without a person knowing the modules."
+    }
+  ]
+}

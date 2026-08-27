@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedUtc": "2026-08-27T01:27:53Z",
+  "packages": [
+    {
+      "name": "Az",
+      "version": "16.2.0",
+      "uri": "https://www.powershellgallery.com/api/v2/package/Az/16.2.0",
+      "sha256": "b751334d6c4f31e9d6e817a7a2aa96a9a8099d5fabe4908d2971c1b30ba7c871",
+      "bytes": 46070
+    },
+    {
+      "name": "Az.Accounts",
+      "version": "5.5.2",
+      "uri": "https://www.powershellgallery.com/api/v2/package/Az.Accounts/5.5.2",
+      "sha256": "4465339b2c52cb19d0cb6ee16467076cd7f32633e9195df675373eb81e0e8cca",
+      "bytes": 10201874
+    },
+    {
+      "name": "ImportExcel",
+      "version": "7.8.10",
+      "uri": "https://www.powershellgallery.com/api/v2/package/ImportExcel/7.8.10",
+      "sha256": "d8a1d79dc8cf10c0eea30b68b70459b3fb4cac0042fb756fcb23890671857e4c",
+      "bytes": 1138398
+    },
+    {
+      "name": "Microsoft.PowerShell.Crescendo",
+      "version": "1.1.0",
+      "uri": "https://www.powershellgallery.com/api/v2/package/Microsoft.PowerShell.Crescendo/1.1.0",
+      "sha256": "7c047dfb3801f1aa6c11f9174737b8cc13563c34299425d748986c2e1aab0640",
+      "bytes": 764271
+    },
+    {
+      "name": "Pester",
+      "version": "5.7.1",
+      "uri": "https://www.powershellgallery.com/api/v2/package/Pester/5.7.1",
+      "sha256": "4a27904c6814a5fbe4758f8e49861f6a1994aee77b71165a5c43c0371ba6c580",
+      "bytes": 325233
+    },
+    {
+      "name": "posh-git",
+      "version": "1.1.0",
+      "uri": "https://www.powershellgallery.com/api/v2/package/posh-git/1.1.0",
+      "sha256": "87d9d37eb63d0d1b5f66622ab7ec16cd452a43cec45963ac0e596737750a00cc",
+      "bytes": 45348
+    },
+    {
+      "name": "PSDepend",
+      "version": "0.5.0",
+      "uri": "https://www.powershellgallery.com/api/v2/package/PSDepend/0.5.0",
+      "sha256": "8594294bd0ff79713d5e34a26f54fe6aa387b2b9a6a2bceaee860f8df3f222a2",
+      "bytes": 93902
+    },
+    {
+      "name": "SqlServerDsc",
+      "version": "17.5.1",
+      "uri": "https://www.powershellgallery.com/api/v2/package/SqlServerDsc/17.5.1",
+      "sha256": "bfed4b3f6b0f5895682bb385d0b0e4109744b21c39bb705445396ee5f7afd4a2",
+      "bytes": 852620
+    }
+  ]
+}

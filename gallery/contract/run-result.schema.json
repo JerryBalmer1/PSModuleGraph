@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JerryBalmer1/PSModuleGraph/gallery/contract/run-result.schema.json",
+  "title": "Gallery run result",
+  "description": "One parse of one vendored module by one toolchain. Written whether the parse succeeded, failed, or was killed for running too long: a corpus in which failures are absent measures only the modules that worked.",
+  "type": "object",
+  "required": ["schemaVersion", "module", "toolchain", "run", "counts", "diagnostics"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "description": "Additive changes bump minor; shape changes bump major.",
+      "type": "string",
+      "pattern": "^[0-9]+\.[0-9]+\.[0-9]+$"
+    },
+    "module": {
+      "type": "object",
+      "required": ["name", "version", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "source": {
+          "description": "Where the bytes came from, so a result can be reproduced without the bytes being committed.",
+          "type": "object",
+          "required": ["repository", "uri", "sha256"],
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "uri": { "type": "string", "format": "uri" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        }
+      }
+    },
+    "toolchain": {
+      "description": "Everything that could move a number between two runs of the same module.",
+      "type": "object",
+      "required": ["parserVersion", "parserCommit", "powerShellVersion", "powerShellEdition", "platform"],
+      "additionalProperties": false,
+      "properties": {
+        "parserVersion": { "type": "string" },
+        "parserCommit": { "type": ["string", "null"] },
+        "powerShellVersion": { "type": "string" },
+        "powerShellEdition": { "type": "string" },
+        "platform": { "type": "string" },
+        "os": { "type": ["string", "null"] }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["startedUtc", "wallMs", "outcome"],
+      "additionalProperties": false,
+      "properties": {
+        "startedUtc": { "type": "string", "format": "date-time" },
+        "wallMs": {
+          "description": "Time inside the graph call alone. Null when the run never got that far.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "totalMs": {
+          "description": "Time in the worker process, inventory included.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "outcome": {
+          "description": "ok = the graph was produced. failed = the parser threw. timeout = the worker was killed. missing = the module was not vendored.",
+          "enum": ["ok", "failed", "timeout", "missing"]
+        }
+      }
+    },
+    "counts": {
+      "description": "Null throughout when outcome is not ok. A zero is a measurement; a null is an absence, and the two must not be averaged together.",
+      "type": "object",
+      "required": ["nodes", "edges", "roots", "leaves", "unresolved"],
+      "additionalProperties": false,
+      "properties": {
+        "nodes": { "type": ["integer", "null"], "minimum": 0 },
+        "edges": { "type": ["integer", "null"], "minimum": 0 },
+        "roots": { "type": ["integer", "null"], "minimum": 0 },
+        "leaves": { "type": ["integer", "null"], "minimum": 0 },
+        "unresolved": { "type": ["integer", "null"], "minimum": 0 },
+        "functions": { "type": ["integer", "null"], "minimum": 0 },
+        "classes": { "type": ["integer", "null"], "minimum": 0 },
+        "enums": { "type": ["integer", "null"], "minimum": 0 },
+        "files": { "type": ["integer", "null"], "minimum": 0 },
+        "filesScript": {
+          "description": "Files the parser can read at all. A .dll is inventoried and is not a parse failure; counting the two together makes every binary module look broken.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "filesWithParseErrors": { "type": ["integer", "null"], "minimum": 0 },
+        "assemblies": { "type": ["integer", "null"], "minimum": 0 },
+        "declaredExports": {
+          "description": "What the manifest says it exports, from all four export keys. The independent number the node count is compared against.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      }
+    },
+    "diagnostics": {
+      "description": "Everything the run raised, in order. Empty is a claim, not a default.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "stage", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "severity": { "enum": ["error", "warning"] },
+          "stage": { "type": "string" },
+          "message": { "type": "string" },
+          "path": { "type": ["string", "null"] },
+          "line": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "expectation": {
+      "description": "Copied from gallery/corpus.json before the run, so a result carries the prediction it was measured against rather than being scored after the fact.",
+      "type": "object",
+      "required": ["stresses", "predicted"],
+      "additionalProperties": false,
+      "properties": {
+        "stresses": { "type": "string" },
+        "predicted": { "type": "string" }
+      }
+    }
+  }
+}
