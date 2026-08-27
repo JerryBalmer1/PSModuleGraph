@@ -10,25 +10,25 @@
     }
   },
   "toolchain": {
-    "parserVersion": "0.9.0",
-    "parserCommit": "37259e4",
+    "parserVersion": "0.10.0",
+    "parserCommit": "13bc8f9",
     "powerShellVersion": "7.6.5",
     "powerShellEdition": "Core",
     "platform": "Win32NT",
     "os": "Microsoft Windows NT 10.0.26200.0"
   },
   "run": {
-    "startedUtc": "2026-08-27T01:45:28Z",
-    "wallMs": 6229,
-    "totalMs": 6607,
+    "startedUtc": "2026-08-27T02:08:33Z",
+    "wallMs": 10003,
+    "totalMs": 10367,
     "outcome": "ok"
   },
   "counts": {
-    "nodes": 496,
-    "edges": 605,
-    "roots": 186,
-    "leaves": 137,
-    "unresolved": 528,
+    "nodes": 532,
+    "edges": 1271,
+    "roots": 252,
+    "leaves": 140,
+    "unresolved": 807,
     "functions": 469,
     "classes": 18,
     "enums": 8,
@@ -38,15 +38,7 @@
     "assemblies": 0,
     "declaredExports": 170
   },
-  "diagnostics": [
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
-      "path": "",
-      "line": null
-    }
-  ],
+  "diagnostics": [],
   "expectation": {
     "stresses": "Class-based DSC resources that inherit from a base class in another module, reached through a using module chain more than one deep. Inheritance that crosses a module boundary.",
     "predicted": "Succeeds. Classes appear as nodes but their base types do not, because the base is defined in a module that is never followed; the inheritance edge is dropped rather than reported as unresolved. The using module statements appear as unresolved module references, which is the one place the chain is visible."

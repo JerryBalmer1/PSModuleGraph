@@ -10,25 +10,25 @@
     }
   },
   "toolchain": {
-    "parserVersion": "0.9.0",
-    "parserCommit": "37259e4",
+    "parserVersion": "0.10.0",
+    "parserCommit": "13bc8f9",
     "powerShellVersion": "7.6.5",
     "powerShellEdition": "Core",
     "platform": "Win32NT",
     "os": "Microsoft Windows NT 10.0.26200.0"
   },
   "run": {
-    "startedUtc": "2026-08-27T01:45:10Z",
-    "wallMs": 1381,
-    "totalMs": 1567,
+    "startedUtc": "2026-08-27T02:08:10Z",
+    "wallMs": 1462,
+    "totalMs": 1655,
     "outcome": "ok"
   },
   "counts": {
-    "nodes": 87,
-    "edges": 77,
-    "roots": 44,
-    "leaves": 51,
-    "unresolved": 193,
+    "nodes": 94,
+    "edges": 78,
+    "roots": 51,
+    "leaves": 54,
+    "unresolved": 201,
     "functions": 78,
     "classes": 4,
     "enums": 4,
@@ -38,15 +38,7 @@
     "assemblies": 1,
     "declaredExports": 23
   },
-  "diagnostics": [
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
-      "path": "",
-      "line": null
-    }
-  ],
+  "diagnostics": [],
   "expectation": {
     "stresses": "Nothing. A plain script module of moderate size: a manifest with an explicit export list, a .psm1 that dot-sources a dozen .ps1 files, no assemblies, no classes, no dynamic dispatch.",
     "predicted": "Succeeds in well under a second. Node count within a few of the number of function definitions on disk, edges dense between them, unresolved dominated by built-in cmdlets. If this one is wrong, nothing else in the corpus can be read."

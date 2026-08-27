@@ -10,24 +10,24 @@
     }
   },
   "toolchain": {
-    "parserVersion": "0.9.0",
-    "parserCommit": "37259e4",
+    "parserVersion": "0.10.0",
+    "parserCommit": "13bc8f9",
     "powerShellVersion": "7.6.5",
     "powerShellEdition": "Core",
     "platform": "Win32NT",
     "os": "Microsoft Windows NT 10.0.26200.0"
   },
   "run": {
-    "startedUtc": "2026-08-27T01:45:22Z",
-    "wallMs": 2726,
-    "totalMs": 2895,
+    "startedUtc": "2026-08-27T02:08:25Z",
+    "wallMs": 3525,
+    "totalMs": 3729,
     "outcome": "ok"
   },
   "counts": {
-    "nodes": 421,
+    "nodes": 422,
     "edges": 597,
-    "roots": 122,
-    "leaves": 170,
+    "roots": 123,
+    "leaves": 171,
     "unresolved": 19,
     "functions": 420,
     "classes": 0,
@@ -38,15 +38,7 @@
     "assemblies": 2,
     "declaredExports": 28
   },
-  "diagnostics": [
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
-      "path": "",
-      "line": null
-    }
-  ],
+  "diagnostics": [],
   "expectation": {
     "stresses": "A .psm1 generated at build time, holding several hundred functions in one file, with nested helper functions inside other functions. Size, single-file attribution, and the difference between a top-level function and a local one.",
     "predicted": "Succeeds and is the slowest run in the corpus by a wide margin. Node count exceeds the declared export count several times over, because functions defined inside other functions are found by the same recursive search and become top-level nodes. Two functions sharing a name in different scopes collapse to one entry in the name index."

@@ -10,25 +10,25 @@
     }
   },
   "toolchain": {
-    "parserVersion": "0.9.0",
-    "parserCommit": "37259e4",
+    "parserVersion": "0.10.0",
+    "parserCommit": "13bc8f9",
     "powerShellVersion": "7.6.5",
     "powerShellEdition": "Core",
     "platform": "Win32NT",
     "os": "Microsoft Windows NT 10.0.26200.0"
   },
   "run": {
-    "startedUtc": "2026-08-27T01:45:26Z",
-    "wallMs": 966,
-    "totalMs": 1157,
+    "startedUtc": "2026-08-27T02:08:30Z",
+    "wallMs": 1135,
+    "totalMs": 1313,
     "outcome": "ok"
   },
   "counts": {
-    "nodes": 42,
-    "edges": 11,
-    "roots": 28,
+    "nodes": 46,
+    "edges": 19,
+    "roots": 32,
     "leaves": 33,
-    "unresolved": 30,
+    "unresolved": 46,
     "functions": 24,
     "classes": 17,
     "enums": 0,
@@ -38,15 +38,7 @@
     "assemblies": 0,
     "declaredExports": 10
   },
-  "diagnostics": [
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
-      "path": "",
-      "line": null
-    }
-  ],
+  "diagnostics": [],
   "expectation": {
     "stresses": "A script module built on PowerShell classes and enums, which also emits PowerShell source as strings at runtime.",
     "predicted": "Succeeds. Classes and enums appear as nodes; inheritance edges appear only between types defined in the same module. The generated commands it produces are invisible, correctly, because they do not exist until it runs."

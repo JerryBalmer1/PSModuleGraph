@@ -10,25 +10,25 @@
     }
   },
   "toolchain": {
-    "parserVersion": "0.9.0",
-    "parserCommit": "37259e4",
+    "parserVersion": "0.10.0",
+    "parserCommit": "13bc8f9",
     "powerShellVersion": "7.6.5",
     "powerShellEdition": "Core",
     "platform": "Win32NT",
     "os": "Microsoft Windows NT 10.0.26200.0"
   },
   "run": {
-    "startedUtc": "2026-08-27T01:45:20Z",
-    "wallMs": 1212,
-    "totalMs": 1487,
+    "startedUtc": "2026-08-27T02:08:23Z",
+    "wallMs": 1236,
+    "totalMs": 1492,
     "outcome": "ok"
   },
   "counts": {
-    "nodes": 4,
+    "nodes": 7,
     "edges": 3,
-    "roots": 1,
-    "leaves": 3,
-    "unresolved": 38,
+    "roots": 4,
+    "leaves": 5,
+    "unresolved": 47,
     "functions": 3,
     "classes": 0,
     "enums": 0,
@@ -38,15 +38,7 @@
     "assemblies": 103,
     "declaredExports": 47
   },
-  "diagnostics": [
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
-      "path": "",
-      "line": null
-    }
-  ],
+  "diagnostics": [],
   "expectation": {
     "stresses": "A large Azure module whose exports are cmdlets implemented in C#, not functions written in PowerShell. Nothing the parser looks for is present in the source it can read.",
     "predicted": "Succeeds with a near-empty node set and no error at all: the manifest declares dozens of exports and the graph reports a handful of nodes or none. This is the empty-graph-with-no-error case, deliberately included. Predicted as a parser defect rather than a property of the module, because a graph that reports nothing must be able to say why."
