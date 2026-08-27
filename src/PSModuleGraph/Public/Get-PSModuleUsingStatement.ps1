@@ -52,14 +52,18 @@ function Get-PSModuleUsingStatement {
                     }
                     'Assembly' {
                         $usingName = if ($u.Name) { $u.Name.Value } else { $null }
-                        if (-not $usingName -and $u.ModuleName) { $usingName = $u.ModuleName.Value }
                     }
                     'Module' {
-                        if ($u.ModuleName) {
-                            $usingName = $u.ModuleName.Value
-                        }
-                        elseif ($u.Name) {
+                        # UsingStatementAst carries Name and ModuleSpecification, and
+                        # never a ModuleName. Reading one under Set-StrictMode raises
+                        # PropertyNotFoundStrict from inside the getter, which takes the
+                        # whole graph down - so a module was unreadable for having a
+                        # `using module` line in it at all.
+                        if ($u.Name) {
                             $usingName = $u.Name.Value
+                        }
+                        elseif ($u.ModuleSpecification) {
+                            $usingName = Get-AstHashtableEntry -HashtableAst $u.ModuleSpecification -Key 'ModuleName'
                         }
                     }
                     'Command' {

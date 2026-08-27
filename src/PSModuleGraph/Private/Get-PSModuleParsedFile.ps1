@@ -227,3 +227,37 @@ function Get-ManifestDataSafe {
         return $null
     }
 }
+
+function Get-AstHashtableEntry {
+    <#
+    .SYNOPSIS
+        Reads one key out of a HashtableAst as text, without evaluating it.
+    .DESCRIPTION
+        `using module @{ ModuleName = 'X'; RequiredVersion = '1.0' }` parses to a
+        HashtableAst. Reading the key means walking the pairs; it must never mean
+        running the hashtable.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        $HashtableAst,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string] $Key
+    )
+
+    if ($null -eq $HashtableAst) { return $null }
+    if (-not $HashtableAst.PSObject.Properties['KeyValuePairs']) { return $null }
+
+    foreach ($pair in @($HashtableAst.KeyValuePairs)) {
+        $name = $pair.Item1.Extent.Text.Trim('"', "'")
+        if ($name -eq $Key) {
+            return $pair.Item2.Extent.Text.Trim('"', "'")
+        }
+    }
+
+    return $null
+}
