@@ -65,6 +65,18 @@ BeforeAll {
         }
     )
     $script:Total = ($script:Sizes | Measure-Object -Property Bytes -Sum).Sum
+    # The instruction tier plus the documentation a reader follows. NOT
+    # `knowledge/` and NOT `CHANGELOG.md` - see the Describe below for why.
+    $script:Instructional = @(
+        @(
+            Get-ChildItem -LiteralPath $script:Repo -Filter '*.md' -File
+            Get-ChildItem -LiteralPath (Join-Path $script:Repo '.claude') -Filter '*.md' -File -Recurse -ErrorAction Ignore
+            Get-ChildItem -LiteralPath (Join-Path $script:Repo 'docs') -Filter '*.md' -File -Recurse -ErrorAction Ignore
+        ) |
+            Where-Object { $_.Name -ne 'CHANGELOG.md' } |
+            Select-Object -ExpandProperty FullName |
+            Sort-Object -Unique
+    )
 }
 
 Describe 'The always-loaded instruction tier' {
@@ -103,5 +115,48 @@ Describe 'The always-loaded instruction tier' {
         $missing = @($referenced | Where-Object { -not (Test-Path -LiteralPath (Join-Path $script:Repo $_)) })
         $message = "CLAUDE.md points at path(s) that do not exist: $($missing -join ', ')"
         @($missing).Count | Should-Be 0 -Because $message
+    }
+}
+
+Describe 'What a document can make happen' {
+    # 0004-t4, open for thirteen versions. `iteration-close` is invocable by
+    # name and its step 8 ran `git push --follow-tags`, so a document in this
+    # repository could publish by being read and followed. Thirteen versions
+    # without an incident is not evidence of safety - it is the sample the
+    # incident has not happened in yet.
+    #
+    # THE RULE: no instruction file may contain the command. Not in a fenced
+    # block, not as an example, not in a blockquote showing the operator what to
+    # run. A file that is read and acted on cannot distinguish those, and the
+    # only version of this rule that survives an edit made for convenience is
+    # the one with no exceptions in it.
+    #
+    # Scope is the instruction tier and the documentation a reader follows.
+    # `knowledge/` and `CHANGELOG.md` are excluded deliberately: they are
+    # records of what happened, written in the past tense, and a ledger entry
+    # that cannot name the command it removed is a ledger entry that cannot
+    # explain itself. That is a real hole and it is the smaller one.
+
+    It 'finds instruction files to check' {
+        # A zero-length list makes the assertion below vacuously true, which is
+        # the failure mode of any gate expressed as a loop over a glob.
+        @($script:Instructional).Count | Should-BeGreaterThan 3
+    }
+
+    It 'has no instruction file that can publish by being followed' {
+        $offenders = [System.Collections.Generic.List[string]]::new()
+        foreach ($file in $script:Instructional) {
+            $lines = [System.IO.File]::ReadAllLines($file)
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match '(?i)\bgit\s+push\b') {
+                    $offenders.Add("$([System.IO.Path]::GetRelativePath($script:Repo, $file).Replace('\','/')):$($i + 1)")
+                }
+            }
+        }
+
+        # Named with a line number, because "an instruction file can push" sends
+        # the reader to grep and this sends them to the line.
+        $message = "instruction file(s) contain a push command: $(@($offenders) -join ', '). Publishing is the operator's; print what was tagged and stop. See .claude/skills/iteration-close/SKILL.md step 8."
+        @($offenders).Count | Should-Be 0 -Because $message
     }
 }

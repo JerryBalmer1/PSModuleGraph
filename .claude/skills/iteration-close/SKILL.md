@@ -1,6 +1,6 @@
 ---
 name: iteration-close
-description: Close an iteration of PSModuleGraph — stage and commit deliberately, record the pattern, charter any new subsystem, propose a prune, write the ledger entry, then build green, tag annotated, and push with --follow-tags.
+description: Close an iteration of PSModuleGraph — stage and commit deliberately, record the pattern, charter any new subsystem, propose a prune, write the ledger entry, then build green and tag annotated. Stops at the tag: publishing is the operator's.
 when_to_use: At the end of any prompt cycle in this repository, once the work itself is done and before reporting back. Also invocable by name as /iteration-close.
 ---
 
@@ -9,8 +9,7 @@ when_to_use: At the end of any prompt cycle in this repository, once the work it
 The eight actions that end an iteration, in order. They were prose scattered
 across three sections of `CLAUDE.md`, and one of them — staging and committing —
 was written down nowhere at all. A ritual performed from memory erodes at the
-edges first: the tag stops being annotated, the push forgets `--follow-tags`,
-the ledger entry gets four words.
+edges first: the tag stops being annotated, the ledger entry gets four words.
 
 **The rules for commits live in the Commit section of `CLAUDE.md`. This file
 holds the ritual, not the rules.** Do not restate them here; read them there.
@@ -66,14 +65,29 @@ ledger. **A move it applies in-turn; a deletion it only proposes.**
 `prune_proposals` naming any thread that is a prune. Record the always-loaded
 byte count from step 6. The method is below.
 
-**8. Build green, pass the pre-tag gates, then tag, then push.**
+**8. Build green, pass the pre-tag gates, then tag. Then stop.**
 
 ```powershell
 ./build.ps1
 ./build.ps1 -Task PreTag
 git tag -a v0.X.Y -m "<one line: what this iteration made possible>"
-git push --follow-tags
 ```
+
+**Then stop and say so.** Report that the iteration is tagged and green, and
+that publishing is theirs to run - naming the tag, not the command.
+
+**There is no push in the block above, there is no push anywhere in this file,
+and neither must ever be put back - not even as an example.** This file is read
+and acted on, so a runnable command inside it is a command the reading performs,
+and a fenced block is indistinguishable from an instruction. Every other step
+here changes files on one machine and is undone with `git checkout`. Publishing
+is the one action whose blast radius leaves the machine, which no local
+operation reverses, and which is the exact moment a person should be looking
+anyway - the transition from *work done* to *work published*.
+
+`tests/Instructions.Tests.ps1` enforces it: no instruction file in this
+repository may contain the command. The rule cannot be undone by an edit that
+looks like a convenience.
 
 `PreTag` runs the tests the default build deliberately excludes: the seals on a
 *finished* iteration rather than checks on work in progress. Today that is one —
@@ -94,8 +108,9 @@ added or split, major when a schema changes shape.
 - A commit whose diff contains a file nobody mentioned. That is step 1 skipped.
 - A ledger entry with an empty or apologetic "What I could not verify". There is
   always something; if nothing comes to mind, the entry was written too fast.
-- A local tag with no matching remote tag. `git push` without `--follow-tags`
-  leaves the release marker on one machine.
+- A local tag with no matching remote tag. That is the operator's push not yet
+  run, or run without the flag that carries tags - either way the release marker
+  is on one machine. Ask; do not push.
 - Steps 4–6 reported as done with no file produced. `meta-pattern` legitimately
   produces nothing when the two-scale bar is unmet, and `instruction-prune`
   legitimately answers "no" — but say which, and why.

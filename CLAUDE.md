@@ -259,9 +259,10 @@ that has to be described with "and" is two commits.
 build when coverage is below target`, not `Add coverage threshold check`. The
 body says why — a threshold nobody has watched fail is not a threshold.
 
-Every iteration ends pushed, with `--follow-tags`. A local tag is not a release
-marker; it is a note to one machine. The tag is annotated (`-a`) and is the last
-action, after the build is green.
+Every iteration ends **tagged**, annotated (`-a`), after the build is green.
+**Publishing is the operator''s.** No document here may cause a push by being
+followed - not this file, not a skill, not a doc - and
+`tests/Instructions.Tests.ps1` enforces it. Print the push command and wait.
 
 **No history rewriting on anything pushed.** No amend, no rebase, no force. The
 ledger's continuity depends on the tags staying where the entries say they are.
