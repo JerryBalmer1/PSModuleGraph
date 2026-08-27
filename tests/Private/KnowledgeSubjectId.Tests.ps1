@@ -350,13 +350,25 @@ Describe 'The move itself did not lose or duplicate a file' {
         #
         # git core.longpaths lifts this and is unset on the machine that took
         # the measurement, so it is not something to rely on.
+        #
+        # The failure NAMES the ceiling, because the person who meets this is
+        # not reading this comment - they are reading a red line after adding a
+        # function with a long name, and the number they need is how much room
+        # a checkout has left. docs/constraints.md carries the same two figures.
+        $ceiling = 180
+        $maxPath = 260
+
         $repo = $script:Repo
         $longest = @(Get-ChildItem -LiteralPath $script:Store -Filter *.md -File -Recurse |
                 ForEach-Object { $_.FullName.Substring($repo.Length).TrimStart([char]92, [char]47) } |
                 Sort-Object { $_.Length } -Descending)
 
         $longest.Count | Should-BeGreaterThan 0
-        $longest[0].Length | Should-BeLessThan 180 -Because (
-            "the longest repo-relative store path is $($longest[0].Length) characters: '$($longest[0])'")
+        $longest[0].Length | Should-BeLessThan $ceiling -Because (
+            "the longest repo-relative store path is $($longest[0].Length) characters: " +
+            "'$($longest[0])'. The ceiling is $ceiling, which reserves " +
+            "$($maxPath - 1 - $ceiling) characters of checkout root against MAX_PATH $maxPath; " +
+            "today's longest leaves $($maxPath - 1 - $longest[0].Length). Shorten the id or " +
+            'clone somewhere shallower - see docs/constraints.md, "The store".')
     }
 }

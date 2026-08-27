@@ -48,6 +48,28 @@ extraction it was recorded for is five versions behind us.
 
 ## The store
 
+**The store does not fit a checkout root deeper than 95 characters.** `0022-t1`.
+Measured 2026-08-27, on Windows, with `core.longpaths` unset. Qualifying every
+subject id with the file it is defined in is what bought identity, and it is
+also what spent the path: the longest repo-relative path in the store is **163
+characters**, against a `MAX_PATH` of 260. That leaves **95 characters** for
+wherever the repository sits, and `C:\__Code\PSModuleGraph` spends 23 of them.
+
+This is not hypothetical. Checking the migration out into a worktree 121
+characters deep failed with *"Filename too long"* before git had written a
+single record, which is a store missing records — this migration's own version
+of the defect it fixed.
+
+`tests/Private/KnowledgeSubjectId.Tests.ps1` gates the store side at **180**
+repo-relative characters, so the guarantee that survives future records is
+**78** characters of checkout root, not 95. The gate names both numbers when it
+fails.
+
+Lifting it is one of two things and neither is free: `git config --system
+core.longpaths true`, which is a machine setting this repository cannot ship and
+must not assume; or shortening the id grammar, which is a contract change and
+undoes what v0.16.0 was for. **Clone somewhere shallow.**
+
 **`structure:external` has no assignments.** `0003-t3`. A facet path nothing
 classifies is a hypothesis kept in view. Deleting it is a taxonomy change and
 those are proposed, not taken; keeping it costs one line and one reading.
