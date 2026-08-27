@@ -60,6 +60,12 @@
       "items": { "$ref": "#/definitions/threadId" },
       "default": []
     },
+    "accepts_threads": {
+      "description": "Thread ids retired as ACCEPTED CONSTRAINTS rather than as finished work. The doubt was real, it was ruled on, and the answer is that this project chooses to have it - so it leaves the thread list and is written down wherever the constraint applies, in docs/constraints.md or as a comment at the code it constrains.\n\nDistinct from closes because the two are different facts and a reader is entitled to tell them apart: closed means the question is answered, accepted means it is not and never will be. Identical to closes in the accounting.\n\nIt exists because an accepted thread that stays in carries_forward is not accepted, it is deferred - and deferral is the state nothing in this project has ever recovered from. Twenty-one of twenty-three closures happened in the very next entry and none has ever happened after four carries.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/threadId" },
+      "default": []
+    },
     "recovers_threads": {
       "description": "Thread ids that were dropped from an earlier entry's carries_forward without being closed or superseded, and that re-enter the open set here. It exists because two threads went that way past a green gate, and because a recovered thread is NOT a continuous one: there is a gap in its record and the entry that recovers it says so.\n\nUse it only for a genuine gap. A thread that was correctly carried needs nothing.",
       "type": "array",

@@ -19,6 +19,7 @@ BeforeAll {
                 Closes         = @(Get-HashtableValue -InputObject $read.Data -Key 'closes' -Default @())
                 CarriesForward = @(Get-HashtableValue -InputObject $read.Data -Key 'carries_forward' -Default @())
                 Supersedes     = @(Get-HashtableValue -InputObject $read.Data -Key 'supersedes_threads' -Default @())
+                Accepts        = @(Get-HashtableValue -InputObject $read.Data -Key 'accepts_threads' -Default @())
                 Recovers       = @(Get-HashtableValue -InputObject $read.Data -Key 'recovers_threads' -Default @())
                 Body           = $read.Body
                 IsValid        = $read.IsValid
@@ -109,7 +110,7 @@ Describe 'The ledger' {
                 if (-not $recoveredBy.ContainsKey($id)) { $recoveredBy[$id] = $current.Id }
                 [void]$open.Add($id)
             }
-            foreach ($id in @($current.Closes) + @($current.Supersedes)) { [void]$open.Remove($id) }
+            foreach ($id in @($current.Closes) + @($current.Supersedes) + @($current.Accepts)) { [void]$open.Remove($id) }
 
             $carried = @($current.CarriesForward)
 
@@ -141,8 +142,8 @@ Describe 'The ledger' {
         # leaving the open set has to leave a sentence behind saying what
         # replaced it, or what the gap in its record was.
         foreach ($entry in $script:Entries) {
-            foreach ($id in @($entry.Supersedes) + @($entry.Recovers)) {
-                $entry.Body | Should-MatchString ([regex]::Escape("[$id]")) -Because "entry $($entry.Id) supersedes or recovers $id in its front matter and says nothing about it in its body"
+            foreach ($id in @($entry.Supersedes) + @($entry.Recovers) + @($entry.Accepts)) {
+                $entry.Body | Should-MatchString ([regex]::Escape("[$id]")) -Because "entry $($entry.Id) retires $id in its front matter and says nothing about it in its body"
             }
         }
     }
@@ -155,7 +156,7 @@ Describe 'The ledger' {
         }
 
         foreach ($entry in $script:Entries) {
-            foreach ($id in (@($entry.Closes) + @($entry.CarriesForward) + @($entry.Supersedes) + @($entry.Recovers))) {
+            foreach ($id in (@($entry.Closes) + @($entry.CarriesForward) + @($entry.Supersedes) + @($entry.Recovers) + @($entry.Accepts))) {
                 # EXISTENCE, not shape. A pattern match on the id is not this:
                 # `Should-BeLikeString "0009-t*"` passed on `0009-t9`, a thread
                 # that has never existed, because a fake id of the right shape
