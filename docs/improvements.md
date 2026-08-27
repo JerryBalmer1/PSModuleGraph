@@ -78,6 +78,20 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Medium
 
+- **`-Format Html -IncludeUnresolved` cannot render a module that declares a
+  dependency.** A `RequiredModules` entry or a `using module` produces an
+  unresolved record with no line number, and the view model contract types
+  `unresolved[].startLine` as an integer, so the payload is refused at the seam.
+  The other four formats take the switch. Fixing it is either omitting an absent
+  `startLine` or admitting null in the contract, and those are different
+  decisions. *Found running a README code block. Ledger `0016-t1`.*
+- **An error message names a parameter the command does not have.** The renderer
+  suggests `-SkipValidation`; `Export-PSModuleDependencyGraph` does not expose
+  it, so the advice cannot be taken from where the reader is standing. *Ledger
+  `0016-t2`.*
+- **Nothing checks the README.** Thirteen assertions, run once by hand before it
+  shipped. Six of the numbers in it are measurements that move when the parser
+  does. *Ledger `0016-t3`.*
 - **`PreTag` here has no guard against selecting nothing.** It filters by tag and
   reports success on whatever it finds; a filter that matches zero tests would
   pass. It selected three this iteration, so nothing is wrong today. The sibling

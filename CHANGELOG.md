@@ -245,6 +245,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The README describes what this module actually does.** HTML rendering left
+  in v0.9.0 and the README still documented a defaults file at a path that no
+  longer exists, a page pulling Cytoscape from a CDN months after the libraries
+  were vendored, and a default view that changed. It now also documents the
+  breaking `node.id` shape change from v0.11.0, what a root is and is not, and
+  `links[].resolution`.
 - **The renderer pin moves to PSGraphRender 0.7.0, and the payload declares view
   model contract 1.1.0.** 0.7.0 is the first renderer that reads
   `links[].resolution`: an edge the producer could not tie to one target is now
