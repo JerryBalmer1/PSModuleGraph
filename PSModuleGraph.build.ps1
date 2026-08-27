@@ -135,8 +135,48 @@ task Dependencies {
         throw "PSGraphRender could not be resolved. $hint"
     }
 
+    # Finding a module is not the same as finding the right one. This step
+    # reported success while checking nothing, and a resolution step that cannot
+    # fail is the same defect as a workflow that never parsed: the sibling
+    # checkout drifted three minor versions past the pin and the build went on
+    # using it until a golden comparison broke somewhere unrelated.
+    $renderer = Import-PowerShellDataFile -LiteralPath (Join-Path (Join-Path $resolved 'PSGraphRender') 'PSGraphRender.psd1')
+    $found = [version]$renderer.ModuleVersion
+    $declared = @(
+        (Import-PowerShellDataFile -LiteralPath $ManifestPath).RequiredModules |
+            Where-Object { $_ -is [System.Collections.IDictionary] -and $_['ModuleName'] -eq 'PSGraphRender' }
+    )
+    if ($declared.Count -ne 1) {
+        throw ("PSModuleGraph.psd1 declares $($declared.Count) RequiredModules entries for PSGraphRender. " +
+            'The version this build resolved cannot be checked against a requirement that is not there.')
+    }
+    $requirement = $declared[0]
+
+    # Every constraint RequiredModules can express, not the one that happens to
+    # be written today. A requirement that stops being checked when its shape
+    # changes is a requirement nobody is checking.
+    if ($requirement['RequiredVersion'] -and $found -ne [version]$requirement['RequiredVersion']) {
+        throw ("PSGraphRender at '$resolved' is $found; PSModuleGraph.psd1 requires exactly " +
+            "$($requirement['RequiredVersion']). Build the pinned version or point " +
+            '$env:PSGRAPHRENDER_MODULE_PATH at it.')
+    }
+    if ($requirement['ModuleVersion'] -and $found -lt [version]$requirement['ModuleVersion']) {
+        throw ("PSGraphRender at '$resolved' is $found; PSModuleGraph.psd1 requires at least " +
+            "$($requirement['ModuleVersion']). Build the sibling checkout or point " +
+            '$env:PSGRAPHRENDER_MODULE_PATH at a newer one.')
+    }
+    if ($requirement['MaximumVersion'] -and $found -gt [version]$requirement['MaximumVersion']) {
+        throw ("PSGraphRender at '$resolved' is $found; PSModuleGraph.psd1 allows at most " +
+            "$($requirement['MaximumVersion']).")
+    }
+
     $env:PSModulePath = $resolved + [System.IO.Path]::PathSeparator + $env:PSModulePath
-    Write-Build Green "  PSGraphRender: $resolved"
+
+    # The version, out loud. Only a floor is declared today, so a renderer newer
+    # than the recorded goldens satisfies this check and still changes what they
+    # compare against - which is what happened. Naming the version puts it next
+    # to the failure rather than three tasks away from it.
+    Write-Build Green "  PSGraphRender: $found at $resolved"
 }
 
 task Test Build, Dependencies, {
