@@ -33,7 +33,15 @@ function Get-PSModuleParsedFile {
 
     begin {
         # Lazily created: Set-StrictMode makes reading an undefined variable fatal.
-        if (-not (Get-Variable -Name PSModuleParsedFileCache -Scope Script -ErrorAction SilentlyContinue)) {
+        #
+        # -ErrorAction Ignore, not SilentlyContinue. SilentlyContinue suppresses
+        # the DISPLAY and still writes the record to $Error and to any caller's
+        # -ErrorVariable, so every caller saw "Cannot find a variable with the
+        # name 'PSModuleParsedFileCache'" on the first file of every module, for
+        # the ordinary absence this line exists to handle. Every result file in
+        # gallery/results/ carried it, and a caller running with
+        # $ErrorActionPreference = 'Stop' could not use the command at all.
+        if (-not (Get-Variable -Name PSModuleParsedFileCache -Scope Script -ErrorAction Ignore)) {
             $script:PSModuleParsedFileCache = @{}
         }
     }

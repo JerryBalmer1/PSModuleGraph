@@ -44,7 +44,9 @@ function Get-EditorLinkState {
         [string[]] $AllowedOrigin
     )
 
-    $onWindows = if (Get-Variable -Name IsWindows -ErrorAction SilentlyContinue) {
+    # Ignore, not SilentlyContinue: the automatic variable is absent on 5.1 by
+    # design, and recording that as an error trains a reader to skip errors.
+    $onWindows = if (Get-Variable -Name IsWindows -ErrorAction Ignore) {
         $IsWindows
     }
     else {
@@ -52,8 +54,8 @@ function Get-EditorLinkState {
     }
 
     if (-not $onWindows) {
-        $platform = if ((Get-Variable -Name IsMacOS -ErrorAction SilentlyContinue) -and $IsMacOS) { 'macOS' }
-        elseif ((Get-Variable -Name IsLinux -ErrorAction SilentlyContinue) -and $IsLinux) { 'Linux' }
+        $platform = if ((Get-Variable -Name IsMacOS -ErrorAction Ignore) -and $IsMacOS) { 'macOS' }
+        elseif ((Get-Variable -Name IsLinux -ErrorAction Ignore) -and $IsLinux) { 'Linux' }
         else { 'Unknown' }
 
         Write-Warning ("Automatic editor-link configuration is Windows-only. On $platform, grant the " +
