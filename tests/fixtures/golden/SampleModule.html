@@ -544,7 +544,9 @@ const DATA = {
     "UnresolvedCount": 9,
     "FunctionCount": 5,
     "ClassCount": 2,
-    "EnumCount": 1
+    "EnumCount": 1,
+    "AmbiguousNameCount": 0,
+    "AmbiguousEdgeCount": 0
   },
   "metrics": [
     "dependents",
@@ -554,7 +556,7 @@ const DATA = {
   ],
   "nodes": [
     {
-      "id": "function:ConvertTo-SampleName",
+      "id": "function:private/ConvertTo-SampleName.ps1:ConvertTo-SampleName",
       "name": "ConvertTo-SampleName",
       "kind": "Function",
       "isExported": false,
@@ -568,7 +570,7 @@ const DATA = {
       }
     },
     {
-      "id": "function:New-SampleThing",
+      "id": "function:private/New-SampleThing.ps1:New-SampleThing",
       "name": "New-SampleThing",
       "kind": "Function",
       "isExported": false,
@@ -582,7 +584,7 @@ const DATA = {
       }
     },
     {
-      "id": "function:Test-SampleThing",
+      "id": "function:private/Test-SampleThing.ps1:Test-SampleThing",
       "name": "Test-SampleThing",
       "kind": "Function",
       "isExported": false,
@@ -596,7 +598,7 @@ const DATA = {
       }
     },
     {
-      "id": "function:Get-SampleThing",
+      "id": "function:public/Get-SampleThing.ps1:Get-SampleThing",
       "name": "Get-SampleThing",
       "kind": "Function",
       "isExported": true,
@@ -610,7 +612,7 @@ const DATA = {
       }
     },
     {
-      "id": "function:Invoke-SampleWorkflow",
+      "id": "function:public/Invoke-SampleWorkflow.ps1:Invoke-SampleWorkflow",
       "name": "Invoke-SampleWorkflow",
       "kind": "Function",
       "isExported": true,
@@ -624,7 +626,7 @@ const DATA = {
       }
     },
     {
-      "id": "class:SampleBase",
+      "id": "class:classes/SampleTypes.ps1:SampleBase",
       "name": "SampleBase",
       "kind": "Class",
       "isExported": false,
@@ -638,7 +640,7 @@ const DATA = {
       }
     },
     {
-      "id": "class:SampleThing",
+      "id": "class:classes/SampleTypes.ps1:SampleThing",
       "name": "SampleThing",
       "kind": "Class",
       "isExported": false,
@@ -652,7 +654,7 @@ const DATA = {
       }
     },
     {
-      "id": "enum:SampleStatus",
+      "id": "enum:classes/SampleTypes.ps1:SampleStatus",
       "name": "SampleStatus",
       "kind": "Enum",
       "isExported": false,
@@ -666,7 +668,7 @@ const DATA = {
       }
     },
     {
-      "id": "script:toplevel",
+      "id": "script:SampleModule.psm1:\u003cscript>",
       "name": "\u003cscript>",
       "kind": "Script",
       "isExported": false,
@@ -682,8 +684,8 @@ const DATA = {
   ],
   "links": [
     {
-      "source": "function:Get-SampleThing",
-      "target": "function:ConvertTo-SampleName",
+      "source": "function:public/Get-SampleThing.ps1:Get-SampleThing",
+      "target": "function:private/ConvertTo-SampleName.ps1:ConvertTo-SampleName",
       "sourceName": "Get-SampleThing",
       "targetName": "ConvertTo-SampleName",
       "kind": "CommandReference",
@@ -691,8 +693,8 @@ const DATA = {
       "startLine": 8
     },
     {
-      "source": "function:Get-SampleThing",
-      "target": "function:New-SampleThing",
+      "source": "function:public/Get-SampleThing.ps1:Get-SampleThing",
+      "target": "function:private/New-SampleThing.ps1:New-SampleThing",
       "sourceName": "Get-SampleThing",
       "targetName": "New-SampleThing",
       "kind": "CommandReference",
@@ -700,8 +702,8 @@ const DATA = {
       "startLine": 9
     },
     {
-      "source": "function:Invoke-SampleWorkflow",
-      "target": "function:Get-SampleThing",
+      "source": "function:public/Invoke-SampleWorkflow.ps1:Invoke-SampleWorkflow",
+      "target": "function:public/Get-SampleThing.ps1:Get-SampleThing",
       "sourceName": "Invoke-SampleWorkflow",
       "targetName": "Get-SampleThing",
       "kind": "CommandReference",
@@ -709,8 +711,8 @@ const DATA = {
       "startLine": 8
     },
     {
-      "source": "function:Invoke-SampleWorkflow",
-      "target": "function:Test-SampleThing",
+      "source": "function:public/Invoke-SampleWorkflow.ps1:Invoke-SampleWorkflow",
+      "target": "function:private/Test-SampleThing.ps1:Test-SampleThing",
       "sourceName": "Invoke-SampleWorkflow",
       "targetName": "Test-SampleThing",
       "kind": "CommandReference",
@@ -718,8 +720,8 @@ const DATA = {
       "startLine": 9
     },
     {
-      "source": "class:SampleThing",
-      "target": "class:SampleBase",
+      "source": "class:classes/SampleTypes.ps1:SampleThing",
+      "target": "class:classes/SampleTypes.ps1:SampleBase",
       "sourceName": "SampleThing",
       "targetName": "SampleBase",
       "kind": "Inherits",
@@ -728,25 +730,25 @@ const DATA = {
     }
   ],
   "roots": [
-    "function:Invoke-SampleWorkflow",
-    "class:SampleThing",
-    "enum:SampleStatus",
-    "script:toplevel"
+    "function:public/Invoke-SampleWorkflow.ps1:Invoke-SampleWorkflow",
+    "class:classes/SampleTypes.ps1:SampleThing",
+    "enum:classes/SampleTypes.ps1:SampleStatus",
+    "script:SampleModule.psm1:\u003cscript>"
   ],
   "leaves": [
-    "function:ConvertTo-SampleName",
-    "function:New-SampleThing",
-    "function:Test-SampleThing",
-    "class:SampleBase",
-    "enum:SampleStatus",
-    "script:toplevel"
+    "function:private/ConvertTo-SampleName.ps1:ConvertTo-SampleName",
+    "function:private/New-SampleThing.ps1:New-SampleThing",
+    "function:private/Test-SampleThing.ps1:Test-SampleThing",
+    "class:classes/SampleTypes.ps1:SampleBase",
+    "enum:classes/SampleTypes.ps1:SampleStatus",
+    "script:SampleModule.psm1:\u003cscript>"
   ]
 };
 const META = {
   "contractVersion": "1.0.0",
   "title": "SampleModule",
   "version": "1.2.3",
-  "generatedAt": "2026-08-26T16:36:47.4929655-07:00",
+  "generatedAt": "2026-08-26T19:05:57.8760897-07:00",
   "rootPath": "C:\\__Code\\PSModuleGraph\\tests\\fixtures\\SampleModule",
   "stats": {
     "NodeCount": 9,
@@ -756,7 +758,9 @@ const META = {
     "UnresolvedCount": 9,
     "FunctionCount": 5,
     "ClassCount": 2,
-    "EnumCount": 1
+    "EnumCount": 1,
+    "AmbiguousNameCount": 0,
+    "AmbiguousEdgeCount": 0
   }
 };
 const CONFIG = {

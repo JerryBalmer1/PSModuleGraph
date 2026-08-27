@@ -9,6 +9,12 @@ function Get-PSModuleDependencyGraph {
 
         Roots have no inbound internal edge (entry points or dead code).
         Leaves have no outbound internal edge.
+
+        A node's identity is its qualified path - kind, module-relative file and
+        name - not its bare name. Two functions called Get-TargetResource in two
+        files are two nodes, and neither can overwrite the other. See
+        New-GraphNodeId and Resolve-GraphNodeCandidate for what that costs at
+        the point a call has to be pointed at one of them.
     #>
     [CmdletBinding(DefaultParameterSetName = 'ByName')]
     [OutputType([pscustomobject])]
@@ -41,26 +47,41 @@ function Get-PSModuleDependencyGraph {
         $assemblies = @(Get-PSModuleAssembly -Path $inspectPath)
         $manifest = Get-PSModuleManifest -Path $inspectPath
 
+        $moduleBase = $target.ModuleBase
+
         $nodes = [System.Collections.Generic.List[object]]::new()
-        $nodeIndex = @{} # name(lower) -> node id
+
+        # name(lower) -> every definition carrying that name, in parse order.
+        # A dictionary of name -> ONE id is what made 144 of SqlServerDsc's 496
+        # nodes unaddressable and then reported them as roots.
+        $nodeIndex = @{}
+
+        function Add-NodeCandidate {
+            param([string] $NodeName, [string] $Id, [string] $NodePath)
+
+            $key = $NodeName.ToLowerInvariant()
+            if (-not $nodeIndex.ContainsKey($key)) {
+                $nodeIndex[$key] = [System.Collections.Generic.List[object]]::new()
+            }
+            $nodeIndex[$key].Add([pscustomobject]@{ Id = $Id; Path = $NodePath })
+        }
 
         foreach ($fn in $functions) {
-            $id = "function:$($fn.Name)"
-            $node = [pscustomobject]@{
-                PSTypeName  = 'PSModuleGraph.GraphNode'
-                Id          = $id
-                Name        = $fn.Name
-                Kind        = 'Function'
-                IsExported  = $fn.IsExported
-                Path        = $fn.Path
-                StartLine   = $fn.StartLine
-            }
-            $nodes.Add($node)
-            $nodeIndex[$fn.Name.ToLowerInvariant()] = $id
+            $id = New-GraphNodeId -Kind 'function' -ModuleBase $moduleBase -Path $fn.Path -Name $fn.Name
+            $nodes.Add([pscustomobject]@{
+                    PSTypeName = 'PSModuleGraph.GraphNode'
+                    Id         = $id
+                    Name       = $fn.Name
+                    Kind       = 'Function'
+                    IsExported = $fn.IsExported
+                    Path       = $fn.Path
+                    StartLine  = $fn.StartLine
+                })
+            Add-NodeCandidate -NodeName $fn.Name -Id $id -NodePath $fn.Path
         }
 
         foreach ($c in $classes) {
-            $id = "class:$($c.Name)"
+            $id = New-GraphNodeId -Kind 'class' -ModuleBase $moduleBase -Path $c.Path -Name $c.Name
             $nodes.Add([pscustomobject]@{
                     PSTypeName = 'PSModuleGraph.GraphNode'
                     Id         = $id
@@ -70,11 +91,11 @@ function Get-PSModuleDependencyGraph {
                     Path       = $c.Path
                     StartLine  = $c.StartLine
                 })
-            $nodeIndex[$c.Name.ToLowerInvariant()] = $id
+            Add-NodeCandidate -NodeName $c.Name -Id $id -NodePath $c.Path
         }
 
         foreach ($e in $enums) {
-            $id = "enum:$($e.Name)"
+            $id = New-GraphNodeId -Kind 'enum' -ModuleBase $moduleBase -Path $e.Path -Name $e.Name
             $nodes.Add([pscustomobject]@{
                     PSTypeName = 'PSModuleGraph.GraphNode'
                     Id         = $id
@@ -84,13 +105,38 @@ function Get-PSModuleDependencyGraph {
                     Path       = $e.Path
                     StartLine  = $e.StartLine
                 })
-            $nodeIndex[$e.Name.ToLowerInvariant()] = $id
+            Add-NodeCandidate -NodeName $e.Name -Id $id -NodePath $e.Path
         }
 
         $edges = [System.Collections.Generic.List[object]]::new()
         $unresolved = [System.Collections.Generic.List[object]]::new()
         $edgeSeen = @{}
         $unresolvedSeen = @{}
+
+        # One synthetic node per file with top-level calls, not one per module.
+        # A single 'script:toplevel' node is the same name collision in the one
+        # place it is guaranteed: every file's top level shared it, and the node
+        # reported the path of whichever file was parsed first.
+        $scriptNodes = @{}
+        function Get-ScriptNodeId {
+            param([string] $FilePath, $FirstLine)
+
+            $key = $FilePath.ToLowerInvariant()
+            if (-not $scriptNodes.ContainsKey($key)) {
+                $id = New-GraphNodeId -Kind 'script' -ModuleBase $moduleBase -Path $FilePath -Name '<script>'
+                $scriptNodes[$key] = $id
+                $nodes.Add([pscustomobject]@{
+                        PSTypeName = 'PSModuleGraph.GraphNode'
+                        Id         = $id
+                        Name       = '<script>'
+                        Kind       = 'Script'
+                        IsExported = $false
+                        Path       = $FilePath
+                        StartLine  = $FirstLine
+                    })
+            }
+            return $scriptNodes[$key]
+        }
 
         # Built-in / language keywords to ignore as unresolved noise
         $ignoreCommands = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -104,30 +150,16 @@ function Get-PSModuleDependencyGraph {
         foreach ($ref in $references) {
             $fromName = $ref.EnclosingFunction
             if (-not $fromName) {
-                # Top-level call site - model as module root synthetic node
-                $fromId = 'script:toplevel'
-                if (-not $nodeIndex.ContainsKey('__toplevel__')) {
-                    $nodes.Add([pscustomobject]@{
-                            PSTypeName = 'PSModuleGraph.GraphNode'
-                            Id         = $fromId
-                            Name       = '<script>'
-                            Kind       = 'Script'
-                            IsExported = $false
-                            Path       = $ref.Path
-                            StartLine  = $ref.StartLine
-                        })
-                    $nodeIndex['__toplevel__'] = $fromId
-                }
-                else {
-                    $fromId = $nodeIndex['__toplevel__']
-                }
+                $fromId = Get-ScriptNodeId -FilePath $ref.Path -FirstLine $ref.StartLine
             }
             else {
-                $key = $fromName.ToLowerInvariant()
-                if (-not $nodeIndex.ContainsKey($key)) {
+                # The enclosing definition is the one in this file. Where the
+                # same name is defined elsewhere too, that is not a guess.
+                $fromCandidates = Resolve-GraphNodeCandidate -Index $nodeIndex -Name $fromName -CallerPath $ref.Path
+                if (-not $fromCandidates.Nodes) {
                     continue
                 }
-                $fromId = $nodeIndex[$key]
+                $fromId = $fromCandidates.Nodes[0].Id
             }
 
             $toName = $ref.UnqualifiedName
@@ -140,21 +172,27 @@ function Get-PSModuleDependencyGraph {
                 continue
             }
 
-            $toKey = $toName.ToLowerInvariant()
-            if ($nodeIndex.ContainsKey($toKey)) {
-                $toId = $nodeIndex[$toKey]
-                $edgeKey = "$fromId->$toId"
-                if (-not $edgeSeen.ContainsKey($edgeKey)) {
+            $to = Resolve-GraphNodeCandidate -Index $nodeIndex -Name $toName -CallerPath $ref.Path
+            if ($to.Nodes) {
+                # Ambiguous means several definitions share the name and none is
+                # in the calling file. Which one runs depends on load order,
+                # which is not in the source; an edge to each says so, and a
+                # single arbitrary edge would say something false about the rest.
+                foreach ($candidate in $to.Nodes) {
+                    $edgeKey = "$fromId->$($candidate.Id)"
+                    if ($edgeSeen.ContainsKey($edgeKey)) { continue }
                     $edgeSeen[$edgeKey] = $true
                     $edges.Add([pscustomobject]@{
-                            PSTypeName = 'PSModuleGraph.GraphEdge'
-                            Source     = $fromId
-                            Target     = $toId
-                            SourceName = if ($fromName) { $fromName } else { '<script>' }
-                            TargetName = $toName
-                            Kind       = 'CommandReference'
-                            Path       = $ref.Path
-                            StartLine  = $ref.StartLine
+                            PSTypeName       = 'PSModuleGraph.GraphEdge'
+                            Source           = $fromId
+                            Target           = $candidate.Id
+                            SourceName       = if ($fromName) { $fromName } else { '<script>' }
+                            TargetName       = $toName
+                            Kind             = 'CommandReference'
+                            Resolution       = $to.Resolution
+                            TargetCandidates = $to.CandidateCount
+                            Path             = $ref.Path
+                            StartLine        = $ref.StartLine
                         })
                 }
             }
@@ -163,14 +201,14 @@ function Get-PSModuleDependencyGraph {
                 if (-not $unresolvedSeen.ContainsKey($uKey)) {
                     $unresolvedSeen[$uKey] = $true
                     $unresolved.Add([pscustomobject]@{
-                            PSTypeName        = 'PSModuleGraph.UnresolvedReference'
-                            Source            = $fromId
-                            SourceName        = if ($fromName) { $fromName } else { '<script>' }
-                            TargetName        = $toName
-                            QualifiedName     = $ref.CommandName
-                            ModuleQualifier   = $ref.ModuleQualifier
-                            Path              = $ref.Path
-                            StartLine         = $ref.StartLine
+                            PSTypeName      = 'PSModuleGraph.UnresolvedReference'
+                            Source          = $fromId
+                            SourceName      = if ($fromName) { $fromName } else { '<script>' }
+                            TargetName      = $toName
+                            QualifiedName   = $ref.CommandName
+                            ModuleQualifier = $ref.ModuleQualifier
+                            Path            = $ref.Path
+                            StartLine       = $ref.StartLine
                         })
                 }
             }
@@ -178,27 +216,27 @@ function Get-PSModuleDependencyGraph {
 
         # Class inheritance edges
         foreach ($c in $classes) {
-            $fromId = "class:$($c.Name)"
+            $fromId = New-GraphNodeId -Kind 'class' -ModuleBase $moduleBase -Path $c.Path -Name $c.Name
             foreach ($base in @($c.BaseTypes) + @($c.Interfaces)) {
                 if (-not $base) { continue }
                 $simple = ($base -split '\.')[-1]
-                $toKey = $simple.ToLowerInvariant()
-                if ($nodeIndex.ContainsKey($toKey)) {
-                    $toId = $nodeIndex[$toKey]
-                    $edgeKey = "$fromId->$toId:inherits"
-                    if (-not $edgeSeen.ContainsKey($edgeKey)) {
-                        $edgeSeen[$edgeKey] = $true
-                        $edges.Add([pscustomobject]@{
-                                PSTypeName = 'PSModuleGraph.GraphEdge'
-                                Source     = $fromId
-                                Target     = $toId
-                                SourceName = $c.Name
-                                TargetName = $simple
-                                Kind       = 'Inherits'
-                                Path       = $c.Path
-                                StartLine  = $c.StartLine
-                            })
-                    }
+                $to = Resolve-GraphNodeCandidate -Index $nodeIndex -Name $simple -CallerPath $c.Path
+                foreach ($candidate in $to.Nodes) {
+                    $edgeKey = "$fromId->$($candidate.Id):inherits"
+                    if ($edgeSeen.ContainsKey($edgeKey)) { continue }
+                    $edgeSeen[$edgeKey] = $true
+                    $edges.Add([pscustomobject]@{
+                            PSTypeName       = 'PSModuleGraph.GraphEdge'
+                            Source           = $fromId
+                            Target           = $candidate.Id
+                            SourceName       = $c.Name
+                            TargetName       = $simple
+                            Kind             = 'Inherits'
+                            Resolution       = $to.Resolution
+                            TargetCandidates = $to.CandidateCount
+                            Path             = $c.Path
+                            StartLine        = $c.StartLine
+                        })
                 }
             }
         }
@@ -250,6 +288,16 @@ function Get-PSModuleDependencyGraph {
         $roots = @($nodes | Where-Object { $inbound[$_.Id] -eq 0 })
         $leaves = @($nodes | Where-Object { $outbound[$_.Id] -eq 0 })
 
+        # A name carried by more than one definition. Reported rather than
+        # resolved away: it is the reason an edge can be ambiguous, and a reader
+        # looking at a surprising root needs to be able to find it.
+        $ambiguousNames = @(
+            $nodeIndex.GetEnumerator() |
+                Where-Object { $_.Value.Count -gt 1 } |
+                ForEach-Object { $_.Key } |
+                Sort-Object
+        )
+
         [pscustomobject]@{
             PSTypeName      = 'PSModuleGraph.DependencyGraph'
             ModuleName      = $target.Name
@@ -261,6 +309,7 @@ function Get-PSModuleDependencyGraph {
             Roots           = @($roots)
             Leaves          = @($leaves)
             Unresolved      = @($unresolved)
+            AmbiguousNames  = $ambiguousNames
             Functions       = $functions
             Classes         = $classes
             Enums           = $enums
@@ -268,14 +317,16 @@ function Get-PSModuleDependencyGraph {
             UsingStatements = $usings
             Manifest        = $manifest
             Stats           = [pscustomobject]@{
-                NodeCount       = $nodes.Count
-                EdgeCount       = $edges.Count
-                RootCount       = $roots.Count
-                LeafCount       = $leaves.Count
-                UnresolvedCount = $unresolved.Count
-                FunctionCount   = $functions.Count
-                ClassCount      = $classes.Count
-                EnumCount       = $enums.Count
+                NodeCount          = $nodes.Count
+                EdgeCount          = $edges.Count
+                RootCount          = $roots.Count
+                LeafCount          = $leaves.Count
+                UnresolvedCount    = $unresolved.Count
+                FunctionCount      = $functions.Count
+                ClassCount         = $classes.Count
+                EnumCount          = $enums.Count
+                AmbiguousNameCount = $ambiguousNames.Count
+                AmbiguousEdgeCount = @($edges | Where-Object { $_.Resolution -eq 'Ambiguous' }).Count
             }
         }
     }

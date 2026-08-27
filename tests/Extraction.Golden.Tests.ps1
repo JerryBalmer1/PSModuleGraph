@@ -49,14 +49,18 @@ BeforeAll {
 }
 
 Describe 'The extraction of the renderer into PSGraphRender' {
-    It 'renders the sample module byte for byte as it did before the move' {
-        # THE ACCEPTANCE TEST FOR THE EXTRACTION.
+    It 'renders the sample module byte for byte as it was last recorded' {
+        # A REGRESSION DETECTOR. It was the acceptance test for the extraction
+        # and it is not any more, and the difference matters.
         #
-        # tests/fixtures/golden/SampleModule.html was rendered from a pristine
-        # worktree of the last commit before the renderer moved out. Everything
-        # below the seam now lives in another repository and another module. If
-        # a single byte of the document changed, the move changed behaviour, and
-        # a move that changes behaviour is not a move.
+        # It was recorded from a pristine worktree of the last commit before the
+        # renderer moved out, so for four tags a byte-for-byte match was evidence
+        # that the move had changed nothing. That evidence ended at v0.11.0: a
+        # node's identity became its qualified path rather than its bare name,
+        # every id in the document changed by design, and the golden was
+        # re-recorded. What it now proves is that the document has not changed
+        # since someone last decided it should - which catches an accident and
+        # proves nothing about the extraction.
         #
         # When this fails: find the cause. Do not re-record the golden and do
         # not loosen ConvertTo-ComparableDocument. Re-recording turns the one

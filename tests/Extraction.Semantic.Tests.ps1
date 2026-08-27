@@ -130,15 +130,21 @@ Describe 'The v0.3.0 rename, checked semantically' {
 
         @($after.nodes).Count | Should-Be @($before.nodes).Count
 
-        $beforeIds = @($before.nodes.id | Sort-Object)
-        $afterIds = @($after.nodes.id | Sort-Object)
-        $afterIds | Should-BeCollection $beforeIds
+        # Keyed on kind and name, not on id. The id is the one thing this
+        # comparison must NOT hold fixed: a node's identity became its qualified
+        # path so that two definitions sharing a name stop overwriting each
+        # other, and an id comparison would assert the old collision was correct.
+        # Everything the id was standing in for is still asserted below.
+        $key = { param($n) "$($n.kind)|$($n.name)" }
+        $beforeKeys = @($before.nodes | ForEach-Object { & $key $_ } | Sort-Object)
+        $afterKeys = @($after.nodes | ForEach-Object { & $key $_ } | Sort-Object)
+        $afterKeys | Should-BeCollection $beforeKeys
 
-        # Every field of every node, not just the ids. A rename that dropped a
-        # measurement would pass an id comparison.
-        foreach ($id in $beforeIds) {
-            $b = @($before.nodes | Where-Object { $_.id -eq $id })[0]
-            $a = @($after.nodes | Where-Object { $_.id -eq $id })[0]
+        # Every field of every node. A rename that dropped a measurement would
+        # pass a key comparison.
+        foreach ($k in $beforeKeys) {
+            $b = @($before.nodes | Where-Object { (& $key $_) -eq $k })[0]
+            $a = @($after.nodes | Where-Object { (& $key $_) -eq $k })[0]
 
             $a.name | Should-Be $b.name
             $a.kind | Should-Be $b.kind
@@ -146,15 +152,36 @@ Describe 'The v0.3.0 rename, checked semantically' {
             $a.startLine | Should-Be $b.startLine
             ($a.metrics | ConvertTo-Json -Depth 5) | Should-Be ($b.metrics | ConvertTo-Json -Depth 5)
         }
+
+        # The ids still have to be unique, which is the only thing the contract
+        # asks of them.
+        $ids = @($after.nodes.id)
+        @($ids | Sort-Object -Unique).Count | Should-Be $ids.Count
     }
 
     It 'embeds the same links' {
         $before = Get-EmbeddedBlock -Document $script:Before -Name 'GRAPH_DATA'
         $after = Get-EmbeddedBlock -Document $script:After -Name 'DATA'
 
-        $key = { param($l) "$($l.source)->$($l.target):$($l.kind)" }
-        $beforeKeys = @($before.links | ForEach-Object { & $key $_ } | Sort-Object)
-        $afterKeys = @($after.links | ForEach-Object { & $key $_ } | Sort-Object)
+        # An edge is compared by the nodes it joins, resolved through each
+        # document's own node table, rather than by the raw ids - for the reason
+        # given in 'embeds the same nodes'.
+        $label = {
+            param($Document)
+            $map = @{}
+            foreach ($n in @($Document.nodes)) { $map[$n.id] = "$($n.kind)|$($n.name)" }
+            $map
+        }
+        $beforeMap = & $label $before
+        $afterMap = & $label $after
+        $key = {
+            param($Link, $Map)
+            $from = if ($Map.ContainsKey($Link.source)) { $Map[$Link.source] } else { $Link.source }
+            $to = if ($Map.ContainsKey($Link.target)) { $Map[$Link.target] } else { $Link.target }
+            "$from->${to}:$($Link.kind)"
+        }
+        $beforeKeys = @($before.links | ForEach-Object { & $key $_ $beforeMap } | Sort-Object)
+        $afterKeys = @($after.links | ForEach-Object { & $key $_ $afterMap } | Sort-Object)
 
         $afterKeys | Should-BeCollection $beforeKeys
     }
@@ -188,7 +215,20 @@ Describe 'The v0.3.0 rename, checked semantically' {
         $after.rootPath | Should-NotBeEmptyString
         $after.rootPath | Should-BeLikeString '*SampleModule'
         $before.moduleRoot | Should-BeLikeString '*SampleModule'
-        ($after.stats | ConvertTo-Json -Depth 5) | Should-Be ($before.stats | ConvertTo-Json -Depth 5)
+        # Every figure the before document carried, unchanged. meta.stats is
+        # "deliberately unconstrained" in the contract and no backend reads it,
+        # so a producer may add to it - but only as a CLOSED list, the same rule
+        # 'drops only the payload fields nothing read' applies to the payload.
+        foreach ($stat in @($before.stats.PSObject.Properties)) {
+            $after.stats.PSObject.Properties[$stat.Name] | Should-NotBeNull
+            $after.stats.$($stat.Name) | Should-Be $stat.Value
+        }
+        $gainedStats = @(
+            $after.stats.PSObject.Properties.Name |
+                Where-Object { $_ -notin @($before.stats.PSObject.Properties.Name) } |
+                Sort-Object
+        )
+        $gainedStats | Should-BeCollection @('AmbiguousEdgeCount', 'AmbiguousNameCount')
 
         # New in 1.0.0, so it has no counterpart before.
         $after.contractVersion | Should-Be '1.0.0'
