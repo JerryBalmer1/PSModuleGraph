@@ -78,6 +78,18 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Medium
 
+- **The skills directory is a byte-identical copy in two repositories with
+  nothing keeping it in sync.** Five of the seven skills exist in both, and
+  the copy in `PSGraphRender` cites a charter test that does not exist there,
+  a `knowledge/NAMING.md` in a store that holds only `ledger/`, a
+  `docs/html-architecture.md` that is named differently, and a version rule
+  about facets in a repository with no facets. A shared source, a sync test,
+  or a deliberate fork with the differences stated. *Ledger `0017-t1`.*
+- **Seven skills load into every session listing and none has been invoked in
+  five iterations.** Measured, not assumed: v0.9.0 to v0.13.1 closed
+  correctly every time from `CLAUDE.md` and from memory. Rule seven asks
+  whether a thing changes what someone can see or do, and there is no
+  measurement of that here. *Ledger `0017-t2`, extending `0005-t1`.*
 - **`-Format Html -IncludeUnresolved` cannot render a module that declares a
   dependency.** A `RequiredModules` entry or a `using module` produces an
   unresolved record with no line number, and the view model contract types
