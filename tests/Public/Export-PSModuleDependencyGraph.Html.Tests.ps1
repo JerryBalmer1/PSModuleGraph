@@ -38,9 +38,18 @@ Describe 'Export-PSModuleDependencyGraph -Format Html' {
     }
 
     It 'leaves no unreplaced template tokens' {
-        $script:Html | Should-NotMatchString '__DATA__'
-        $script:Html | Should-NotMatchString '__META__'
+        # The MARKERS, not the words. An unfilled slot is literally
+        # `/*__DATA__*/ null`; the bare word was only ever incidentally unique,
+        # and since the renderer vendored its libraries at v0.5.0 the document
+        # carries 481 KB of minified JavaScript that contains it. A check that
+        # reads a dependency's source as a defect in the producer is a check
+        # that will keep going off.
+        $script:Html | Should-NotMatchString ([regex]::Escape('/*__DATA__*/ null'))
+        $script:Html | Should-NotMatchString ([regex]::Escape('/*__META__*/ null'))
+        $script:Html | Should-NotMatchString ([regex]::Escape('/*__CONFIG__*/ null'))
+        $script:Html | Should-NotMatchString ([regex]::Escape('/*__STRINGS__*/ null'))
         $script:Html | Should-NotMatchString '__PAGE_TITLE__'
+        $script:Html | Should-NotMatchString '__SLOT_[A-Z0-9_]+__'
     }
 
     It 'embeds a payload whose node count matches the graph' {
