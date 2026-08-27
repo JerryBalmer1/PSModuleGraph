@@ -108,13 +108,18 @@ Describe 'The store reads itself back' {
         # The spot-check. An exported public function: structure:function at
         # confidence 1 read off the AST, surface:exported at confidence 1 read
         # off the manifest.
-        $id = 'psmodule:PSModuleGraph/function/Get-PSModuleClass'
+        $id = 'psmodule:PSModuleGraph/function/Public/Get-PSModuleClass.ps1/Get-PSModuleClass'
 
         $subject = @($script:Subjects | Where-Object { $_.Id -eq $id })
         $subject.Count | Should-Be 1
         $subject[0].Name | Should-Be 'Get-PSModuleClass'
         $subject[0].Namespace | Should-Be 'psmodule'
         $subject[0].Parent | Should-Be 'psmodule:PSModuleGraph'
+
+        # The identifier this subject used to have, still resolving. Nothing in
+        # the ordinary course of work reads an alias, so the only thing standing
+        # between a broken one and a reader six months from now is this.
+        @($subject[0].Aliases) | Should-BeCollection @('psmodule:PSModuleGraph/function/Get-PSModuleClass')
 
         $mine = @($script:Assignments | Where-Object { $_.Subject -eq $id })
         @($mine.FacetPath | Sort-Object) | Should-BeCollection @('structure:function', 'surface:exported')
@@ -134,7 +139,7 @@ Describe 'The store reads itself back' {
         # surface:internal rests on an ABSENCE from FunctionsToExport, which is
         # weaker than a presence. If this comes back as 1 the store has lost the
         # distinction it exists to record.
-        $id = 'psmodule:PSModuleGraph/function/Get-HashtableValue'
+        $id = 'psmodule:PSModuleGraph/function/Private/Get-HashtableValue.ps1/Get-HashtableValue'
 
         $surface = @($script:Assignments |
                 Where-Object { $_.Subject -eq $id -and $_.Facet -eq 'surface' })

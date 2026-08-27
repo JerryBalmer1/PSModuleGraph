@@ -19,6 +19,11 @@ function Write-SubjectRecord {
         Containing subject, or empty.
     .PARAMETER Source
         Repository-relative path, or empty.
+    .PARAMETER Aliases
+        Former identifiers that still resolve. A rename never deletes - see
+        knowledge/NAMING.md. An alias equal to the id itself is dropped: a
+        record claiming to be its own former name says nothing and would make
+        every resolution report two hits for one file.
     .PARAMETER GeneratedAt
         Stamp.
     .PARAMETER Prompt
@@ -35,6 +40,7 @@ function Write-SubjectRecord {
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Name,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Parent,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Source,
+        [Parameter()] [AllowEmptyCollection()] [string[]] $Aliases = @(),
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $GeneratedAt,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Prompt,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Body
@@ -47,6 +53,13 @@ function Write-SubjectRecord {
     }
     if ($Parent) { $document['parent'] = $Parent }
     if ($Source) { $document['source'] = $Source }
+
+    # Sorted and de-duplicated so a regeneration is byte-identical: the order
+    # aliases arrive in is an accident of iteration, and staleness is detected
+    # by comparing bytes.
+    $former = @($Aliases | Where-Object { $_ -and $_ -ne $Id } | Sort-Object -Unique)
+    if ($former.Count) { $document['aliases'] = $former }
+
     $document['generated_by'] = 'PSModuleGraph Update-KnowledgeStore'
     $document['generated_at'] = $GeneratedAt
     $document['prompt'] = $Prompt

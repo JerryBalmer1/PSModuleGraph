@@ -4,7 +4,7 @@ facet: "facet-health"
 path: "facet-health:coverage:partial"
 confidence: 0.95
 evidence_kind: "computed-count"
-evidence_value: "83 of 90 eligible subject(s) assigned"
+evidence_value: "85 of 92 eligible subject(s) assigned"
 evidence_source: "psmodulegraph-facet-health"
 provenance_by: "agent"
 provenance_prompt: "ledger/0003"

@@ -1,7 +1,9 @@
 # Naming
 
-**Version 0.1.0.** This document is itself versioned, because a naming
+**Version 0.2.0.** This document is itself versioned, because a naming
 convention that changes silently is worse than one that is merely wrong.
+`0.2.0` qualified a definition's URN with the file it is defined in, and added
+the split rule below.
 
 ---
 
@@ -19,6 +21,32 @@ carry an `aliases` array for the purpose, and `deprecated: true` marks a path
 that still resolves but should not be assigned to anything new. Removal is not
 an operation this store has.
 
+### A split is not a rename, and an alias may resolve to several subjects
+
+**Since 0.2.0.** One name becoming two identifiers is the ordinary rename.
+One identifier turning out to have been several things all along is not, and it
+is the shape this store actually met: `psmodule:SqlServerDsc/function/Get-TargetResource`
+named one record for thirty-two definitions, and the correct outcome is
+thirty-two records, each carrying that one former id.
+
+**So an alias resolves to one OR MORE subjects, and a resolver returns all of
+them.** Not the first, not the one that used to win. The old identifier meant
+"whichever of these was written last", which was never a fact about any of them,
+and answering with a single record would keep exactly the confidently-wrong
+answer the split exists to remove. Several answers and a choice is worse to read
+and correct; one answer is easier to read and wrong.
+
+**An alias equal to the id is not recorded.** A record claiming to be its own
+former name says nothing and makes every resolution report two hits for one
+file.
+
+**The generator computes a former id rather than reading one.** Subjects are
+regenerated, not edited - the tree is removed and rewritten - so by the time a
+record is written its predecessor is gone. This only works because the old id
+was a pure function of fields the new record still carries. A future rename that
+is not derivable this way has to record its aliases some other way, and that is
+a design question rather than an edit.
+
 ---
 
 ## Subjects are URNs
@@ -33,11 +61,16 @@ another repository, should be able to say what it points at.
 
 ```
 psmodule:PSModuleGraph
-psmodule:PSModuleGraph/function/Get-PSModuleClass
+psmodule:PSModuleGraph/function/Public/Get-PSModuleClass.ps1/Get-PSModuleClass
 psgallery:Pester
 concept:static-analysis
 facet:structure
 ```
+
+**A definition's URN carries the file it is defined in**, because a name alone
+is not an identity: two functions of the same name in two folders are two
+things, and a store that gives them one subject answers for both by naming one
+file. See the split rule above.
 
 `facet:structure` is not a special case. A facet is a subject, which is what
 lets one facet classify another — see `meta/`.
@@ -125,10 +158,15 @@ The file layout mirrors the URN, so a reader finds a file from an identifier
 without an index:
 
 ```
-psmodule:PSModuleGraph/function/Get-PSModuleClass
-  -> subjects/psmodule/PSModuleGraph/function/Get-PSModuleClass.md
-  -> assignments/psmodule/PSModuleGraph/function/Get-PSModuleClass/structure.md
+psmodule:PSModuleGraph/function/Public/Get-PSModuleClass.ps1/Get-PSModuleClass
+  -> subjects/psmodule/PSModuleGraph/function/Public/Get-PSModuleClass.ps1/Get-PSModuleClass.md
+  -> assignments/psmodule/PSModuleGraph/function/Public/Get-PSModuleClass.ps1/Get-PSModuleClass/structure/function.md
 ```
+
+**Only subjects carry aliases.** An assignment is keyed by subject, facet and
+path rather than by an identifier of its own, so its file moves when its
+subject's id moves and there is nothing to preserve. 256 records moved at
+v0.16.0 and 87 of them owed an alias.
 
 Facets keep one level of block list for `paths`, which is the only nesting
 anywhere in the store and the reason the parser supports exactly that much.

@@ -18,9 +18,20 @@ BeforeAll {
 
         $graph = Get-PSModuleDependencyGraph -Path $ModulePath
         $name = [string]$graph.ModuleName
-        $ids = @(InModuleScope PSModuleGraph -Parameters @{ Nodes = @($graph.Nodes); Name = $name } {
+        $base = [string]$graph.ModuleBase
+
+        # -ModuleBase, not omitted. Without it the id falls back to its
+        # unqualified form, which is the shape being replaced - and every
+        # assertion below would then be checking the old builder while claiming
+        # to check the new one.
+        $ids = @(InModuleScope PSModuleGraph -Parameters @{ Nodes = @($graph.Nodes); Name = $name; Base = $base } {
+                param($Nodes, $Name, $Base)
+                foreach ($node in $Nodes) { Get-KnowledgeSubjectId -Node $node -ModuleName $Name -ModuleBase $Base }
+            })
+
+        $former = @(InModuleScope PSModuleGraph -Parameters @{ Nodes = @($graph.Nodes); Name = $name } {
                 param($Nodes, $Name)
-                foreach ($node in $Nodes) { Get-KnowledgeSubjectId -Node $node -ModuleName $Name }
+                foreach ($node in $Nodes) { Get-LegacyKnowledgeSubjectId -Node $node -ModuleName $Name }
             })
 
         [pscustomobject]@{
@@ -28,6 +39,7 @@ BeforeAll {
             NodeCount  = @($graph.Nodes).Count
             Ids        = $ids
             Distinct   = @($ids | Sort-Object -Unique)
+            Former     = $former
         }
     }
 }
@@ -53,21 +65,77 @@ Describe 'One definition gets one subject id' {
     }
 }
 
-Describe 'A population that would collapse is refused' {
-    # The fixture exists because neither module in this repository's own store
-    # has a single duplicated name, so every check here would run green against
-    # a store where the bug cannot occur. A gate nobody has seen fail is a gate
-    # nobody has tested - see .claude/skills/gate-falsifiability.
+Describe 'A name in two folders is two subjects, and the old id reaches both' {
+    # CollidingModule is the shape SqlServerDsc has and neither module in this
+    # store does. Before the qualified id it collapsed; here it is the proof
+    # that it no longer does, and the only place the one-to-many alias is
+    # exercised at all - every alias in the committed store is 1:1.
 
     BeforeAll {
         $script:Fixture = Get-SubjectIdMap -ModulePath $script:Colliding
+
+        # New-Item first, then copy INTO it. Copying a directory to a path that
+        # does not exist makes the destination a copy of SCHEMA rather than a
+        # store containing one, and New-KnowledgeStorePath then refuses it.
+        $store = Join-Path $TestDrive 'collide'
+        New-Item -ItemType Directory -Path $store -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $script:Repo 'knowledge/SCHEMA') -Destination $store -Recurse -Force
+
+        Update-KnowledgeStore -Path $script:Colliding -StoreRoot $store -GeneratedAt '2026-08-26' -Confirm:$false | Out-Null
+
+        $script:FixtureSubjects = @(InModuleScope PSModuleGraph -Parameters @{ Root = $store } {
+                param($Root)
+                Import-KnowledgeSubject -Path (Join-Path $Root 'subjects')
+            })
     }
 
-    It 'has a fixture that actually collides' {
-        # Guards everything below. If the fixture stops colliding - a rename, a
-        # file moved - the refusal tests pass by never being reached.
+    It 'has a fixture that would have collapsed under the old id' {
+        # Guards everything below. If the fixture stops sharing names the split
+        # tests pass by never meeting one.
         $script:Fixture.NodeCount | Should-Be 7
-        $script:Fixture.Distinct.Count | Should-Be 4
+        @($script:Fixture.Former | Sort-Object -Unique).Count | Should-Be 4
+    }
+
+    It 'gives all seven definitions their own id now' {
+        $script:Fixture.Distinct.Count | Should-Be 7
+    }
+
+    It 'has the three-way split claim one former id three times' {
+        # A two-way split can still be read as a swap; three cannot. This is the
+        # case NAMING.md 0.2.0 was written for.
+        $former = 'psmodule:CollidingModule/function/Compare-State'
+        $claimants = @($script:FixtureSubjects | Where-Object { @($_.Aliases) -contains $former })
+
+        @($claimants).Count | Should-Be 3 -Because (
+            'the old id meant whichever of the three was written last, which was never a fact about any of them')
+
+        @($claimants | ForEach-Object { $_.Source } | Sort-Object) | Should-BeCollection @(
+            'resources/Alpha/Alpha.psm1', 'resources/Beta/Beta.psm1', 'resources/Gamma/Gamma.psm1')
+    }
+
+    It 'has the two-way split claim its former id twice and the unique one once' {
+        $two = @($script:FixtureSubjects | Where-Object {
+                @($_.Aliases) -contains 'psmodule:CollidingModule/function/Get-TargetResource' })
+        @($two).Count | Should-Be 2
+
+        $one = @($script:FixtureSubjects | Where-Object {
+                @($_.Aliases) -contains 'psmodule:CollidingModule/function/Get-CollidingThing' })
+        @($one).Count | Should-Be 1
+    }
+}
+
+Describe 'A population that would still collapse is refused' {
+    # THE GUARD AFTER THE FIX. Qualifying an id with its path removed the name
+    # collision, so CollidingModule no longer trips the guard - and a guard that
+    # nothing can trip is a guard nobody can test.
+    #
+    # AmbiguousPathModule is the hazard the qualified id does NOT remove: two
+    # folder names differing only by a character the URN grammar cannot carry,
+    # which the slug reduces to one. See ConvertTo-SubjectSlug, which says
+    # plainly that replacement narrows the collisions rather than ending them.
+
+    BeforeAll {
+        $script:Ambiguous = Join-Path $script:Repo 'tests/fixtures/AmbiguousPathModule'
     }
 
     It 'names the shared id, how many definitions claim it, and where they are' {
@@ -76,7 +144,7 @@ Describe 'A population that would collapse is refused' {
 
         $failed = $null
         try {
-            Update-KnowledgeStore -Path $script:Colliding -StoreRoot $store -Confirm:$false | Out-Null
+            Update-KnowledgeStore -Path $script:Ambiguous -StoreRoot $store -Confirm:$false | Out-Null
         }
         catch {
             $failed = $_.Exception.Message
@@ -84,17 +152,12 @@ Describe 'A population that would collapse is refused' {
 
         $failed | Should-NotBeNull -Because 'a population that collapses must be refused, not written'
 
-        # The three collisions sort so that Compare-State is named first, which
-        # is the three-way one: two records claiming one id can still be read as
-        # a swap and three cannot.
-        $failed | Should-MatchString 'psmodule:CollidingModule/function/Compare-State'
-        $failed | Should-MatchString 'resources/Alpha/Alpha\.psm1'
-        $failed | Should-MatchString 'resources/Beta/Beta\.psm1'
-        $failed | Should-MatchString 'resources/Gamma/Gamma\.psm1'
-        $failed | Should-MatchString '7 definition\(s\)'
-        $failed | Should-MatchString '4 distinct subject id\(s\)'
-        $failed | Should-MatchString '3 would be written over'
-        $failed | Should-MatchString '1 other id\(s\) are shared as well'
+        $failed | Should-MatchString 'psmodule:AmbiguousPathModule/function/res-one/Res\.psm1/Get-Ambiguous'
+        $failed | Should-MatchString 'res one/Res\.psm1'
+        $failed | Should-MatchString 'res-one/Res\.psm1'
+        $failed | Should-MatchString '3 definition\(s\)'
+        $failed | Should-MatchString '2 distinct subject id\(s\)'
+        $failed | Should-MatchString '1 would be written over'
     }
 
     It 'refuses before it removes the records it was going to replace' {
@@ -103,13 +166,175 @@ Describe 'A population that would collapse is refused' {
         # the removal and this is what says so.
         $store = Join-Path $TestDrive 'preserved'
         New-Item -ItemType Directory -Path (Join-Path $store 'SCHEMA') -Force | Out-Null
-        $owned = Join-Path $store 'subjects/psmodule/CollidingModule'
+        $owned = Join-Path $store 'subjects/psmodule/AmbiguousPathModule'
         New-Item -ItemType Directory -Path $owned -Force | Out-Null
         $canary = Join-Path $owned 'canary.md'
         Set-Content -LiteralPath $canary -Value 'still here' -Encoding utf8
 
-        { Update-KnowledgeStore -Path $script:Colliding -StoreRoot $store -Confirm:$false } | Should-Throw
+        { Update-KnowledgeStore -Path $script:Ambiguous -StoreRoot $store -Confirm:$false } | Should-Throw
 
         Test-Path -LiteralPath $canary | Should-BeTrue -Because 'the guard runs before the removal'
+    }
+}
+
+Describe 'Every identifier this store used to issue still reaches something' {
+    # THE MIGRATION'S OWN CHECK. Not a spot-check of the ids I thought to look
+    # at: both containments over the WHOLE population, which is available
+    # because the former id is a pure function of the node rather than
+    # something recovered from a tree that no longer exists.
+    #
+    # 87 subjects moved and none of them was wrong beforehand - neither module
+    # in this store has a duplicated name - so nothing here can show the fix
+    # working. It can only show the move losing nothing. What shows the fix
+    # working is CollidingModule above and SqlServerDsc, which is not committed.
+
+    BeforeAll {
+        $script:Store = Join-Path $script:Repo 'knowledge'
+        $script:Written = @(InModuleScope PSModuleGraph -Parameters @{ Root = $script:Store } {
+                param($Root)
+                Import-KnowledgeSubject -Path (Join-Path $Root 'subjects')
+            })
+        $script:Claimed = @{}
+        foreach ($subject in $script:Written) {
+            foreach ($alias in @($subject.Aliases)) {
+                if (-not $alias) { continue }
+                if (-not $script:Claimed.ContainsKey($alias)) {
+                    $script:Claimed[$alias] = [System.Collections.Generic.List[string]]::new()
+                }
+                $script:Claimed[$alias].Add($subject.Id)
+            }
+        }
+    }
+
+    It 'read a store with aliases in it at all' {
+        # Guards both containments. Two empty sets contain each other.
+        $script:Written.Count | Should-BeGreaterThan 0
+        $script:Claimed.Keys.Count | Should-BeGreaterThan 0
+    }
+
+    It 'has every former id of <_> claimed by some record' -ForEach @('src/PSModuleGraph', 'tests/fixtures/SampleModule') {
+        $map = Get-SubjectIdMap -ModulePath (Join-Path $script:Repo $_)
+
+        # A former id equal to the id it replaced is deliberately not recorded -
+        # a script node at the module root did not move - so those are excluded
+        # rather than expected.
+        $moved = @($map.Former | Where-Object { $map.Ids -notcontains $_ } | Sort-Object -Unique)
+        $moved.Count | Should-BeGreaterThan 0
+
+        $orphaned = @($moved | Where-Object { -not $script:Claimed.ContainsKey($_) })
+        @($orphaned) | Should-BeCollection @() -Because (
+            'an id nothing claims is an id that stopped resolving')
+    }
+
+    It 'claims no alias the old generator would never have issued' {
+        # The reverse containment, and the one a sample cannot give. Without it
+        # a mistyped alias passes as long as the real one is also present, and
+        # the store asserts an identifier that never existed.
+        $issued = @{}
+        foreach ($module in 'src/PSModuleGraph', 'tests/fixtures/SampleModule') {
+            foreach ($id in (Get-SubjectIdMap -ModulePath (Join-Path $script:Repo $module)).Former) {
+                $issued[$id] = $true
+            }
+        }
+
+        $invented = @($script:Claimed.Keys | Where-Object { -not $issued.ContainsKey($_) } | Sort-Object)
+        @($invented) | Should-BeCollection @() -Because (
+            'an alias that was never an id resolves, wrongly, and says the store used to call it that')
+    }
+
+    It 'resolves every alias it claims to at least one record on disk' {
+        $missing = @()
+        foreach ($alias in @($script:Claimed.Keys)) {
+            foreach ($id in $script:Claimed[$alias]) {
+                $file = InModuleScope PSModuleGraph -Parameters @{ Id = $id; Root = $script:Store } {
+                    param($Id, $Root)
+                    ConvertTo-KnowledgeFilePath -Id $Id -Root $Root -Area 'subjects'
+                }
+                if (-not (Test-Path -LiteralPath $file)) { $missing += "$alias -> $id" }
+            }
+        }
+        @($missing) | Should-BeCollection @()
+    }
+}
+
+Describe 'A module with no duplicate names keeps its count and loses every path' {
+    # THE SECOND CORPUS, and the assertion is the PAIR. "The count does not
+    # move" alone is satisfied perfectly by a migration that did nothing, which
+    # is the failure with no symptom. What says it ran is that every path moved.
+    #
+    # corpus/PSCorpus is the right module for it: nineteen definitions, no
+    # duplicated name anywhere, and not in the committed store - so nothing it
+    # says here is a fact about a tree this iteration wrote.
+
+    BeforeAll {
+        $script:Corpus = Get-SubjectIdMap -ModulePath (Join-Path $script:Repo 'corpus/PSCorpus')
+    }
+
+    It 'has nothing to repair in the first place' {
+        $script:Corpus.NodeCount | Should-Be 19
+        @($script:Corpus.Former | Sort-Object -Unique).Count | Should-Be 19
+    }
+
+    It 'writes exactly as many subjects as it did before' {
+        $script:Corpus.Distinct.Count | Should-Be $script:Corpus.NodeCount
+        $script:Corpus.Distinct.Count | Should-Be @($script:Corpus.Former | Sort-Object -Unique).Count
+    }
+
+    It 'moves every definition that had a path to move to' {
+        # The script node at the module root is the one that legitimately does
+        # not move: its old id was the file leaf and its new id is the file
+        # path, and at the root those are the same string. Everything else must
+        # differ, or the id was never qualified.
+        $unmoved = @(0..($script:Corpus.NodeCount - 1) |
+                Where-Object { $script:Corpus.Ids[$_] -eq $script:Corpus.Former[$_] } |
+                ForEach-Object { $script:Corpus.Ids[$_] })
+
+        @($unmoved) | Should-BeCollection @('psmodule:PSCorpus/script/PSCorpus.psm1') -Because (
+            'a count that held while no path moved is a migration that did not run')
+    }
+}
+
+Describe 'The move itself did not lose or duplicate a file' {
+    # Two hazards that are not id collisions and that a count of records cannot
+    # see. Both are the same shape as the defect being fixed: the migration
+    # writing fewer files than it believes it did.
+
+    BeforeAll {
+        $script:Store = Join-Path $script:Repo 'knowledge'
+    }
+
+    It 'has one file on disk per record, so no two ids met in the filesystem' {
+        # Windows is case-insensitive and strips trailing dots, so two ids that
+        # differ can still want one path. The id set being distinct does not
+        # settle it; the tree has to be counted.
+        $subjects = @(InModuleScope PSModuleGraph -Parameters @{ Root = $script:Store } {
+                param($Root)
+                Import-KnowledgeSubject -Path (Join-Path $Root 'subjects')
+            })
+        $files = @(Get-ChildItem -LiteralPath (Join-Path $script:Store 'subjects') -Filter *.md -File -Recurse)
+
+        $files.Count | Should-BeGreaterThan 0
+        $subjects.Count | Should-Be $files.Count
+
+        $ids = @($subjects | ForEach-Object { $_.Id } | Sort-Object -Unique)
+        $ids.Count | Should-Be $files.Count -Because (
+            'two records sharing a file is a collision the id set cannot show')
+    }
+
+    It 'keeps every store path inside a ceiling, rather than discovering MAX_PATH' {
+        # Qualifying an id with its file lengthened every path in the tree. The
+        # ceiling is asserted rather than met: a write that fails at 260
+        # characters produces a store missing records, which is this migration's
+        # own version of writing fewer files than it thinks it did.
+        #
+        # 200 leaves room for the repository to sit deeper than it does here and
+        # is well inside the 260 a machine without long paths enabled enforces.
+        $longest = @(Get-ChildItem -LiteralPath $script:Store -Filter *.md -File -Recurse |
+                ForEach-Object {
+                    $_.FullName.Substring($script:Store.Length).TrimStart([char]92, [char]47)
+                } | Sort-Object { $_.Length } -Descending)
+
+        $longest.Count | Should-BeGreaterThan 0
+        $longest[0].Length | Should-BeLessThan 200 -Because "the longest store-relative path is '$($longest[0])'"
     }
 }

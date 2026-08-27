@@ -125,12 +125,23 @@ the assignments of the things it contains.
 "@
 
         foreach ($node in @($graph.Nodes)) {
-            $id = Get-KnowledgeSubjectId -Node $node -ModuleName $moduleName
+            $id = Get-KnowledgeSubjectId -Node $node -ModuleName $moduleName -ModuleBase $target.ModuleBase
             $kind = ([string]$node.Kind).ToLowerInvariant()
             $source = ConvertTo-SubjectSourcePath -Path $node.Path -Base $target.ModuleBase
 
+            # A rename never deletes. The former id is COMPUTED from the node
+            # rather than read off the tree, which is the only thing that makes
+            # this correct: the tree was removed above, and by the time a record
+            # is written its predecessor is already gone.
+            #
+            # Where names collided the map is one-to-many, so every one of the
+            # 32 records claims the same former id. That is a SPLIT, not a
+            # rename, and an alias resolving to several subjects is the honest
+            # answer - see knowledge/NAMING.md.
+            $formerId = Get-LegacyKnowledgeSubjectId -Node $node -ModuleName $moduleName
+
             $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema -Id $id `
-                -Name ([string]$node.Name) -Parent $moduleId -Source $source `
+                -Name ([string]$node.Name) -Parent $moduleId -Source $source -Aliases @($formerId) `
                 -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"
 # $($node.Name)
 
