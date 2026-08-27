@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The ledger records why a thread left, not only that it did.**
+  `supersedes_threads` names a thread a new one replaces by id;
+  `recovers_threads` names one that left the record without being closed and
+  re-enters with the gap admitted. Both are in
+  `knowledge/SCHEMA/ledger-entry.schema.json`.
 - **A procedure followed twice is written down.** `gate-falsifiability`,
   `golden-recording` and `corpus-diff` join the four closing skills, and the
   shape behind five separate defects is recorded as
@@ -330,6 +335,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The ledger continuity gate compares an entry against every thread still
+  open.** It compared against the threads the previous entry itself raised, so
+  a thread was guarded for exactly one iteration and was silently droppable
+  ever after. `0001-t4` went that way at entry `0003` and is recovered.
 - **Every caller collected an error record for an absence that is ordinary.**
   `-ErrorAction SilentlyContinue` suppresses the display and still writes to
   `$Error` and to any caller's `-ErrorVariable`, so four probes for an unset
