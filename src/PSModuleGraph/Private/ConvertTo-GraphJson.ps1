@@ -36,6 +36,18 @@ function ConvertTo-GraphJson {
                     sourceName = $_.SourceName
                     targetName = $_.TargetName
                     kind       = $_.Kind
+                    # How the call was tied to what it names: Unique, SameFile or
+                    # Ambiguous. It was known here and stopped one step short of
+                    # anyone seeing it - 702 of SqlServerDsc's 1,271 edges mean
+                    # "one of these, undecidably" and were drawn as though they
+                    # meant "this one".
+                    #
+                    # links[] already allows additional properties, so this is
+                    # valid against contract 1.0.0 as it stands. meta.contractVersion
+                    # moves to 1.1.0 when the renderer's contract does, not before:
+                    # a payload cannot claim to be written against a version that
+                    # does not exist yet.
+                    resolution = $_.Resolution
                     path       = $_.Path
                     startLine  = $_.StartLine
                 }
