@@ -245,6 +245,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The payload says how each edge resolved.** `links[].resolution` carries
+  `Unique`, `SameFile` or `Ambiguous` - the fact the producer has had since
+  v0.11.0 and was dropping one step before a reader could see it. 702 of
+  SqlServerDsc's 1,271 edges mean "one of these, undecidably" and were drawn
+  exactly like the 569 that mean "this one".
+
+  `links[]` already allows additional properties, so the field is valid against
+  view model contract 1.0.0 as it stands, and `meta.contractVersion` stays at
+  1.0.0 until the contract itself moves. `-Format Csv` does not carry the field:
+  its header is fixed and a new column breaks positional parsing.
 - **BREAKING: a node's `Id` changes shape.** It was `kind:name`; it is now
   `kind:module/relative/path:Name`. Anything that built or matched an id by hand
   - `Where-Object Id -eq 'function:Foo'` - has to change. `Name` is untouched:

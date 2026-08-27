@@ -10,17 +10,17 @@
     }
   },
   "toolchain": {
-    "parserVersion": "0.10.0",
-    "parserCommit": "13bc8f9",
+    "parserVersion": "0.12.0",
+    "parserCommit": "95ba3a2",
     "powerShellVersion": "7.6.5",
     "powerShellEdition": "Core",
     "platform": "Win32NT",
     "os": "Microsoft Windows NT 10.0.26200.0"
   },
   "run": {
-    "startedUtc": "2026-08-27T02:08:23Z",
-    "wallMs": 1236,
-    "totalMs": 1492,
+    "startedUtc": "2026-08-27T02:31:36Z",
+    "wallMs": 1398,
+    "totalMs": 1684,
     "outcome": "ok"
   },
   "counts": {
