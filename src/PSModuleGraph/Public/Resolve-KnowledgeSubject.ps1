@@ -29,6 +29,13 @@ function Resolve-KnowledgeSubject {
         Comparison is ORDINAL. A URN's path segment preserves case, so
         `Get-PSModuleClass` and `get-psmoduleclass` are two identifiers, and
         PowerShell's default comparisons are not.
+
+        ONE HOP, BY DESIGN. What step 2 finds is not looked up again. A subject
+        renamed twice carries BOTH former ids, because `aliases` is a set and
+        the generator knows the whole history - so chaining would buy nothing
+        and would cost a graph, with cycles where a name was renamed away and
+        back. The obligation this puts on a future migration is on the alias
+        BUILDER, not on this function: see docs/constraints.md, "The store".
     .PARAMETER Id
         The subject URN, current or former.
     .PARAMETER StoreRoot

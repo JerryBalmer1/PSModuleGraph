@@ -70,6 +70,26 @@ core.longpaths true`, which is a machine setting this repository cannot ship and
 must not assume; or shortening the id grammar, which is a contract change and
 undoes what v0.16.0 was for. **Clone somewhere shallow.**
 
+**An alias is followed once, and only once.** `0022-t3`. Ruled 2026-08-27, and
+ruled a limit rather than a defect. `Resolve-KnowledgeSubject` tries the path
+the id names, then scans for records claiming it as a former id, and stops. It
+does not then take what it found and look *that* up.
+
+The reason it is not a defect is that **chaining is not the fix for a second
+rename.** `aliases` is a SET, not a linked list, and the store is generated -
+so a subject that has been renamed twice should carry both former ids, written
+by the alias builder that already knows the whole history. One hop over N
+aliases is the same information as N hops, with a bounded read and no cycles.
+Chained aliases turn rename history into a graph: a name renamed away and back
+is a cycle, a one-to-many split whose parts are renamed again multiplies the
+answer set, and neither has a reading a person can act on.
+
+So the limit is on the resolver and **the obligation is on the writer.** The
+next migration's job is to make `Get-LegacyKnowledgeSubjectId` emit every
+former shape, not to teach the resolver to hop. Nothing enforces that today -
+every subject in this store carries exactly one alias, so the second hop has
+never been needed and the obligation has never been tested. `0023-t1`.
+
 **`structure:external` has no assignments.** `0003-t3`. A facet path nothing
 classifies is a hypothesis kept in view. Deleting it is a taxonomy change and
 those are proposed, not taken; keeping it costs one line and one reading.
