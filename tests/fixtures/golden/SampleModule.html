@@ -789,8 +789,8 @@ const META = {
   "contractVersion": "1.1.0",
   "title": "SampleModule",
   "version": "1.2.3",
-  "generatedAt": "2026-08-27T10:29:53.6013473-07:00",
-  "rootPath": "C:\\Users\\jlbal\\AppData\\Local\\Temp\\claude\\c----Code-PSGraphRender\\5220d798-0b97-4be6-a214-7261d7779c8e\\scratchpad\\wt-golden\\tests\\fixtures\\SampleModule",
+  "generatedAt": "2026-08-27T11:20:16.2676116-07:00",
+  "rootPath": "C:\\Users\\jlbal\\AppData\\Local\\Temp\\claude\\c----Code-PSGraphRender\\5220d798-0b97-4be6-a214-7261d7779c8e\\scratchpad\\wt-golden2\\tests\\fixtures\\SampleModule",
   "stats": {
     "NodeCount": 9,
     "EdgeCount": 5,
@@ -898,15 +898,15 @@ const STRINGS = {
   "MenuCopyEditorLink": "Copy Editor Link",
   "MenuCopyPath": "Copy Path",
   "MenuDiagnostics": "Diagnostics",
-  "MenuOpenCallSite": "Open Call Site",
+  "MenuOpenCallSite": "Open Reference Site",
   "MenuOpenFileLocation": "Open File Location",
   "MenuReasonSeparator": " — ",
   "MetricBlastRadius": "Blast radius",
   "MetricBlastRadiusHint": "everything that breaks if this changes",
   "MetricDependencies": "Dependencies",
-  "MetricDependenciesHint": "things this calls directly",
+  "MetricDependenciesHint": "things this depends on directly",
   "MetricDependents": "Dependents",
-  "MetricDependentsHint": "things that call this directly",
+  "MetricDependentsHint": "things that depend on this directly",
   "MetricReach": "Reach",
   "MetricReachHint": "everything this rests on, transitively",
   "OrderCycleBody": "These have no valid order, because each waits on the other: {names}",
@@ -1601,7 +1601,13 @@ const STRINGS = {
             nodeDimensionsIncludeLabels: true,
             nodeSep: cfg('NodeSep', 14),
             rankSep: cfg('RankSep', 80),
-            animate: false
+            animate: false,
+            // The SET, not the screen, exactly as foundation.js takes it.
+            // `cy.layout()` excludes display:none elements, so a layout run
+            // while a search was active placed only what the search had left
+            // and stranded the rest. Naming the collection is how dagre is told
+            // the same thing foundationPositions() decides for itself.
+            eles: cy.elements().filter(function (el) { return !el.hasClass('not-in-set'); })
         };
         try {
             cy.layout(opts).run();
@@ -1764,12 +1770,18 @@ const STRINGS = {
         return Math.max(3, Math.min(count, Math.round(derived)));
     }
 
-    // Positions for every visible node, keyed by id. Hidden nodes are left out
-    // deliberately: they are excluded from the drawing and would otherwise
-    // reserve width they do not occupy.
+    // Positions for every node IN THE SET, keyed by id. A node the reader has
+    // filtered out is left out deliberately: it is not part of the drawing and
+    // would otherwise reserve width it does not occupy.
+    //
+    // The set, not the screen. A node hidden only by the search box is still
+    // part of the drawing and is placed here, so it keeps its slot while
+    // somebody types and returns to it when they stop. See filters.js - the
+    // version that read `.hidden` laid out without the searched-away nodes and
+    // left them stale, which is 0013-t1.
     function foundationPositions() {
-        var visible = cy.nodes().filter(function (n) { return !n.hasClass('hidden'); });
-        var ids = visible.map(function (n) { return n.id(); });
+        var inSet = cy.nodes().filter(function (n) { return !n.hasClass('not-in-set'); });
+        var ids = inSet.map(function (n) { return n.id(); });
         var known = {};
         ids.forEach(function (id) { known[id] = true; });
 
@@ -1778,7 +1790,10 @@ const STRINGS = {
         ids.forEach(function (id) { deps[id] = []; dependents[id] = []; });
 
         cy.edges().forEach(function (e) {
-            if (e.hasClass('hidden')) { return; }
+            // `not-in-set` for the same reason the nodes use it: an edge whose
+            // ends are both in the drawing still constrains the layering while
+            // a search happens to be hiding one of them.
+            if (e.hasClass('not-in-set')) { return; }
             var from = e.source().id();
             var to = e.target().id();
             // An edge source -> target means source depends on target, so the
@@ -2099,22 +2114,41 @@ const STRINGS = {
             enabled[k] = !box || box.checked;
         });
 
+        // TWO CLASSES, BECAUSE THERE ARE TWO REASONS AND THEY ARE NOT THE SAME
+        // REASON. `not-in-set` means the reader has said this node is not part
+        // of the drawing - a kind unticked, exported-only, unresolved off.
+        // `hidden` means it is not on the screen right now, which `not-in-set`
+        // implies and a search miss also causes.
+        //
+        // The layout takes the SET and not the screen. A search narrows what is
+        // shown; it does not change what the drawing is of, so a node searched
+        // away keeps its place and comes back to it. When the layout followed
+        // the screen, a checkbox ticked while a search was active laid out
+        // without the searched-away nodes, and clearing the search brought them
+        // back to positions no layout had given them - which is 0013-t1, and
+        // the placement harness names it: seven visible nodes on six positions.
+        //
+        // `.hidden` is the only one of the two with a style rule. `not-in-set`
+        // carries no appearance at all; it is bookkeeping the layout reads.
         cy.batch(function () {
             cy.nodes().forEach(function (n) {
                 var kind = n.data('kind');
-                var visible;
+                var inSet;
                 if (kind === 'External') {
-                    visible = showUnres;
+                    inSet = showUnres;
                 } else {
-                    visible = !!enabled[kind];
-                    if (visible && exportedOnly && !n.data('isExported')) { visible = false; }
-                    if (visible && term && n.data('name').toLowerCase().indexOf(term) === -1) { visible = false; }
+                    inSet = !!enabled[kind];
+                    if (inSet && exportedOnly && !n.data('isExported')) { inSet = false; }
                 }
-                n.toggleClass('hidden', !visible);
+                var found = !term || n.data('name').toLowerCase().indexOf(term) !== -1;
+                n.toggleClass('not-in-set', !inSet);
+                n.toggleClass('hidden', !(inSet && found));
             });
             cy.edges().forEach(function (e) {
-                var hide = e.source().hasClass('hidden') || e.target().hasClass('hidden');
-                e.toggleClass('hidden', hide);
+                e.toggleClass('not-in-set',
+                    e.source().hasClass('not-in-set') || e.target().hasClass('not-in-set'));
+                e.toggleClass('hidden',
+                    e.source().hasClass('hidden') || e.target().hasClass('hidden'));
             });
         });
         reapplyFocus();
@@ -2815,11 +2849,14 @@ const STRINGS = {
     var NODE_ACTIONS = [
         {
             id: 'open-in-vscode',
-            // An external target has no definition inside this module, so the
-            // path recorded against it is the CALL SITE. Opening that is still
-            // useful, but calling it "file location" would be a lie about what
-            // the page knows - the definition is exactly what static analysis
-            // could not resolve.
+            // An invented node has no definition in the payload, so the path
+            // recorded against it is where it was REFERENCED FROM. Opening that
+            // is still useful, but labelling it "file location" would be a lie
+            // about what the page knows - the definition is precisely the thing
+            // the producer could not resolve.
+            //
+            // "Reference site", not "call site". Whether the reference is a
+            // call is the producer's business, and this renderer is not told.
             label: function (node) {
                 return node.data('kind') === 'External'
                     ? str('MenuOpenCallSite') : str('MenuOpenFileLocation');

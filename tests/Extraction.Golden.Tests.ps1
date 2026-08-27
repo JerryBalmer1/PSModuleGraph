@@ -96,7 +96,14 @@ Describe 'The extraction of the renderer into PSGraphRender' {
         #           A cosmetic change to a vendored comment, caught by this
         #           test, which is the smallest thing it has ever caught and
         #           exactly what it is for now.
-        #   v0.15.1 THIS ONE. PSGraphRender 0.12.0 fixed four visual defects:
+        #   v0.15.2 THIS ONE. PSGraphRender 0.13.0 took the last of the
+        #           producer's vocabulary out of the strings this document
+        #           embeds: two metric hints stopped saying an edge is a call,
+        #           and the context menu offers "Open Reference Site" rather
+        #           than "Open Call Site" for a node the payload only names.
+        #           Rendered from a detached worktree of 0e0b9c3 against
+        #           PSGraphRender 0.13.0. Three strings, decided there.
+        #   v0.15.1 PSGraphRender 0.12.0 fixed four visual defects:
         #           a node revealed after the first paint is laid out rather
         #           than left at the origin, a label shared by two nodes is
         #           qualified, the banner stopped promising a view the page
