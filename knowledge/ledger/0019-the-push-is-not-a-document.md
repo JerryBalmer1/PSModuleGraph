@@ -84,6 +84,27 @@ put a second copy into `docs/testing.md`, which already held it — the exact
 procedure that warns about it. Caught and undone in the same turn, and the
 destination now says so.
 
+**Following `golden-recording` found a normalisation that had done nothing for
+six versions.** The golden had to be re-recorded — the renderer's heat-ramp
+comment is inlined into the document — so it was rendered from a detached
+worktree, which rule one demands and which nothing here had actually done since
+the extraction. It failed immediately on an absolute path the comparison is
+supposed to blank: **the normaliser matched `meta.moduleRoot`, and the field was
+renamed to `rootPath` at renderer v0.3.0.** From that version until now the path
+normalisation was a no-op, and nothing said so, because every re-recording had
+happened in the same directory the test runs in, so the two paths were identical
+and there was nothing to normalise.
+
+That is `knowledge/patterns/0017-nothing-could-have-said-otherwise.md` again — a
+mechanism reporting success while structurally unable to report anything else —
+in a test written to catch exactly this class of thing. It is also the cleanest
+justification the worktree rule has yet produced: **the rule exists to make the
+recording come from bytes no other checkout would produce, and the first time it
+was obeyed it produced a difference the comparison could not absorb.** Both
+field names are matched now, and the test carries a recording log saying what
+each re-recording was for, which is the second half of that skill and the half
+`0014-t2` says had evaporated.
+
 **`[0007-t1]` is struck here and has nowhere to go.** *Hot and external are
 nearly the same colour* is a theme fact about a report that became
 `PSGraphRender`'s `theme.psd1` at v0.9.0. There is nothing here to fix and no
@@ -165,6 +186,11 @@ The Skeptic's section. It is never empty.
   with no line — a `RequiredModules` entry and a `using module` statement — and
   the fixture exercises the first. The second is asserted only through the same
   code path, and no corpus module has been rendered to HTML at all.
+- **That the path normalisation is right now rather than differently wrong.** It
+  matches `rootPath` and falls back to `moduleRoot`, verified by a recording
+  from a worktree in a differently-named directory - which is one observation,
+  and the same one observation the old version passed for six versions.
+
 - **That `docs/constraints.md` will be read.** It is a new on-demand file whose
   entire purpose is to be read *before* somebody proposes to fix something, and
   the only thing pointing at it is a blockquote in `docs/improvements.md`.
