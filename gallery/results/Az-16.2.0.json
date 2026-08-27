@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "1.0.0",
+  "module": {
+    "name": "Az",
+    "version": "16.2.0",
+    "source": {
+      "repository": "PSGallery",
+      "uri": "https://www.powershellgallery.com/api/v2/package/Az/16.2.0",
+      "sha256": "b751334d6c4f31e9d6e817a7a2aa96a9a8099d5fabe4908d2971c1b30ba7c871"
+    }
+  },
+  "toolchain": {
+    "parserVersion": "0.9.0",
+    "parserCommit": "d2760b0",
+    "powerShellVersion": "7.6.5",
+    "powerShellEdition": "Core",
+    "platform": "Win32NT",
+    "os": "Microsoft Windows NT 10.0.26200.0"
+  },
+  "run": {
+    "startedUtc": "2026-08-27T01:34:54Z",
+    "wallMs": 489,
+    "totalMs": 648,
+    "outcome": "ok"
+  },
+  "counts": {
+    "nodes": 3,
+    "edges": 2,
+    "roots": 1,
+    "leaves": 2,
+    "unresolved": 23,
+    "functions": 2,
+    "classes": 0,
+    "enums": 0,
+    "files": 2,
+    "filesScript": 2,
+    "filesWithParseErrors": 0,
+    "assemblies": 1,
+    "declaredExports": 0
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
+      "path": "",
+      "line": null
+    }
+  ],
+  "expectation": {
+    "stresses": "A rollup module with no code at all: a manifest listing eighty RequiredModules and nothing else. An empty graph that is correct.",
+    "predicted": "Succeeds with zero nodes, zero edges, and around eighty unresolved entries of kind RequiredModule. The pair with Az.Accounts is the point: both report almost no nodes, one legitimately and one not, and the result files must make the two distinguishable without a person knowing the modules."
+  }
+}

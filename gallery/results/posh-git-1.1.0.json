@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "1.0.0",
+  "module": {
+    "name": "posh-git",
+    "version": "1.1.0",
+    "source": {
+      "repository": "PSGallery",
+      "uri": "https://www.powershellgallery.com/api/v2/package/posh-git/1.1.0",
+      "sha256": "87d9d37eb63d0d1b5f66622ab7ec16cd452a43cec45963ac0e596737750a00cc"
+    }
+  },
+  "toolchain": {
+    "parserVersion": "0.9.0",
+    "parserCommit": "d2760b0",
+    "powerShellVersion": "7.6.5",
+    "powerShellEdition": "Core",
+    "platform": "Win32NT",
+    "os": "Microsoft Windows NT 10.0.26200.0"
+  },
+  "run": {
+    "startedUtc": "2026-08-27T01:34:27Z",
+    "wallMs": 1313,
+    "totalMs": 1506,
+    "outcome": "ok"
+  },
+  "counts": {
+    "nodes": 87,
+    "edges": 77,
+    "roots": 44,
+    "leaves": 51,
+    "unresolved": 193,
+    "functions": 78,
+    "classes": 4,
+    "enums": 4,
+    "files": 13,
+    "filesScript": 13,
+    "filesWithParseErrors": 0,
+    "assemblies": 1,
+    "declaredExports": 23
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
+      "path": "",
+      "line": null
+    }
+  ],
+  "expectation": {
+    "stresses": "Nothing. A plain script module of moderate size: a manifest with an explicit export list, a .psm1 that dot-sources a dozen .ps1 files, no assemblies, no classes, no dynamic dispatch.",
+    "predicted": "Succeeds in well under a second. Node count within a few of the number of function definitions on disk, edges dense between them, unresolved dominated by built-in cmdlets. If this one is wrong, nothing else in the corpus can be read."
+  }
+}

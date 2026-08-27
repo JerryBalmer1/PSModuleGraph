@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "1.0.0",
+  "module": {
+    "name": "Az.Accounts",
+    "version": "5.5.2",
+    "source": {
+      "repository": "PSGallery",
+      "uri": "https://www.powershellgallery.com/api/v2/package/Az.Accounts/5.5.2",
+      "sha256": "4465339b2c52cb19d0cb6ee16467076cd7f32633e9195df675373eb81e0e8cca"
+    }
+  },
+  "toolchain": {
+    "parserVersion": "0.9.0",
+    "parserCommit": "d2760b0",
+    "powerShellVersion": "7.6.5",
+    "powerShellEdition": "Core",
+    "platform": "Win32NT",
+    "os": "Microsoft Windows NT 10.0.26200.0"
+  },
+  "run": {
+    "startedUtc": "2026-08-27T01:34:38Z",
+    "wallMs": 1040,
+    "totalMs": 1282,
+    "outcome": "failed"
+  },
+  "counts": {
+    "nodes": null,
+    "edges": null,
+    "roots": null,
+    "leaves": null,
+    "unresolved": null,
+    "functions": null,
+    "classes": null,
+    "enums": null,
+    "files": 79,
+    "filesScript": 6,
+    "filesWithParseErrors": 0,
+    "assemblies": null,
+    "declaredExports": null
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "System.Management.Automation.ActionPreferenceStopException: The running command stopped because the preference variable \"ErrorActionPreference\" or common parameter is set to Stop: Cannot find a provider with the name '([System.IO.Path]'. at System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception) at System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "System.Management.Automation.ActionPreferenceStopException: The running command stopped because the preference variable \"ErrorActionPreference\" or common parameter is set to Stop: Cannot find a provider with the name '([System.IO.Path]'. at System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception) at System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
+      "path": "",
+      "line": null
+    }
+  ],
+  "expectation": {
+    "stresses": "A large Azure module whose exports are cmdlets implemented in C#, not functions written in PowerShell. Nothing the parser looks for is present in the source it can read.",
+    "predicted": "Succeeds with a near-empty node set and no error at all: the manifest declares dozens of exports and the graph reports a handful of nodes or none. This is the empty-graph-with-no-error case, deliberately included. Predicted as a parser defect rather than a property of the module, because a graph that reports nothing must be able to say why."
+  }
+}

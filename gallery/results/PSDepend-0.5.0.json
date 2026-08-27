@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "1.0.0",
+  "module": {
+    "name": "PSDepend",
+    "version": "0.5.0",
+    "source": {
+      "repository": "PSGallery",
+      "uri": "https://www.powershellgallery.com/api/v2/package/PSDepend/0.5.0",
+      "sha256": "8594294bd0ff79713d5e34a26f54fe6aa387b2b9a6a2bceaee860f8df3f222a2"
+    }
+  },
+  "toolchain": {
+    "parserVersion": "0.9.0",
+    "parserCommit": "d2760b0",
+    "powerShellVersion": "7.6.5",
+    "powerShellEdition": "Core",
+    "platform": "Win32NT",
+    "os": "Microsoft Windows NT 10.0.26200.0"
+  },
+  "run": {
+    "startedUtc": "2026-08-27T01:34:53Z",
+    "wallMs": 51,
+    "totalMs": 185,
+    "outcome": "failed"
+  },
+  "counts": {
+    "nodes": null,
+    "edges": null,
+    "roots": null,
+    "leaves": null,
+    "unresolved": null,
+    "functions": null,
+    "classes": null,
+    "enums": null,
+    "files": null,
+    "filesScript": null,
+    "filesWithParseErrors": null,
+    "assemblies": null,
+    "declaredExports": null
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "System.Management.Automation.RuntimeException: Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path. ---> System.Management.Automation.RuntimeException: Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path. --- End of inner exception stack trace --- at System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception) at System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    },
+    {
+      "severity": "error",
+      "stage": "inventory",
+      "message": "Multiple manifests found under 'C:\\__Code\\PSModuleGraph\\gallery\\modules\\PSDepend\\0.5.0'. Pass a specific .psd1 path.",
+      "path": "",
+      "line": null
+    }
+  ],
+  "expectation": {
+    "stresses": "A module whose whole design is name-based dispatch: a dependency type in a data file names a .ps1 handler that is located and invoked at runtime, so the real call graph is written nowhere the AST can see it.",
+    "predicted": "Succeeds and returns a confidently wrong graph. The handler scripts are files in the module and become nodes, but nothing points at them, so they appear as roots or as unreachable. The dispatch is not surfaced as unresolved either, because there is no command name to be unresolved about. This is the worst outcome shape in the corpus: not an error, a misrepresentation."
+  }
+}

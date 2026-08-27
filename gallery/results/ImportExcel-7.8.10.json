@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "1.0.0",
+  "module": {
+    "name": "ImportExcel",
+    "version": "7.8.10",
+    "source": {
+      "repository": "PSGallery",
+      "uri": "https://www.powershellgallery.com/api/v2/package/ImportExcel/7.8.10",
+      "sha256": "d8a1d79dc8cf10c0eea30b68b70459b3fb4cac0042fb756fcb23890671857e4c"
+    }
+  },
+  "toolchain": {
+    "parserVersion": "0.9.0",
+    "parserCommit": "d2760b0",
+    "powerShellVersion": "7.6.5",
+    "powerShellEdition": "Core",
+    "platform": "Win32NT",
+    "os": "Microsoft Windows NT 10.0.26200.0"
+  },
+  "run": {
+    "startedUtc": "2026-08-27T01:34:29Z",
+    "wallMs": 6860,
+    "totalMs": 7513,
+    "outcome": "ok"
+  },
+  "counts": {
+    "nodes": 105,
+    "edges": 148,
+    "roots": 35,
+    "leaves": 49,
+    "unresolved": 295,
+    "functions": 102,
+    "classes": 2,
+    "enums": 0,
+    "files": 215,
+    "filesScript": 212,
+    "filesWithParseErrors": 0,
+    "assemblies": 4,
+    "declaredExports": 78
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "stage": "graph",
+      "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
+      "path": "",
+      "line": null
+    }
+  ],
+  "expectation": {
+    "stresses": "RequiredAssemblies and shipped DLLs beside a large script surface. The file inventory has to carry .dll entries it cannot parse without treating them as parse failures.",
+    "predicted": "Succeeds. Roughly ninety exported functions become nodes; the DLLs appear in the assembly list and contribute no nodes and no diagnostics. The risk is that an unparseable .dll is counted as a file that failed to parse, which would make every binary module look broken."
+  }
+}
