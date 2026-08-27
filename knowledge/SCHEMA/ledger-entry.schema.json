@@ -54,6 +54,18 @@
       "items": { "$ref": "#/definitions/threadId" },
       "default": []
     },
+    "supersedes_threads": {
+      "description": "Thread ids from earlier entries that a thread opened HERE replaces. A superseded thread leaves the open set exactly as a closed one does, and the body must name it so a reader can find out what replaced it - 0002-t4 in PSGraphRender was superseded in prose and dropped from the front matter, and for six entries only the prose knew.\n\nSupersede rather than close when the question is still live and has moved, and close when it is answered. The distinction is for the reader; the accounting treats them identically.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/threadId" },
+      "default": []
+    },
+    "recovers_threads": {
+      "description": "Thread ids that were dropped from an earlier entry's carries_forward without being closed or superseded, and that re-enter the open set here. It exists because two threads went that way past a green gate, and because a recovered thread is NOT a continuous one: there is a gap in its record and the entry that recovers it says so.\n\nUse it only for a genuine gap. A thread that was correctly carried needs nothing.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/threadId" },
+      "default": []
+    },
     "supersedes": {
       "description": "Ledger ids this entry revises, when a later implementation applies a split or merge an earlier one only proposed.",
       "type": "array",

@@ -18,6 +18,8 @@ BeforeAll {
                 OpenThreads    = @(Get-HashtableValue -InputObject $read.Data -Key 'open_threads' -Default @())
                 Closes         = @(Get-HashtableValue -InputObject $read.Data -Key 'closes' -Default @())
                 CarriesForward = @(Get-HashtableValue -InputObject $read.Data -Key 'carries_forward' -Default @())
+                Supersedes     = @(Get-HashtableValue -InputObject $read.Data -Key 'supersedes_threads' -Default @())
+                Recovers       = @(Get-HashtableValue -InputObject $read.Data -Key 'recovers_threads' -Default @())
                 Body           = $read.Body
                 IsValid        = $read.IsValid
             }
@@ -61,30 +63,89 @@ Describe 'The ledger' {
         }
     }
 
-    It 'accounts for every thread the previous entry left open' {
-        # THE MECHANISM. Presence-checking cannot tell whether "What I could not
-        # verify" says anything; open-thread continuity can. The tell of an
-        # entry written at the end of a long session is not a short skeptic
-        # section - it is the seven threads that quietly vanish.
+    It 'accounts for every thread that was still open, not merely for the last ones raised' {
+        # THE MECHANISM, and it was broken from v0.1.0 until v0.13.3.
+        #
+        # It compared entry N against $previous.OpenThreads - the threads the
+        # PREVIOUS ENTRY ITSELF RAISED - and never against what that entry was
+        # carrying. So a thread was guarded for exactly one iteration and was
+        # silently droppable ever after. That is not a weaker version of the
+        # rule: it is the rule holding for the case that never happens and
+        # failing for the case that does.
+        #
+        # Two went that way past a green run. `0001-t4` here, and `0002-t4` in
+        # PSGraphRender - where entry 0003's PROSE says `0003-t2` is "the open
+        # half of 0002-t4" and its front matter dropped the id without a word.
+        # The prose knew and the machine half did not, and the machine half is
+        # the one anything reads.
+        #
+        # The open set is carried explicitly:
+        #
+        #   open(N) = open(N-1) + recovers(N) - closes(N) - supersedes(N)
+        #
+        # and carries_forward(N) must equal it EXACTLY. Equality rather than
+        # containment, because a thread appearing in carries_forward without
+        # ever having been open is the same defect pointing the other way.
+        #
+        # A drop is judged over the WHOLE chain rather than in place, because a
+        # gap that a later entry owns up to is a recorded gap and a gap nobody
+        # mentions is a lost thread. That costs nothing at the point it matters:
+        # a drop made today has no later entry to recover it, so it fails today.
         if ($script:Entries.Count -lt 2) {
             Set-ItResult -Skipped -Because 'there is only one entry, so nothing precedes it'
             return
         }
 
+        $open = [System.Collections.Generic.HashSet[string]]::new(
+            [string[]]@($script:Entries[0].OpenThreads), [System.StringComparer]::Ordinal)
+        $lostAt = [ordered]@{}
+        $recoveredBy = @{}
+        $phantoms = [System.Collections.Generic.List[string]]::new()
+
         for ($i = 1; $i -lt $script:Entries.Count; $i++) {
-            $previous = $script:Entries[$i - 1]
             $current = $script:Entries[$i]
 
-            $accounted = @($current.Closes) + @($current.CarriesForward)
-            $dropped = @($previous.OpenThreads | Where-Object { $accounted -notcontains $_ })
+            foreach ($id in $current.Recovers) {
+                if (-not $recoveredBy.ContainsKey($id)) { $recoveredBy[$id] = $current.Id }
+                [void]$open.Add($id)
+            }
+            foreach ($id in @($current.Closes) + @($current.Supersedes)) { [void]$open.Remove($id) }
 
-            # Named, not counted: the failure has to say which threads vanished
-            # or it tells the reader nothing they can act on.
-            $message = "entry $($current.Id) dropped thread(s) opened by $($previous.Id): $($dropped -join ', ')"
-            @($dropped).Count | Should-Be 0 -Because $message
+            $carried = @($current.CarriesForward)
+
+            foreach ($id in @($open)) {
+                if ($carried -notcontains $id) {
+                    if (-not $lostAt.Contains($id)) { $lostAt[$id] = $current.Id }
+                    [void]$open.Remove($id)
+                }
+            }
+            foreach ($id in $carried) {
+                if (-not $open.Contains($id)) { $phantoms.Add("$id (carried by $($current.Id))") }
+            }
+
+            foreach ($id in $current.OpenThreads) { [void]$open.Add($id) }
+        }
+
+        # Named, not counted: a failure that does not say which thread vanished
+        # and where tells the reader nothing they can act on.
+        $unrecovered = @($lostAt.Keys | Where-Object { -not $recoveredBy.ContainsKey($_) } |
+                ForEach-Object { "$_ (dropped by $($lostAt[$_]))" } | Sort-Object)
+        $message = "thread(s) left the ledger without being closed, superseded or recovered: $($unrecovered -join '; '). Close them, supersede them by id, or - if the record genuinely has a gap - name them in recovers_threads and say so in the body."
+        @($unrecovered).Count | Should-Be 0 -Because $message
+
+        $message = "thread(s) carried by an entry that were not open before it: $(@($phantoms) -join '; '). A thread that was dropped needs recovers_threads, which says the record has a gap in it."
+        @($phantoms).Count | Should-Be 0 -Because $message
+    }
+    It 'names in the body every thread it supersedes or recovers' {
+        # The half that would have caught 0002-t4 from the other side. An id
+        # leaving the open set has to leave a sentence behind saying what
+        # replaced it, or what the gap in its record was.
+        foreach ($entry in $script:Entries) {
+            foreach ($id in @($entry.Supersedes) + @($entry.Recovers)) {
+                $entry.Body | Should-MatchString ([regex]::Escape("[$id]")) -Because "entry $($entry.Id) supersedes or recovers $id in its front matter and says nothing about it in its body"
+            }
         }
     }
-
     It 'closes or carries nothing that was never opened' {
         # The mirror of the rule above. Claiming to close a thread that does not
         # exist is the same failure wearing a coat.
@@ -94,8 +155,13 @@ Describe 'The ledger' {
         }
 
         foreach ($entry in $script:Entries) {
-            foreach ($id in (@($entry.Closes) + @($entry.CarriesForward))) {
-                $opened.ContainsKey($id) | Should-BeTrue -Because "entry $($entry.Id) references unknown thread $id"
+            foreach ($id in (@($entry.Closes) + @($entry.CarriesForward) + @($entry.Supersedes) + @($entry.Recovers))) {
+                # EXISTENCE, not shape. A pattern match on the id is not this:
+                # `Should-BeLikeString "0009-t*"` passed on `0009-t9`, a thread
+                # that has never existed, because a fake id of the right shape
+                # has the right shape. That cost a break to find and it is why
+                # this looks the id up rather than matching it.
+                $opened.ContainsKey($id) | Should-BeTrue -Because "entry $($entry.Id) references thread $id, which no entry ever opened"
             }
         }
     }
