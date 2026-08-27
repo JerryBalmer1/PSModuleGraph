@@ -78,6 +78,31 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Medium
 
+- **The ledger continuity gate cannot see a thread dropped from
+  `carries_forward`.** `tests/Private/LedgerContinuity.Tests.ps1` compares
+  entry N against `$previous.OpenThreads` - the threads the previous entry
+  *itself opened* - and never against what the previous entry *carried*. A
+  thread is therefore protected for exactly one iteration after it is raised
+  and is silently droppable forever after. Two have gone that way, one in
+  each repository, both past a green gate: `0001-t4` here, and `0002-t4` in
+  `PSGraphRender`, which has no gate at all. The fix is to compare against
+  the previous entry's `open_threads` plus its `carries_forward`, and it
+  must be proved falsifiable - see `.claude/skills/gate-falsifiability`.
+  *Measured in `PSGraphRender` ledger `0010-t4`.*
+- **`0001-t4` was raised, carried once, and vanished.** *"Make the store's
+  write path real."* Opened in `0001`, carried by `0002`, absent from `0003`
+  onwards with no trace in any body. `Update-KnowledgeStore` exists today, so
+  the work was probably done and nothing records that it closed this. Close
+  it with a reason, or re-open it - do not leave it in the state that made it
+  invisible. *`PSGraphRender` ledger `0010`.*
+- **Nothing totals the open threads, and doing it by hand does not scale.**
+  Eighty-eight raised across both repositories, 23 closed, 2 vanished, 63
+  open - 37 of them here. Twenty-one of the 23 closures happened in the very
+  next entry and nothing has ever closed after being carried four times, so
+  carry count is a measure of how long ago something was noticed and not a
+  priority. The table is in `PSGraphRender` ledger `0010` and is stale the
+  moment either repository writes another entry. It wants the same twenty
+  lines of code as the gate above.
 - **The skills directory is a byte-identical copy in two repositories with
   nothing keeping it in sync.** Five of the seven skills exist in both, and
   the copy in `PSGraphRender` cites a charter test that does not exist there,
