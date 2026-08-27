@@ -109,3 +109,43 @@ Describe 'The renderer this module is pinned to' -Tag 'PreTag' {
         $match.Groups['version'].Value | Should-Be $required[0].ModuleVersion
     }
 }
+
+Describe 'The version the module reports' -Tag 'PreTag' {
+    It 'is the version about to be tagged, and that tag does not exist yet' {
+        # THE DRIFT THIS CAUGHT. ModuleVersion said 0.15.0 while v0.15.1 and
+        # v0.15.2 were both tagged, so two releases shipped a module reporting a
+        # version that was already out - the same defect PSGraphRender found at
+        # its v0.13.0, in the same week, for the same reason: nothing read the
+        # field.
+        #
+        # "Matches the tag about to be applied" rather than "no tag exists for
+        # this version", and the tag about to be applied IS expressible even
+        # though it does not exist yet: the ledger entry being sealed declares
+        # it in its own front matter. That is data, written before the tag, by
+        # the iteration the tag is for.
+        #
+        # NOT gated: that CHANGELOG.md names the same version. This repository's
+        # CHANGELOG has only an [Unreleased] section and has never carried a
+        # released heading, so the check would be asserting a convention rather
+        # than enforcing one. Adding that convention is a decision, not a test.
+        $repo = Split-Path -Path $PSScriptRoot -Parent
+
+        $newest = @(Get-ChildItem -LiteralPath (Join-Path $repo 'knowledge/ledger') -Filter '*.md' -File |
+                Sort-Object Name | Select-Object -Last 1)
+        $newest.Count | Should-Be 1
+
+        $front = Get-Content -LiteralPath $newest[0].FullName -Raw
+        $declared = [regex]::Match($front, '(?m)^tag:\s*v(?<version>\d+\.\d+\.\d+)\s*$')
+        $declared.Success | Should-BeTrue -Because "$($newest[0].Name) must declare the tag it is sealing"
+        $intended = $declared.Groups['version'].Value
+
+        $manifest = Import-PowerShellDataFile -LiteralPath (
+            Join-Path $repo 'src/PSModuleGraph/PSModuleGraph.psd1') -ErrorAction Stop
+        $manifest.ModuleVersion | Should-Be $intended -Because (
+            "$($newest[0].Name) is sealing v$intended and the manifest says $($manifest.ModuleVersion)")
+
+        $existing = @(& git -C $repo tag --list "v$intended")
+        @($existing).Count | Should-Be 0 -Because (
+            "v$intended is already tagged, so this iteration is about to reuse a released version")
+    }
+}

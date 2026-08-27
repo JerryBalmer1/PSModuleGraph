@@ -452,3 +452,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   down `Get-PSModuleDependencyGraph`, which calls the former.
 
 [Unreleased]: https://github.com/JerryBalmer1/PSModuleGraph/commits/main
+
+## [0.16.0] - 2026-08-27
+
+### Changed
+
+- **A subject's identity is its kind, the file it is defined in, and its name.**
+  It was the name alone, and a name is not an identity: run against SqlServerDsc
+  17.5.1 the store wrote 327 subjects for 469 function definitions, and the one
+  that survived each collision named an arbitrary file - so following
+  `Get-TargetResource` landed a reader in `DSC_SqlWindowsFirewall` for a function
+  that exists in 32 of them. A wrong path rather than a missing one. It now
+  writes 469, and the old identifier resolves to all 32.
+- **256 records moved; 88 carry a former id.** An assignment is keyed by subject,
+  facet and path rather than by an identifier of its own, so only subjects owe an
+  alias. Every identifier this store ever issued still resolves.
+- `knowledge/NAMING.md` is at **0.2.0**: a split is not a rename, and an alias
+  resolves to one **or more** subjects.
+
+### Added
+
+- **`Resolve-KnowledgeSubject`** - finds the subject an identifier names, current
+  or former, and returns one or more. Until it shipped, `aliases` was a field the
+  schema allowed, the writer could not write and no reader consulted.
+  `knowledge/readers/read_store.py` does the same in five lines.
+- `Update-KnowledgeStore` **refuses** a population whose definitions would not
+  each get their own subject id, naming the shared id and the files that claim
+  it, before removing the tree it was going to replace.
+- A `PreTag` gate asserting `ModuleVersion` against the tag the newest ledger
+  entry declares. It found the manifest reporting 0.15.0 with v0.15.2 tagged.
