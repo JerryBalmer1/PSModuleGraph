@@ -67,12 +67,12 @@ was inconvenient.**
 | Stripped | Varies because | Expressed as |
 | --- | --- | --- |
 | `generatedAt` | a wall-clock stamp, different every run | a match on the key, not on the fields carrying a time |
-| the render location | an absolute path, different on every checkout | read `meta.moduleRoot` back out of the document, then blank **every** occurrence of that value |
+| the render location | an absolute path, different on every checkout | read `meta.rootPath` back out of the document, then blank **every** occurrence of that value |
 | line endings | `ConvertTo-Json` emits the platform newline, so the embedded JSON blocks are CRLF on Windows and LF elsewhere while the rest of the document is LF | one whole-document replace |
 
 **Each is one rule stated once, and that is the point.** The location
 normalisation is the clear case: the same absolute path appears as
-`meta.moduleRoot` and again as the payload's `moduleBase`, and a list of field
+`meta.rootPath` and again as the payload's `moduleBase`, and a list of field
 names would have to grow every time another one appeared. It would grow late,
 after a real difference had already been reported as a false positive — or, far
 worse, it would stop growing, and the comparison would quietly pass over a field

@@ -333,7 +333,19 @@ input[type="range"] { width: 100%; }
 .order-step .names { flex: 1 1 auto; font-size: 11px; word-break: break-word; }
 .order-step .names .exp { color: var(--fg); font-weight: 600; }
 .order-step .names .priv { color: var(--fg-dim); }
-.order-cycle { margin-top: 8px; padding: 7px 9px; background: #3a2016; border: 1px solid var(--danger); border-radius: 4px; font-size: 11px; }
+/* Shown only where a name is shared by more than one node - see 0008-t2 in
+   the ledger. Quieter and smaller than the name it follows: it is there to be
+   read when two entries look identical, not to be read first. */
+.order-step .names .qual {
+    color: var(--fg-dim);
+    font-weight: 400;
+    font-size: 10px;
+    opacity: 0.75;
+}
+.order-step .names .qual::before { content: ' \00b7 '; }
+/* break-word because the names in here can carry a path qualifier when two of
+   them are the same name, and an unbroken path ran off the right edge. */
+.order-cycle { margin-top: 8px; padding: 7px 9px; background: #3a2016; border: 1px solid var(--danger); border-radius: 4px; font-size: 11px; word-break: break-word; }
 
 #details { border-top: 1px solid var(--line); padding-top: 12px; }
 #details dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
@@ -422,6 +434,10 @@ input[type="range"] { width: 100%; }
             <div class="section">
                 <h2 id="colorby-heading"></h2>
                 <div class="radio-row" id="colorby-options"></div>
+                <!-- What the colour MEANS, beside the control that chooses it.
+                     The legend at the foot of this sidebar says the same thing
+                     and is eight blocks below the fold. -->
+                <p class="hint" id="colorby-encoding"></p>
             </div>
             <div class="section">
                 <h2>Search</h2>
@@ -773,8 +789,8 @@ const META = {
   "contractVersion": "1.1.0",
   "title": "SampleModule",
   "version": "1.2.3",
-  "generatedAt": "2026-08-26T23:13:02.4602386-07:00",
-  "rootPath": "C:\\__Code\\pmg-golden\\tests\\fixtures\\SampleModule",
+  "generatedAt": "2026-08-27T10:29:53.6013473-07:00",
+  "rootPath": "C:\\Users\\jlbal\\AppData\\Local\\Temp\\claude\\c----Code-PSGraphRender\\5220d798-0b97-4be6-a214-7261d7779c8e\\scratchpad\\wt-golden\\tests\\fixtures\\SampleModule",
   "stats": {
     "NodeCount": 9,
     "EdgeCount": 5,
@@ -843,6 +859,7 @@ const CONFIG = {
 const STRINGS = {
   "BannerCopyLabel": "Copy command",
   "BannerCopyUrlLabel": "Copy URL",
+  "ColorByEncoding": "A kind gets a colour. A metric gets a rank - the bands hold equal numbers of the values that occur, not equal slices of the range - so colour orders the nodes and the number in Details measures them.",
   "ColorByHeading": "Colour by",
   "ColorByStructure": "Kind",
   "ColorByStructureHint": "one colour per kind",
@@ -869,11 +886,11 @@ const STRINGS = {
   "FocusHintSelected": "Focused: {name}",
   "HeaderGeneratedPrefix": "  ·  generated ",
   "HeaderVersionPrefix": "v",
-  "LegendBorderWidth": "thicker border = more direct callers",
-  "LegendCalls": "calls",
+  "LegendBorderWidth": "thicker border = more direct dependents",
+  "LegendCalls": "unclassified link",
   "LegendExported": "exported",
-  "LegendHeatRank": "shaded by rank, not by size - the number is in Details",
-  "LegendHeatScale": "{metric}: {low} to {high}",
+  "LegendHeatRank": "equal bands of rank, not of value; the range is {low} to {high} and one node's number is in Details",
+  "LegendHeatScale": "{metric}, coldest to hottest",
   "LegendLinkInherits": "inherits",
   "LegendUnresolved": "unresolved",
   "LibraryMissingBody": "This report has the library it needs embedded in it, so this is not a network problem. The file may be truncated, or a content security policy may be blocking scripts inside the page. Generating the report again is the first thing to try.",
@@ -898,7 +915,7 @@ const STRINGS = {
   "ReasonEmbedded": "not available in an embedded viewer, open the report in a browser",
   "ReasonNoFile": "no file recorded",
   "ReasonNoRootPath": "root path unknown",
-  "ScaleGuard": "This module has {count} nodes. Above ~{limit} the layout stops being readable, so the view starts filtered to exported functions. Uncheck \"Exported only\" to see everything.",
+  "ScaleGuard": "This graph has {count} nodes. Above ~{limit} the drawing stops being readable, so the view opens filtered to the ones the payload marks exported. Unchecking \"Exported only\" draws the rest - past this size the page stops zooming out, so expect to pan.",
   "SelectionActionClear": "Clear selection",
   "SelectionActionCopyLinks": "Copy editor links",
   "SelectionActionCopyNames": "Copy names",
@@ -1804,6 +1821,82 @@ const STRINGS = {
         return positions;
     }
 
+    // ---- telling two nodes with one label apart --------------------------
+    // A label is not an identity. Two nodes can carry the same name and mean
+    // different things - the `ambiguous` fixture has two definitions of
+    // `restart` in two files, and SqlServerDsc has 234 of its 532 nodes in a
+    // group that shares a name, one of them 32 deep. The lists below showed
+    // names, so `restart` in one test step and `restart` in the next read as
+    // one node listed twice rather than two nodes listed once each. 0008-t2.
+    //
+    // Only an ambiguous name is qualified. Qualifying all 532 would push the
+    // useful part of the list off the side of the sidebar to solve a problem
+    // 54 names have.
+    //
+    // The qualifier is the SHORTEST TRAILING RUN of path segments that
+    // separates one member of the group from the others - the file name alone
+    // where that is enough, more when it is not. A whole path would be up to
+    // 148 characters of shared prefix for one distinguishing segment, and the
+    // shared prefix is the part that says nothing. The id is the fallback: it
+    // is unique by contract, so it always terminates, which a path scheme
+    // alone cannot promise.
+    function pathSegments(value) {
+        return String(value || '').split(/[\\/]/).filter(function (s) { return s; });
+    }
+
+    // Two vendored copies of one file can agree for four segments and differ
+    // only at a version directory, which makes the shortest unique run five
+    // segments and sixty characters - three wrapped lines of qualifier under a
+    // one-line name. The middle of that run is the part that says nothing, so
+    // past three segments it is elided.
+    //
+    // Elision can collide where the full run did not, so the elided forms are
+    // checked and the full run kept when they do. A qualifier that no longer
+    // qualifies is worse than a long one.
+    var QUALIFIER_SEGMENT_LIMIT = 3;
+
+    function elideRun(segments) {
+        if (segments.length <= QUALIFIER_SEGMENT_LIMIT) { return segments.join('/'); }
+        return segments[0] + '/…/' + segments[segments.length - 1];
+    }
+
+    function allDistinct(values) {
+        return values.every(function (v, at) {
+            return values.indexOf(v) === at && values.lastIndexOf(v) === at;
+        });
+    }
+
+    var duplicateQualifier = (function () {
+        var byName = {};
+        internal.forEach(function (n) {
+            if (!byName[n.name]) { byName[n.name] = []; }
+            byName[n.name].push(n);
+        });
+
+        var qualifier = {};
+        Object.keys(byName).forEach(function (name) {
+            var group = byName[name];
+            if (group.length < 2) { return; }
+
+            var parts = group.map(function (n) { return pathSegments(n.path); });
+            var deepest = 0;
+            parts.forEach(function (p) { if (p.length > deepest) { deepest = p.length; } });
+
+            for (var take = 1; take <= deepest; take++) {
+                var runs = parts.map(function (p) { return p.slice(-take); });
+                if (!allDistinct(runs.map(function (r) { return r.join('/'); }))) { continue; }
+
+                var shown = runs.map(elideRun);
+                if (!allDistinct(shown)) { shown = runs.map(function (r) { return r.join('/'); }); }
+                group.forEach(function (n, at) { qualifier[n.id] = shown[at]; });
+                return;
+            }
+            // No depth of path separates them, or they carry no path at all.
+            group.forEach(function (n) { qualifier[n.id] = n.id; });
+        });
+        return qualifier;
+    })();
+
     // ---- test order list -------------------------------------------------
     function renderOrder() {
         var byLevel = [];
@@ -1819,8 +1912,10 @@ const STRINGS = {
         var html = byLevel.map(function (group, index) {
             group.sort(function (a, b) { return a.name.localeCompare(b.name); });
             var names = group.map(function (n) {
+                var qualifier = duplicateQualifier[n.id];
                 return '<span class="' + (n.isExported ? 'exp' : 'priv') + '">' +
-                       escapeHtml(n.name) + '</span>';
+                       escapeHtml(n.name) + '</span>' +
+                       (qualifier ? '<span class="qual">' + escapeHtml(qualifier) + '</span>' : '');
             }).join(', ');
             return '<div class="order-step"><span class="lvl">' + (index + 1) + '</span>' +
                    '<span class="names">' + names + '</span></div>';
@@ -1831,8 +1926,14 @@ const STRINGS = {
 
         var cycleBox = document.getElementById('order-cycle');
         if (order.cyclic.length > 0) {
+            // Plain text here rather than the span the step list uses: this
+            // box is one interpolated string, and strings.psd1 holds no markup
+            // so the whole of it is escaped as one blob.
             var byId = {};
-            internal.forEach(function (n) { byId[n.id] = n.name; });
+            internal.forEach(function (n) {
+                var qualifier = duplicateQualifier[n.id];
+                byId[n.id] = qualifier ? n.name + ' (' + qualifier + ')' : n.name;
+            });
             var names = order.cyclic.map(function (id) { return byId[id] || id; }).sort().join(', ');
             // The emphasis is the page's, not the string's: strings.psd1 holds
             // no markup, so a message can never inject an element.
@@ -1863,7 +1964,9 @@ const STRINGS = {
             '<span class="swatch" style="background:' + (KIND_HEX[k] || KIND_FALLBACK) + '"></span>' +
             '<span>' + k + '</span><span class="count">' + kindCounts[k] + '</span>';
         kindBox.appendChild(label);
-        label.querySelector('input').addEventListener('change', applyFilters);
+        // Structural, like the two boxes under Filters: ticking a kind back on
+        // reveals nodes, and a revealed node needs a layout that included it.
+        label.querySelector('input').addEventListener('change', applyStructuralFilters);
     });
 
     if (unresolved.length > 0) {
@@ -1890,6 +1993,7 @@ const STRINGS = {
     }));
 
     document.getElementById('colorby-heading').textContent = str('ColorByHeading');
+    document.getElementById('colorby-encoding').textContent = str('ColorByEncoding');
     document.getElementById('colorby-options').innerHTML = colorByOptions.map(function (o) {
         // Checked is set from config, never from markup - a checked attribute
         // in the partial would make editing settings.psd1 silently do nothing.
@@ -1935,13 +2039,15 @@ const STRINGS = {
             return '<span class="chip" style="background:' + c + ';border-radius:0"></span>';
         }).join('');
 
+        // The range moved off the line under the strip and onto the line that
+        // says the strip is not an axis. Beside the swatches it read as one.
         return [
             '<div class="row">' + strip + '</div>',
             '<div class="row"><span class="hint">' +
-            escapeHtml(fmt('LegendHeatScale', {
-                metric: str(metricStringKey(metricId)), low: low, high: high
-            })) + '</span></div>',
-            '<div class="row"><span class="hint">' + escapeHtml(str('LegendHeatRank')) + '</span></div>'
+            escapeHtml(fmt('LegendHeatScale', { metric: str(metricStringKey(metricId)) })) +
+            '</span></div>',
+            '<div class="row"><span class="hint">' +
+            escapeHtml(fmt('LegendHeatRank', { low: low, high: high })) + '</span></div>'
         ];
     }
 
@@ -2014,9 +2120,33 @@ const STRINGS = {
         reapplyFocus();
     }
 
+    // A node the reader can see needs a position from a layout that included
+    // it. foundationPositions() places the VISIBLE set - see foundation.js -
+    // so a node hidden when the layout last ran has never been placed at all
+    // and sits at the origin, which is where the top-left node of the drawing
+    // already is.
+    //
+    // That one fact produced three separate ledger threads, none of which
+    // named it: an invented node drawn on top of a real one (0008-t1), two
+    // unresolved targets drawn as one node (0010-t3 - they are two nodes with
+    // two ids, stacked), and unchecking "Exported only" moving nothing
+    // (0010-t2, where 371 of SqlServerDsc's nodes arrived in the same corner).
+    //
+    // The checkboxes relayout and the search box does not. A checkbox is a
+    // decision about which nodes belong on the page and is worth redrawing
+    // for; the search box fires on every keystroke, and a graph that
+    // rearranges itself mid-word is worse than the defect. Search is also
+    // safe: it can only hide nodes a layout has already placed, so it cannot
+    // strand one at the origin.
+    function applyStructuralFilters() {
+        applyFilters();
+        runLayout();
+        fitVisible();
+    }
+
     searchEl.addEventListener('input', applyFilters);
-    exportedOnlyEl.addEventListener('change', applyFilters);
-    showUnresolvedEl.addEventListener('change', applyFilters);
+    exportedOnlyEl.addEventListener('change', applyStructuralFilters);
+    showUnresolvedEl.addEventListener('change', applyStructuralFilters);
 
     // ---- focus mode ------------------------------------------------------
     var focused = null;
@@ -3036,10 +3166,12 @@ const STRINGS = {
     // First paint. Filters run before the first layout, so nodes that start
     // hidden - unresolved externals are off by default - never occupy space in
     // it. Cytoscape excludes display:none elements from layouts.
+    //
+    // Filter, lay out, fit is one act and not three: every later change to the
+    // visible set does the same three things in the same order, so they are
+    // one call. When they were three, this was the only place all three ran.
     renderOrder();
-    applyFilters();
-    runLayout();
-    fitVisible();
+    applyStructuralFilters();
 }());
 </script>
 </body>

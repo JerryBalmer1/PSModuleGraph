@@ -89,13 +89,22 @@ Describe 'The extraction of the renderer into PSGraphRender' {
         #   v0.11.0 every node id changed shape by design.
         #   v0.12.0 links gained a resolution field.
         #   v0.13.0 the renderer pin moved.
-        #   v0.15.0 THIS ONE. The renderer's heat-ramp comment was corrected -
-        #           it described an intention where a measurement was needed -
-        #           and the comment is inlined into the document. Rendered from
-        #           a detached worktree of 0edaca4 against PSGraphRender 0.11.0.
+        #   v0.15.0 The renderer's heat-ramp comment was corrected - it
+        #           described an intention where a measurement was needed - and
+        #           the comment is inlined into the document. Rendered from a
+        #           detached worktree of 0edaca4 against PSGraphRender 0.11.0.
         #           A cosmetic change to a vendored comment, caught by this
         #           test, which is the smallest thing it has ever caught and
         #           exactly what it is for now.
+        #   v0.15.1 THIS ONE. PSGraphRender 0.12.0 fixed four visual defects:
+        #           a node revealed after the first paint is laid out rather
+        #           than left at the origin, a label shared by two nodes is
+        #           qualified, the banner stopped promising a view the page
+        #           will not give, and the colour encoding is stated where the
+        #           colour is chosen. That is one stylesheet rule, five
+        #           strings, one partial and three scripts, all inlined here.
+        #           Rendered from a detached worktree of f93c70d against
+        #           PSGraphRender 0.12.0. Decided there, recorded here.
         Import-PSModuleGraphUnderTest
 
         $graph = Get-PSModuleDependencyGraph -Path (Get-SampleModulePath)
