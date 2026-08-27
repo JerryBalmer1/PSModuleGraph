@@ -773,8 +773,8 @@ const META = {
   "contractVersion": "1.1.0",
   "title": "SampleModule",
   "version": "1.2.3",
-  "generatedAt": "2026-08-26T19:47:41.3009442-07:00",
-  "rootPath": "C:\\__Code\\PSModuleGraph\\tests\\fixtures\\SampleModule",
+  "generatedAt": "2026-08-26T23:13:02.4602386-07:00",
+  "rootPath": "C:\\__Code\\pmg-golden\\tests\\fixtures\\SampleModule",
   "stats": {
     "NodeCount": 9,
     "EdgeCount": 5,
@@ -1151,15 +1151,27 @@ const STRINGS = {
         return (m && typeof m[id] === 'number') ? m[id] : 0;
     }
 
-    // Rank, not magnitude. Blast radius is heavily skewed - on this module one
-    // node scores 30 and most score 0 to 3 - so a linear scale would paint
-    // nearly everything the coldest colour and answer no question at all. Rank
-    // spreads the ramp across the values that actually occur.
+    // Rank over DISTINCT VALUES, not magnitude. A linear scale on a skewed
+    // metric paints nearly everything the coldest colour and answers no
+    // question at all.
     //
-    // The cost is that colour is no longer proportional: two adjacent ranks can
-    // look far apart. That is why every panel that shows a node also shows the
-    // raw number, and why the legend labels its ends with real values rather
-    // than with "low" and "high".
+    // MEASURED, at v0.11.0, on SqlServerDsc - 532 nodes, blast radius from 0 to
+    // 281, median 1, 36 distinct values. The outliers separate cleanly and are
+    // easy to find on the page. 87% OF NODES LAND IN THE COLDEST QUARTER OF THE
+    // RAMP. Both halves of that are the design working: rank spreads the ramp
+    // across the values that occur, and the values that occur are not spread
+    // evenly across the nodes.
+    //
+    // This comment previously said rank "spreads the ramp across the values
+    // that actually occur" and stopped there, which described an intention. It
+    // took a screenshot to notice the difference between values and nodes, and
+    // nobody had taken one. See docs/constraints.md.
+    //
+    // So: this answers "which of these is worst" well and "is this one worse
+    // than that one" not at all. The second question is answered exactly by the
+    // raw number, which every panel showing a node also shows. The legend
+    // saying that colour is rank rather than magnitude is open as 0012-t1 - the
+    // ramp is accepted, the page implying otherwise is not.
     function rankScale(values) {
         var distinct = [];
         var seen = {};

@@ -16,7 +16,7 @@ BeforeAll {
 
             1. generatedAt   - a wall-clock stamp, different on every run.
             2. the fixture's - an absolute path. Taken from the document's own
-               own location     meta.moduleRoot and then replaced everywhere it
+               own location     meta.rootPath and then replaced everywhere it
                                 appears, rather than field by field: it shows up
                                 in meta.moduleRoot and in the payload's
                                 moduleBase, and a list of field names would have
@@ -39,9 +39,24 @@ BeforeAll {
 
         # The document says where it was rendered from. Read it back out and
         # blank every occurrence, in the JSON-escaped form the payload carries.
-        $rootMatch = [regex]::Match($normalised, '"moduleRoot": "([^"]*)"')
-        if ($rootMatch.Success -and $rootMatch.Groups[1].Value) {
-            $normalised = $normalised.Replace($rootMatch.Groups[1].Value, '<root>')
+        #
+        # `rootPath` FIRST, `moduleRoot` second. The field was renamed at
+        # renderer v0.3.0 and this matched only the old name, so from that
+        # version until v0.15.0 THIS NORMALISATION DID NOTHING - and nothing
+        # said so, because the golden had always been re-recorded in the same
+        # directory the test runs in, so the two paths were identical and there
+        # was nothing to normalise. It surfaced the first time a golden was
+        # recorded from a detached worktree, which is what
+        # .claude/skills/golden-recording asks for and exactly the class of
+        # error it says a worktree exists to expose.
+        #
+        # Both names are matched rather than the old one dropped: a golden
+        # recorded before v0.3.0 is still a document this may be pointed at.
+        foreach ($field in 'rootPath', 'moduleRoot') {
+            $rootMatch = [regex]::Match($normalised, "`"$field`": `"([^`"]*)`"")
+            if ($rootMatch.Success -and $rootMatch.Groups[1].Value) {
+                $normalised = $normalised.Replace($rootMatch.Groups[1].Value, '<root>')
+            }
         }
 
         $normalised
@@ -65,6 +80,22 @@ Describe 'The extraction of the renderer into PSGraphRender' {
         # When this fails: find the cause. Do not re-record the golden and do
         # not loosen ConvertTo-ComparableDocument. Re-recording turns the one
         # artifact that can detect a regression into a description of it.
+        #
+        # RECORDING LOG - what this file is a recording OF, which is the half
+        # that evaporates. See .claude/skills/golden-recording.
+        #
+        #   v0.9.0  the last commit before the renderer moved out. A match was
+        #           evidence the move changed nothing.
+        #   v0.11.0 every node id changed shape by design.
+        #   v0.12.0 links gained a resolution field.
+        #   v0.13.0 the renderer pin moved.
+        #   v0.15.0 THIS ONE. The renderer's heat-ramp comment was corrected -
+        #           it described an intention where a measurement was needed -
+        #           and the comment is inlined into the document. Rendered from
+        #           a detached worktree of 0edaca4 against PSGraphRender 0.11.0.
+        #           A cosmetic change to a vendored comment, caught by this
+        #           test, which is the smallest thing it has ever caught and
+        #           exactly what it is for now.
         Import-PSModuleGraphUnderTest
 
         $graph = Get-PSModuleDependencyGraph -Path (Get-SampleModulePath)
