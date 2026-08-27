@@ -194,7 +194,14 @@ Describe 'Every identifier this store used to issue still reaches something' {
                 param($Root)
                 Import-KnowledgeSubject -Path (Join-Path $Root 'subjects')
             })
-        $script:Claimed = @{}
+        # ORDINAL, not a hashtable. PowerShell hashtable keys are
+        # case-insensitive and knowledge/NAMING.md forbids assuming they are:
+        # a URN's path segment preserves case, so Get-PSModuleClass and
+        # get-psmoduleclass are two identifiers. Written as @{} first, this
+        # whole Describe stayed green while the frozen alias builder was
+        # deliberately changed to lowercase every name it produced.
+        $script:Claimed = [System.Collections.Generic.Dictionary[string, System.Collections.Generic.List[string]]]::new(
+            [System.StringComparer]::Ordinal)
         foreach ($subject in $script:Written) {
             foreach ($alias in @($subject.Aliases)) {
                 if (-not $alias) { continue }
@@ -218,28 +225,36 @@ Describe 'Every identifier this store used to issue still reaches something' {
         # A former id equal to the id it replaced is deliberately not recorded -
         # a script node at the module root did not move - so those are excluded
         # rather than expected.
-        $moved = @($map.Former | Where-Object { $map.Ids -notcontains $_ } | Sort-Object -Unique)
+        $unchanged = [System.Collections.Generic.HashSet[string]]::new(
+            [string[]]$map.Ids, [System.StringComparer]::Ordinal)
+        $moved = @($map.Former | Where-Object { -not $unchanged.Contains($_) } | Sort-Object -Unique)
         $moved.Count | Should-BeGreaterThan 0
 
+        # Counted with a sample rather than asserted as a collection: broken,
+        # this names all 87 in one line, and a wall of ids hides the count that
+        # says what happened. Same reasoning as Format-Sample in
+        # KnowledgeRoundTrip.Tests.ps1.
         $orphaned = @($moved | Where-Object { -not $script:Claimed.ContainsKey($_) })
-        @($orphaned) | Should-BeCollection @() -Because (
-            'an id nothing claims is an id that stopped resolving')
+        $orphaned.Count | Should-Be 0 -Because (
+            "an id nothing claims is an id that stopped resolving. $($orphaned.Count) of " +
+            "$($moved.Count) unclaimed, first: $(($orphaned | Select-Object -First 5) -join ', ')")
     }
 
     It 'claims no alias the old generator would never have issued' {
         # The reverse containment, and the one a sample cannot give. Without it
         # a mistyped alias passes as long as the real one is also present, and
         # the store asserts an identifier that never existed.
-        $issued = @{}
+        $issued = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         foreach ($module in 'src/PSModuleGraph', 'tests/fixtures/SampleModule') {
             foreach ($id in (Get-SubjectIdMap -ModulePath (Join-Path $script:Repo $module)).Former) {
-                $issued[$id] = $true
+                $issued.Add($id) | Out-Null
             }
         }
 
-        $invented = @($script:Claimed.Keys | Where-Object { -not $issued.ContainsKey($_) } | Sort-Object)
-        @($invented) | Should-BeCollection @() -Because (
-            'an alias that was never an id resolves, wrongly, and says the store used to call it that')
+        $invented = @($script:Claimed.Keys | Where-Object { -not $issued.Contains($_) } | Sort-Object)
+        $invented.Count | Should-Be 0 -Because (
+            'an alias that was never an id resolves, wrongly, and says the store used to call it that. ' +
+            "$($invented.Count) invented, first: $(($invented | Select-Object -First 5) -join ', ')")
     }
 
     It 'resolves every alias it claims to at least one record on disk' {
