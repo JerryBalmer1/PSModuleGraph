@@ -127,17 +127,34 @@ function Get-PSModuleAssembly {
                     if ($el -is [System.Management.Automation.Language.CommandParameterAst]) {
                         $paramName = $el.ParameterName
                         $argText = $null
+                        $argAst = $null
                         if ($null -ne $el.Argument) {
-                            $argText = $el.Argument.Extent.Text.Trim('"', "'")
+                            $argAst = $el.Argument
                         }
                         elseif (($i + 1) -lt $elements.Count -and $elements[$i + 1] -isnot [System.Management.Automation.Language.CommandParameterAst]) {
-                            $argText = $elements[$i + 1].Extent.Text.Trim('"', "'")
+                            $argAst = $elements[$i + 1]
                             $i++
+                        }
+                        if ($null -ne $argAst) {
+                            $argText = $argAst.Extent.Text.Trim('"', "'")
                         }
 
                         if ($paramName -in @('Path', 'LiteralPath') -and $argText) {
-                            $pathValue = $argText
-                            $assemblyName = Split-Path -Path $argText -Leaf
+                            # An -Path argument that is an expression is not a path.
+                            # Handing its text to a path cmdlet reads the leading token
+                            # as a provider name and takes the whole module down, and
+                            # dropping it would hide an assembly the module really
+                            # loads. Reported instead, named by the expression that
+                            # produces it, with the path left unresolved.
+                            $literal = Resolve-AstLiteralString -AstElement $argAst
+                            if ($literal) {
+                                $pathValue = $literal
+                                $assemblyName = Get-PathLeafSafe -Path $literal
+                            }
+                            else {
+                                $assemblyName = $argText
+                                $detailParts.Add('ComputedPath')
+                            }
                         }
                         elseif ($paramName -eq 'AssemblyName' -and $argText) {
                             $assemblyName = $argText
@@ -160,11 +177,16 @@ function Get-PSModuleAssembly {
                 $exists = $false
                 $resolvedPath = $null
                 if ($pathValue) {
-                    $candidate = if ([System.IO.Path]::IsPathRooted($pathValue)) {
+                    # A literal out of someone else's source is still only a string.
+                    # IsPathRooted throws on invalid characters under .NET Framework,
+                    # which would put the failure back where it just came from.
+                    $rooted = $false
+                    try { $rooted = [System.IO.Path]::IsPathRooted($pathValue) } catch { $rooted = $false }
+                    $candidate = if ($rooted) {
                         $pathValue
                     }
                     else {
-                        Join-Path (Split-Path -Path $file.Path -Parent) $pathValue
+                        Join-Path (Split-Path -LiteralPath $file.Path -Parent) $pathValue
                     }
                     if (Test-Path -LiteralPath $candidate) {
                         $resolvedPath = $candidate

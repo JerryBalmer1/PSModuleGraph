@@ -261,3 +261,51 @@ function Get-AstHashtableEntry {
 
     return $null
 }
+
+function Resolve-AstLiteralString {
+    <#
+    .SYNOPSIS
+        Returns the literal string an AST element denotes, or $null when it
+        denotes an expression.
+    .DESCRIPTION
+        The extent text of `([System.IO.Path]::Combine($here, 'x.dll'))` is not a
+        path and must not be handed to something that resolves paths: the leading
+        token is read as a provider name and the failure surfaces nowhere near
+        the cause. An expandable string is an expression too - "$root\x.dll" is
+        only a path once something has run.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        $AstElement
+    )
+
+    if ($null -eq $AstElement) { return $null }
+    if ($AstElement -is [System.Management.Automation.Language.StringConstantExpressionAst]) {
+        return $AstElement.Value
+    }
+
+    return $null
+}
+
+function Get-PathLeafSafe {
+    <#
+    .SYNOPSIS
+        The last segment of a path-shaped string, by string operations only.
+    .DESCRIPTION
+        Split-Path is provider-aware and throws on text that is not a path.
+        Nothing that reads other people's source can assume it holds one.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Path
+    )
+
+    if (-not $Path) { return $Path }
+    return @($Path.Split([char]92, [char]47))[-1]
+}
