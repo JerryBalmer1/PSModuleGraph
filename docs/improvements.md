@@ -83,12 +83,6 @@ the next change to this cheaper**. Three concrete tests:
   pass. It selected three this iteration, so nothing is wrong today. The sibling
   repository shipped four tags behind exactly this before anyone noticed, which
   is the argument for the guard rather than for watching the number.
-- **A "root" can be an artefact of the name index.** `Get-PSModuleDependencyGraph`
-  keys the node index on the lowercased bare name, so the last definition parsed
-  wins and every earlier one becomes unreachable by any edge — then reported as a
-  root. SqlServerDsc 17.5.1: 53 duplicated names, 144 of 496 nodes shadowed, 186
-  roots. The narrow fix is to detect the collision and say so; the real fix is
-  `0012-t5`, which is Large. *Ledger `0012`.*
 - **The unresolved report drops a third of Pester's call sites.** A call through
   a variable yields no command name, the fallback takes the extent text, and the
   graph's leading-sigil filter removes it — 491 of 1,552 sites, reported nowhere.
@@ -105,11 +99,6 @@ the next change to this cheaper**. Three concrete tests:
   0.5.0 ships two root manifests and cannot be pointed at. Which one wins is a
   decision — `RootModule` and the parent folder name are both candidates — which
   is why it is here and not fixed. *Ledger `0012`.*
-- **The parser writes an error record on the first file of every module.**
-  `Get-Variable -Scope Script -ErrorAction SilentlyContinue` suppresses the
-  action and still records the error, so `Get-PSModuleDependencyGraph
-  -ErrorAction Stop` fails on every input. Every result file in
-  `gallery/results/` carries it. *Ledger `0012`.*
 - **`gallery/` is outside lint and outside the build, and so is `corpus/`.** Two
   directories of `.ps1` that the analyzer never sees, because it is scoped to
   `src/`. It was one for four tags (`0008-t3`); a second instance is the signal
@@ -181,6 +170,23 @@ the next change to this cheaper**. Three concrete tests:
 
 ## Done
 
+- **A "root" was an artefact of the name index.** The index mapped a lowercased
+  bare name to one id, so the last definition parsed won and every earlier one
+  became unreachable by any edge - then reported as a root, which the report
+  labels "entry point or dead code". A node's identity is now its qualified path.
+  SqlServerDsc's 144 unaddressable nodes are addressable, and the ambiguity that
+  remains is marked on the edge rather than resolved away. *Logged Large in
+  `0012-t5`, authorised and taken in `0013`.*
+- **The parser wrote an error record on the first file of every module.**
+  `-ErrorAction SilentlyContinue` suppresses the display and still records, so
+  four probes for an ordinary absence trained every caller to ignore errors and
+  made the command unusable under `-ErrorAction Stop`. Measured before changing:
+  one record per session, hiding nothing. *Ledger `0013`.*
+- **The build resolved whatever renderer was next door.** `Dependencies` found a
+  PSGraphRender and reported success without checking which. It now checks every
+  constraint `RequiredModules` can express and prints the version. It would still
+  not have caught the drift that prompted it, because the manifest declares a
+  floor - which is `0013-t2`. *Ledger `0010-t1`, closed in `0013`.*
 - **The context menu was markup.** Became the `NODE_ACTIONS` registry, so a new
   action is one entry with a `check` that greys it out with a reason rather than
   hiding it. This is the shape the other registries copy.

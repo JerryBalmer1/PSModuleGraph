@@ -245,6 +245,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: a node's `Id` changes shape.** It was `kind:name`; it is now
+  `kind:module/relative/path:Name`. Anything that built or matched an id by hand
+  - `Where-Object Id -eq 'function:Foo'` - has to change. `Name` is untouched:
+  the id got longer, the label a reader sees did not.
+
+  A node's identity was its lowercased bare name, so two functions called
+  `Get-TargetResource` in two resource folders were two nodes and one addressable
+  target. Every edge to that name landed on whichever was parsed last, the rest
+  could not be reached by anything, and they were then reported as roots - which
+  the report labels "entry point or dead code". SqlServerDsc 17.5.1 has 32
+  definitions of `Get-TargetResource` and 53 duplicated names; 144 of its 496
+  nodes were unreachable.
+
+  A call by name no longer has one answer. PowerShell gives every function in a
+  module one scope and the last loaded wins, and load order is not in the source.
+  Each edge carries `Resolution` - `Unique`, `SameFile`, or `Ambiguous` - and an
+  ambiguous call produces an edge to every candidate rather than one arbitrary
+  edge. `Stats` gains `AmbiguousNameCount` and `AmbiguousEdgeCount`, and the
+  graph carries `AmbiguousNames`.
+
+  The synthetic top-level node is now one per file rather than one per module. It
+  was the same collision in the one place it was guaranteed, and it reported the
+  path of whichever file was parsed first.
+- **The build says which renderer it resolved, and refuses the wrong one.** The
+  `Dependencies` task found a PSGraphRender and reported success without checking
+  its version. Every constraint `RequiredModules` can express is now checked and
+  the version is printed beside the path.
 - **Graph edges use `Source`/`Target` instead of `From`/`To`.** Edge objects now
   expose `Source`, `Target`, `SourceName`, and `TargetName`; unresolved
   references expose `Source` and `SourceName`. The JSON export renames the
@@ -272,6 +299,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every caller collected an error record for an absence that is ordinary.**
+  `-ErrorAction SilentlyContinue` suppresses the display and still writes to
+  `$Error` and to any caller's `-ErrorVariable`, so four probes for an unset
+  variable meant `Get-PSModuleDependencyGraph` raised "Cannot find a variable
+  with the name 'PSModuleParsedFileCache'" on the first file of every module -
+  and could not be used at all with `$ErrorActionPreference = 'Stop'`.
 - **A `using module` line made a module unreadable.** `UsingStatementAst` carries
   `Name` and `ModuleSpecification` and has never had a `ModuleName`; reading one
   under `Set-StrictMode` raised `PropertyNotFoundStrict` from inside
