@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A procedure followed twice is written down.** `gate-falsifiability`,
+  `golden-recording` and `corpus-diff` join the four closing skills, and the
+  shape behind five separate defects is recorded as
+  `knowledge/patterns/0017-nothing-could-have-said-otherwise.md`. The
+  improvement loop gained one question: did I follow a procedure I have
+  followed before, and is it written down.
 - **A corpus of real modules, and a committed record of what the parser does
   with them.** `gallery/` holds eight modules from the PowerShell Gallery pinned
   by version — a plain script module, one with shipped assemblies, an Azure
