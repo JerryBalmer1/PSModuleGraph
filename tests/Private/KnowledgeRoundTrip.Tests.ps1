@@ -51,18 +51,30 @@ Describe 'The store is current' {
 
         # Compared by relative path and content, so the failure names the file
         # rather than reporting that two directories differ.
+        #
+        # Read as written and compared as read. This used to normalise CRLF to
+        # LF first, which made both sides agree about an inconsistency neither
+        # could then report: the writer emitted LF front matter over a CRLF
+        # body for every record in the store, and the committed blobs were LF
+        # only because .gitattributes normalises on the way in. A test that
+        # normalises the thing the writer claims to guarantee is not checking
+        # that guarantee. 0022-t2.
+        #
+        # Ordinal, because a relative path is an identity here, and two records
+        # differing only in case are two records on the platform half of this
+        # store's readers are on.
         function Get-Fingerprint {
             param([string] $Root)
-            $map = @{}
+            $map = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::Ordinal)
             foreach ($area in 'subjects', 'assignments') {
                 $base = Join-Path $Root $area
                 if (-not (Test-Path -LiteralPath $base)) { continue }
                 foreach ($file in (Get-ChildItem -LiteralPath $base -Filter *.md -File -Recurse)) {
                     $relative = $file.FullName.Substring($Root.Length).TrimStart('\', '/').Replace('\', '/')
-                    $map[$relative] = (Get-Content -LiteralPath $file.FullName -Raw).Replace("`r`n", "`n")
+                    $map[$relative] = [System.IO.File]::ReadAllText($file.FullName)
                 }
             }
-            $map
+            , $map
         }
 
         $committed = Get-Fingerprint -Root $script:Knowledge

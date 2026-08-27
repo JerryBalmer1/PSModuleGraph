@@ -87,6 +87,14 @@ function Write-KnowledgeRecord {
         Written with LF endings and no BOM. The store is meant to travel, and a
         CRLF diff against a copy checked out elsewhere is noise that hides the
         change a reader is looking for.
+
+        The Body is normalised, not merely joined. Joining the lines with LF
+        settles the endings BETWEEN them and says nothing about the ones inside
+        a value, and $Body arrives from a here-string carrying its source
+        file's endings - so every record was LF front matter over a CRLF body
+        until v0.16.1. Front matter is deliberately left alone: a scalar
+        holding a carriage return is a record this store's own reader cannot
+        read, and normalising it here would hide that rather than fix it.
     .PARAMETER Path
         Destination file.
     .PARAMETER Document
@@ -119,7 +127,8 @@ function Write-KnowledgeRecord {
         New-Item -ItemType Directory -Path $directory -Force | Out-Null
     }
 
-    $lines = @('---') + (ConvertTo-FlatKnowledgeYaml -Document $Document) + @('---', '') + ($Body.TrimEnd())
+    $body = $Body.TrimEnd().Replace("`r`n", "`n").Replace("`r", "`n")
+    $lines = @('---') + (ConvertTo-FlatKnowledgeYaml -Document $Document) + @('---', '') + $body
     $text = ($lines -join "`n") + "`n"
     [System.IO.File]::WriteAllText($Path, $text, [System.Text.UTF8Encoding]::new($false))
     1
