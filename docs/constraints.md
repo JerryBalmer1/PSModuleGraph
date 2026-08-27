@@ -99,11 +99,13 @@ For completeness, because they read the same way in a diff and are not the same
 fact. These were **struck**, not accepted — the question had already been
 answered and nobody had removed the thread:
 
-- `0001-t7` — *the facet seam in the report, designed in
-  `docs/html-architecture.md` and not built.* **The report left this repository
-  at v0.9.0 and that file does not exist here.** Sixteen carries, describing an
-  architecture that has been gone for six versions. The oldest thread in the
-  project.
+- ~~`0001-t7` — *the facet seam in the report, designed in
+  `docs/html-architecture.md` and not built.*~~ **Struck at v0.15.0 and
+  recovered at v0.15.1.** The reason given was that the file had left this
+  repository at v0.9.0. It had not. It is here, it is tracked, and nothing
+  emits `nodes[].facets`, so the thread was live the whole time. The oldest
+  thread in the project, and it was nearly lost to a sentence nobody checked.
+  `knowledge/ledger/0020`.
 - `0015-t2` — *the page this whole sequence was for has not been looked at.* It
   has, twice, with committed screenshots — `PSGraphRender` `0008` and `0010`.
 - `0001-t4` — *make the store's write path real.* `Update-KnowledgeStore` exists
