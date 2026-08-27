@@ -64,6 +64,13 @@ the next change to this cheaper**. Three concrete tests:
 
 ---
 
+
+> **Before proposing to fix something, read [`constraints.md`](constraints.md).**
+> It lists what this repository has decided to live with and why. Those are
+> not backlog: they were raised as threads, ruled on, and retired as
+> accepted rather than deferred. Disagreeing with one is a proposal, not an
+> edit.
+
 ## Open
 
 ### Small
