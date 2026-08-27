@@ -97,6 +97,68 @@ function Get-KnowledgeSubjectId {
     "psmodule:$ModuleName/$kind/$slug"
 }
 
+function Assert-DistinctSubjectId {
+    <#
+    .SYNOPSIS
+        Refuses a population whose definitions do not get one subject id each.
+    .DESCRIPTION
+        Free, exhaustive and it would have caught the original defect at the
+        moment of writing rather than months later by inspection: count the
+        definitions, count the distinct ids, and if the two differ say which id
+        is shared and by what.
+
+        A store that collapses does not lose the extra definitions quietly. One
+        record survives per id and it carries a `source:`, so the store answers
+        a question about 32 functions by naming one file - CONFIDENTLY WRONG
+        rather than absent, which is the harder failure to notice and the one
+        this project keeps finding.
+
+        Called BEFORE the module's existing records are removed. A refusal that
+        has already deleted the tree it refused to replace is worse than the
+        collapse it prevented.
+    .PARAMETER Node
+        The graph nodes about to become subjects.
+    .PARAMETER ModuleName
+        Module the nodes belong to.
+    .PARAMETER ModuleBase
+        Directory paths are reported relative to, so the message carries no
+        machine.
+    #>
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Node,
+        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $ModuleName,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $ModuleBase
+    )
+
+    $byId = @{}
+    foreach ($item in $Node) {
+        $id = Get-KnowledgeSubjectId -Node $item -ModuleName $ModuleName
+        if (-not $byId.ContainsKey($id)) {
+            $byId[$id] = [System.Collections.Generic.List[object]]::new()
+        }
+        $byId[$id].Add($item)
+    }
+
+    $shared = @($byId.Keys | Where-Object { $byId[$_].Count -gt 1 } | Sort-Object)
+    if (-not $shared.Count) { return }
+
+    # One collision completely beats fifty-one partially. The counts say how
+    # big the problem is; the named pair says what to look at first.
+    $worst = $byId[$shared[0]]
+    $where = @($worst | ForEach-Object {
+            if ($_.Path) { ConvertTo-SubjectSourcePath -Path $_.Path -Base $ModuleBase } else { '<no file>' }
+        } | Sort-Object)
+
+    $lost = $Node.Count - $byId.Keys.Count
+    $also = if ($shared.Count -gt 1) { " $($shared.Count - 1) other id(s) are shared as well." } else { '' }
+
+    throw ("'{0}' is the subject id of {1} definitions: {2}. " -f $shared[0], $worst.Count, ($where -join ', ')) +
+        ("{0} definition(s) in {1} produce {2} distinct subject id(s), so {3} would be written over." -f
+            $Node.Count, $ModuleName, $byId.Keys.Count, $lost) + $also
+}
+
 function ConvertTo-KnowledgeFilePath {
     <#
     .SYNOPSIS

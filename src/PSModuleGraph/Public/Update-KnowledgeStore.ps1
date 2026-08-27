@@ -96,6 +96,12 @@ function Update-KnowledgeStore {
         $moduleId = "psmodule:$moduleName"
         $written = 0
 
+        # BEFORE the removal below, not after. Every definition must get its own
+        # subject id, and a population that collapses is refused rather than
+        # written - see Assert-DistinctSubjectId. Refusing after the tree was
+        # deleted would replace a wrong store with no store.
+        Assert-DistinctSubjectId -Node @($graph.Nodes) -ModuleName $moduleName -ModuleBase $target.ModuleBase
+
         # Everything this module owns is replaced, not merged: a definition that
         # has been deleted must lose its records, and merging would leave them
         # behind as facts about something that no longer exists.
