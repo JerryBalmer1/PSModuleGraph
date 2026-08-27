@@ -245,6 +245,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The renderer pin moves to PSGraphRender 0.7.0, and the payload declares view
+  model contract 1.1.0.** 0.7.0 is the first renderer that reads
+  `links[].resolution`: an edge the producer could not tie to one target is now
+  drawn dashed and faded rather than identically to one it could. A 0.3.0
+  renderer validated the same payload and drew every edge alike, which is why
+  the field shipped first and the pin moved last.
+
+  `meta.contractVersion` moves from 1.0.0 to 1.1.0 with it. A payload cannot
+  claim to be written against a contract version that does not exist yet.
 - **The payload says how each edge resolved.** `links[].resolution` carries
   `Unique`, `SameFile` or `Ambiguous` - the fact the producer has had since
   v0.11.0 and was dropping one step before a reader could see it. 702 of

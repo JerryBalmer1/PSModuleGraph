@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PSModuleGraph.psm1'
-    ModuleVersion        = '0.12.0'
+    ModuleVersion        = '0.13.0'
     GUID                 = 'a7c3e8f1-4b2d-4e9a-9c1f-6d8e5a0b3f72'
     Author               = 'Jerry Balmer'
     CompanyName          = 'Community'
@@ -19,14 +19,21 @@
     # and would have failed at the first call - the failure this entry exists to
     # move earlier.
     #
-    # 0.3.0 because the view model contract reached 1.0.0 there and this module
-    # now emits meta.title, meta.version and meta.rootPath. A 0.2.0 renderer
-    # would read none of them.
+    # 0.7.0 because the view model contract reached 1.1.0 there and this module
+    # emits links[].resolution. A 0.3.0 renderer validates the payload and
+    # renders it - the field is optional and links[] has always allowed extra
+    # properties - and draws every edge alike, so the doubt the producer went to
+    # the trouble of computing reaches nobody.
+    #
+    # Which is exactly why this is a FLOOR and not a promise. The floor says
+    # what a renderer must be able to read; it cannot say which renderer the
+    # goldens in tests/fixtures/ were recorded against, and a newer one still
+    # satisfies it and still changes them. See ledger/0013-t2.
     #
     # .github/workflows/ci.yml pins the same version and
     # tests/PreTag.Tests.ps1 asserts the two agree.
     RequiredModules      = @(
-        @{ ModuleName = 'PSGraphRender'; ModuleVersion = '0.3.0' }
+        @{ ModuleName = 'PSGraphRender'; ModuleVersion = '0.7.0' }
     )
     FunctionsToExport    = @(
         'Get-PSModuleFunction'

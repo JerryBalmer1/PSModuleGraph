@@ -62,7 +62,7 @@ function ConvertTo-GraphHtml {
     # meta.title rather than meta.moduleName is the whole argument in one field:
     # a payload describing infrastructure was filling moduleName with a region.
     $meta = [ordered]@{
-        contractVersion = '1.0.0'
+        contractVersion = '1.1.0'
         title           = $Graph.ModuleName
         version         = [string]$Graph.ModuleVersion
         generatedAt     = (Get-Date).ToString('o')
