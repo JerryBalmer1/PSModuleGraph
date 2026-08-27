@@ -11,115 +11,38 @@
   },
   "toolchain": {
     "parserVersion": "0.9.0",
-    "parserCommit": "d2760b0",
+    "parserCommit": "37259e4",
     "powerShellVersion": "7.6.5",
     "powerShellEdition": "Core",
     "platform": "Win32NT",
     "os": "Microsoft Windows NT 10.0.26200.0"
   },
   "run": {
-    "startedUtc": "2026-08-27T01:34:38Z",
-    "wallMs": 1040,
-    "totalMs": 1282,
-    "outcome": "failed"
+    "startedUtc": "2026-08-27T01:45:20Z",
+    "wallMs": 1212,
+    "totalMs": 1487,
+    "outcome": "ok"
   },
   "counts": {
-    "nodes": null,
-    "edges": null,
-    "roots": null,
-    "leaves": null,
-    "unresolved": null,
-    "functions": null,
-    "classes": null,
-    "enums": null,
+    "nodes": 4,
+    "edges": 3,
+    "roots": 1,
+    "leaves": 3,
+    "unresolved": 38,
+    "functions": 3,
+    "classes": 0,
+    "enums": 0,
     "files": 79,
     "filesScript": 6,
     "filesWithParseErrors": 0,
-    "assemblies": null,
-    "declaredExports": null
+    "assemblies": 103,
+    "declaredExports": 47
   },
   "diagnostics": [
     {
       "severity": "error",
       "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
       "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "System.Management.Automation.ActionPreferenceStopException: The running command stopped because the preference variable \"ErrorActionPreference\" or common parameter is set to Stop: Cannot find a provider with the name '([System.IO.Path]'. at System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception) at System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "System.Management.Automation.ActionPreferenceStopException: The running command stopped because the preference variable \"ErrorActionPreference\" or common parameter is set to Stop: Cannot find a provider with the name '([System.IO.Path]'. at System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception) at System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "Cannot find a provider with the name '([System.IO.Path]'.",
       "path": "",
       "line": null
     }

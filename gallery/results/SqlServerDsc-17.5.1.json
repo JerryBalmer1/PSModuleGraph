@@ -11,94 +11,38 @@
   },
   "toolchain": {
     "parserVersion": "0.9.0",
-    "parserCommit": "d2760b0",
+    "parserCommit": "37259e4",
     "powerShellVersion": "7.6.5",
     "powerShellEdition": "Core",
     "platform": "Win32NT",
     "os": "Microsoft Windows NT 10.0.26200.0"
   },
   "run": {
-    "startedUtc": "2026-08-27T01:34:46Z",
-    "wallMs": 5767,
-    "totalMs": 6175,
-    "outcome": "failed"
+    "startedUtc": "2026-08-27T01:45:28Z",
+    "wallMs": 6229,
+    "totalMs": 6607,
+    "outcome": "ok"
   },
   "counts": {
-    "nodes": null,
-    "edges": null,
-    "roots": null,
-    "leaves": null,
-    "unresolved": null,
-    "functions": null,
-    "classes": null,
-    "enums": null,
+    "nodes": 496,
+    "edges": 605,
+    "roots": 186,
+    "leaves": 137,
+    "unresolved": 528,
+    "functions": 469,
+    "classes": 18,
+    "enums": 8,
     "files": 88,
     "filesScript": 88,
     "filesWithParseErrors": 0,
-    "assemblies": null,
-    "declaredExports": null
+    "assemblies": 0,
+    "declaredExports": 170
   },
   "diagnostics": [
     {
       "severity": "error",
       "stage": "graph",
-      "message": "The property 'ModuleName' cannot be found on this object. Verify that the property exists.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
       "message": "Cannot find a variable with the name 'PSModuleParsedFileCache'.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "The property 'ModuleName' cannot be found on this object. Verify that the property exists.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "The property 'ModuleName' cannot be found on this object. Verify that the property exists.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "The property 'ModuleName' cannot be found on this object. Verify that the property exists.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "The property 'ModuleName' cannot be found on this object. Verify that the property exists.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "System.Management.Automation.CmdletInvocationException: The property 'ModuleName' cannot be found on this object. Verify that the property exists. ---> System.Management.Automation.PropertyNotFoundException: The property 'ModuleName' cannot be found on this object. Verify that the property exists. at System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception) at System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.Interpreter.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.LightLambda.RunVoid1[T0](T0 arg0) at System.Management.Automation.PSScriptCmdlet.RunClause(Action`1 clause, Object dollarUnderbar, Object inputToProcess) at System.Management.Automation.PSScriptCmdlet.DoProcessRecord() at System.Management.Automation.CommandProcessor.ProcessRecord() --- End of inner exception stack trace --- at System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception) at System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame) at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "The property 'ModuleName' cannot be found on this object. Verify that the property exists.",
-      "path": "",
-      "line": null
-    },
-    {
-      "severity": "error",
-      "stage": "graph",
-      "message": "The property 'ModuleName' cannot be found on this object. Verify that the property exists.",
       "path": "",
       "line": null
     }
