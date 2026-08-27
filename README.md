@@ -31,7 +31,16 @@ cd PSModuleGraph
 | `Export-PSModuleDependencyGraph` | JSON, Graphviz DOT, Mermaid, or CSV edge list |
 | `Test-PSModuleGraphEditorLink` | Why `vscode://` links do or do not open from a browser. Read-only |
 | `Enable-PSModuleGraphEditorLink` | Grants Chrome or Edge permission to open them. Prompts; `-Revert` undoes it |
-| `Update-KnowledgeStore` | Regenerates a module's records in `knowledge/`. Prompts; `-WhatIf` lists every file |
+| `Update-KnowledgeStore` | Regenerates a module's records in `knowledge/`. Prompts; `-WhatIf` lists every file. **See the caveat below** |
+
+**`Update-KnowledgeStore` records one subject per NAME, and a name is not an
+identity.** Run against SqlServerDsc it writes 327 subjects for 469 function
+definitions - 142 get no record at all - and the one that survives names an
+arbitrary file: `Get-TargetResource` is recorded as living in
+`DSC_SqlWindowsFirewall`, for a function that exists in 32 files. That is a wrong
+path rather than a missing one, and following it lands you in the wrong resource.
+The graph stopped collapsing same-named definitions in v0.11.0; the store has not
+caught up. Open, with the measurement, as ledger `0014-t1`.
 
 ## Parameter sets
 
@@ -52,49 +61,133 @@ Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
 dot -Tsvg ./output/graph.dot -o graph.svg
 ```
 
-`Roots` are nodes with no inbound internal edge — entry points, or dead code.
-`Unresolved` holds call targets that are not defined inside the module; they are
-surfaced rather than silently dropped, because the interesting bugs live there.
+### A node's identity is its qualified path
 
-### Interactive HTML
+**Changed in v0.11.0, and it is breaking.** A node's `Id` was `kind:name`. It is
+now `kind:module/relative/path:Name`:
+
+```
+function:public/Get-SampleThing.ps1:Get-SampleThing
+class:classes/SampleTypes.ps1:SampleBase
+script:SampleModule.psm1:<script>
+```
+
+Anything that built or matched an id by hand — `Where-Object Id -eq
+'function:Foo'` — stops matching. `Name` is untouched: the id got longer, the
+label did not, and matching on `Name` behaves as it always did.
+
+The old form could not tell two definitions apart. SqlServerDsc has **32
+functions called `Get-TargetResource`**, one per DSC resource; under the old
+identity they were 32 nodes and one addressable target, every edge landed on
+whichever was parsed last, and the other 31 could not be reached by anything.
+
+Because two definitions can now share a name, a call by name does not always
+have one answer — PowerShell gives every function in a module one scope and the
+last loaded wins, and load order is not in the source. Each edge says which it
+got:
+
+| `Resolution` | Meaning |
+| --- | --- |
+| `Unique` | One definition carries the name. |
+| `SameFile` | Several do, and the calling file has one of its own. That one. |
+| `Ambiguous` | Several do and none is in the calling file. **An edge is emitted to every candidate.** |
+
+`$graph.AmbiguousNames` lists the names this applies to, and
+`$graph.Stats.AmbiguousEdgeCount` counts the edges. On SqlServerDsc that is 702
+of 1,271 — and the reason is worth knowing: it ships two copies of
+`DscResource.Common`, so `Get-ComputerName` genuinely has two definitions and
+which one runs depends on load order.
+
+### Roots are not the same thing as dead code
+
+`Roots` are nodes with **no inbound edge from inside this module**. That is all
+it means. It is not the same as "entry points, or dead code", and on a real
+module the difference matters: SqlServerDsc reports 252 roots, of which **62 are
+`*-TargetResource` functions called by the DSC engine**, which is not in the
+module and never will be. They are entry points in the truest sense and nothing
+in the graph can see the caller.
+
+A root is one of:
+
+- something outside the module calls it — a DSC engine, a task scheduler, a
+  user at a prompt;
+- it is exported, and the caller is whoever imported the module;
+- it is a file's top level, which runs at import;
+- it is genuinely unreachable.
+
+The graph cannot tell you which. Cross-check `IsExported` and the module's
+purpose before deleting anything.
+
+`Unresolved` holds call targets not defined inside the module. They are surfaced
+rather than dropped, because the interesting bugs live there — and so are
+`RequiredModules` entries and `using module` statements, which are dependencies
+the graph cannot follow.
+
+## HTML reports
+
+**The renderer is a separate module.** `PSGraphRender` is a `RequiredModules`
+entry, so importing PSModuleGraph requires it on `PSModulePath`; the build
+resolves a sibling checkout or `$env:PSGRAPHRENDER_MODULE_PATH` and **fails by
+name naming the version it found** if it does not satisfy the manifest.
 
 ```powershell
 Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
     Export-PSModuleDependencyGraph -Format Html -Show
 ```
 
-Produces a single self-contained page: search, filter by kind or export status,
-click a node to focus its neighbourhood at a chosen depth in either direction —
-*Dependents* (what breaks if I change this) or *Dependencies* (what this needs).
-Border thickness tracks how many things depend on a node, so the heavy-bordered
-ones are the risky ones.
+Everything below the seam — the layout, the colours, the wording, which
+JavaScript library draws the graph — belongs to that module and none of it knows
+what a PowerShell module is. This one builds a **view model** and hands it over
+in one call. The boundary is
+[`contract/viewmodel.schema.json`](https://github.com/JerryBalmer1/PSGraphRender/blob/main/contract/viewmodel.schema.json),
+currently 1.1.0, and a producer in any language can satisfy it. See
+[PSGraphRender's README](https://github.com/JerryBalmer1/PSGraphRender#readme)
+for the page itself, its settings and how to change how it looks.
 
-The divider between the sidebar and the graph is draggable — the test-order list
-holds long function names that do not fit 300px. Double-click it to reset, or
-focus it and use the arrow keys.
+What this module puts in the payload:
 
-Arrows follow the reading order: in **Test order** an arrow means "test this one
-first, then the one it points at"; in **Call flow** it points caller to callee.
-Selecting a node dims everything outside its neighbourhood rather than hiding
-it, so the names around it stay readable. Inside the neighbourhood the
-connections are drawn bright and thick, and each node shades one step darker
-per hop from the one you clicked, so the chain reads as a sequence. Nodes
-connected the other way round - a dependency when you asked about dependents -
-keep their colour too, darker still: related, but not the answer.
+- one node per function, class and enum, plus one per file that has top-level
+  code, each with its qualified id, its path and its line;
+- edges, with the `Resolution` above carried as `links[].resolution`, so an
+  uncertain edge is **drawn differently rather than identically** to a certain
+  one;
+- per-node measurements — direct dependents and dependencies, and the transitive
+  `blastRadius` and `reach`;
+- unresolved targets, when you pass `-IncludeUnresolved` - see the limitation
+  below.
+
+Without `-OutputPath` the page is written under `output/reports/` in the current
+directory, which a local dev server can serve; with it, wherever you say. Omit
+`-Show` to get the document back as a string.
+
+```powershell
+Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
+    Export-PSModuleDependencyGraph -Format Html -OutputPath ./output/graph.html
+```
+
+> **`-Format Html -IncludeUnresolved` currently fails** for any module with a
+> `RequiredModules` entry or a `using module` statement. Those unresolved records
+> have no line number to carry, and the view model contract types
+> `unresolved[].startLine` as an integer, so the payload is refused at the seam.
+> The other four formats take `-IncludeUnresolved` without complaint. The error
+> suggests `-SkipValidation`, which is a `New-RenderDocument` parameter this
+> command does not expose, so there is no way past it from here. Found while
+> checking this README; logged as ledger `0016-t1`, not fixed in a docs pass.
+
+### Clicking through to the source
 
 Right-click a node for **Open File Location**, which hands the file and line to
 VS Code over a `vscode://file/` URI. The absolute path is rebuilt in the browser
-from the module root, so the payload itself keeps relative paths. On an
-unresolved external target the item reads *Open Call Site* — the only path the
-page has for one is where it is called from. **Copy Path** sits below it: a
-browser that refuses the `vscode://` scheme reports nothing back, so the page
-cannot tell you it was blocked.
+from the module root, so the payload keeps relative paths. **Copy Path** sits
+below it, because a browser that refuses the scheme reports nothing back and the
+page cannot tell you it was blocked.
 
-Note that no embedded viewer can follow a `vscode://` link — Live Preview, Simple
-Browser, a notebook output cell — because the page is sandboxed and the URI never
-reaches the OS. The page detects any embedding, says so in a banner on load, and
-greys the menu item with the reason. Open the report in a real browser for it to
-work, which is what `-Show` does.
+No embedded viewer can follow a `vscode://` link — Live Preview, Simple Browser,
+a notebook output cell — because the page is sandboxed and the URI never reaches
+the OS. The page detects embedding, says so in a banner, and greys the menu item
+with the reason. `-Show` always hands the report to the OS default handler, which
+for `.html` is your browser, including when you run it from inside VS Code —
+opening it in the editor would kill its own click-to-source.
 
 #### If Open File Location does nothing
 
@@ -130,62 +223,64 @@ every origin and is deliberately opt-in.
 
 Either way, **Copy Editor Link** always works: paste the URI into the Run dialog.
 
-#### Changing the page defaults
+### What the page does with the graph
 
-The page's starting values live in `Assets/graph.defaults.psd1` inside the
-installed module — zoom speed and its slider range, node type size and width
-cap, layout spacing, the large-graph threshold, sidebar geometry, and focus
-depth. It is read with `Import-PowerShellDataFile`, so it is parsed as data and
-never executed.
+Three orderings, and the page opens in **Foundation**: vertical, with what
+everything else rests on at the bottom. **Test order** lays dependencies out
+left to right, so a node's column is the step it belongs to — step 1 is
+everything that depends on nothing internal, and testing in that order means the
+first failure is the cause rather than an echo. **Call flow** points caller to
+callee.
 
-Every key is range-checked. A value that is missing, non-numeric, out of range,
-or misspelled falls back to the built-in default with a warning naming the key,
-and a file that will not parse warns and falls back whole rather than failing
-the export. Zoom speed, sidebar width, and focus depth are all adjustable in the
-page itself; the file sets where they start.
-
-#### Test order is the default view
-
-The page opens in **Test order**: dependencies first, laid out left to right, so
-a node's column is the step it belongs to. Step 1 is everything that depends on
-nothing internal and can be tested in isolation; nothing in a step depends on
-anything in a later one.
-
-The sidebar lists the steps in order, ready to drive a Pester run. Test in that
-order and the first failure is the cause rather than an echo — you stop sifting
-a wall of red to find what actually broke. Switch to **Call flow** for the
-opposite orientation, callers first.
-
-Anything caught in a dependency cycle has no valid position in the order, so it
+Anything caught in a dependency cycle has no valid position in an order, so it
 is called out separately rather than silently given one.
 
-`-Show` always hands the report to the OS default handler, which for `.html` is
-your browser — including when you run it from inside VS Code.
+Colour, wording, spacing, the default view and how an uncertain edge is drawn
+are all settings and theme data in the renderer, not in this module and not in
+the page's markup. `PSGraphRender`'s README says where they live and how to
+change them.
 
-That is deliberate. An HTML preview inside the editor is a webview, and a webview
-sandboxes custom-scheme navigation, so a `vscode://` URI never reaches the OS
-from one. Opening the report in the editor would therefore kill its own
-click-to-source. Run from inside VS Code, `-Show` opens the browser and mentions
-under `-Verbose` the command that would show the source instead.
+The page is fully self-contained — its libraries are vendored, so it needs no
+network at any point.
 
-Without `-OutputPath` the page goes to `<temp>/PSModuleGraph/<ModuleName>.html`
-and is overwritten every run, so an already-open tab or editor just needs a
-refresh rather than accumulating a new file each time. With `-OutputPath` it is
-written there:
+## The corpus
+
+`gallery/` holds eight real modules from the PowerShell Gallery, pinned by
+version and chosen because each breaks something the others do not: shipped
+assemblies, an Azure module whose exports are C# cmdlets, a generated
+single-file `.psm1`, class-based DSC resources with a `using module` chain, a
+module built on name-based dispatch, and a manifest with no code at all.
+
+**The source is never committed.** `corpus.lock.json` pins a URI and a SHA-256
+per package; `gallery/fetch.ps1` refuses bytes that do not match.
 
 ```powershell
-Get-PSModuleDependencyGraph -Path ./src/PSModuleGraph |
-    Export-PSModuleDependencyGraph -Format Html -OutputPath ./output/graph.html -IncludeUnresolved
+./gallery/fetch.ps1          # download and verify
+./build.ps1 -Task Build
+./gallery/run.ps1            # one result file per module under gallery/results/
 ```
 
-Omit `-Show` to get the HTML back as a string instead. The page pulls Cytoscape
-from a CDN, so it needs internet access the first time it is opened; it says so
-plainly rather than rendering blank if it cannot.
+Results are committed, one JSON per module per run, shaped by
+`gallery/contract/run-result.schema.json`. A run that throws, hangs or was never
+fetched still produces a record with the failure in it — a corpus where failures
+are absent measures only the modules that worked.
+
+Read `counts.nodes` next to `counts.declaredExports`. A module declaring 47
+exports and yielding four nodes has not been understood, whatever `outcome`
+says; one declaring none and yielding none may be perfectly described. Nothing
+else in the record separates those two.
+
+**Nothing in `gallery/` imports a corpus module.** These are modules nobody
+vetted, which is exactly the situation a user is in.
 
 ## Requirements
 
 - Windows PowerShell 5.1 or PowerShell 7.4+ (Pester 6 dropped everything else)
+- [PSGraphRender](https://github.com/JerryBalmer1/PSGraphRender) 0.7.0 or newer,
+  for `-Format Html`. It is a `RequiredModules` entry, so it must be resolvable
+  before this module will import at all.
 - Build-time: InvokeBuild, Pester 6.1.0, PSScriptAnalyzer
+- `gallery/` needs network access the first time, and nothing after that
 
 ## License
 
