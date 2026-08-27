@@ -281,6 +281,10 @@ Scope creep is doing extra work nobody asked for. Kaizen is *noticing* while you
 work, taking only what is genuinely small, and recording the rest so the next
 pass starts ahead of where this one did.
 
+**And ask whether you followed a procedure you have followed before, and
+whether it is written down.** If it is not, log a proposal - do not write the
+skill in the same pass. Reflection proposes, the next implementation disposes.
+
 The backlog, the sizes, and the rules deciding what may be taken unprompted are
 all in `docs/improvements.md`. **Large — anything that changes a contract, a
 data shape, or the user's mental model — is logged and stopped on, never taken
