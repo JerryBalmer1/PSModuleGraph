@@ -99,8 +99,12 @@ Describe 'The ledger' {
 
         $open = [System.Collections.Generic.HashSet[string]]::new(
             [string[]]@($script:Entries[0].OpenThreads), [System.StringComparer]::Ordinal)
-        $lostAt = [ordered]@{}
-        $recoveredBy = @{}
+        # ORDINAL, like $open above. Three containers held thread ids here and
+        # only one could tell '0014-t2' from '0014-T2', so a carry spelled
+        # differently from the thread it carried was accepted as the same
+        # thread by two of the three. knowledge/patterns/0023.
+        $lostAt = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::Ordinal)
+        $recoveredBy = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::Ordinal)
         $phantoms = [System.Collections.Generic.List[string]]::new()
 
         for ($i = 1; $i -lt $script:Entries.Count; $i++) {
@@ -112,11 +116,12 @@ Describe 'The ledger' {
             }
             foreach ($id in @($current.Closes) + @($current.Supersedes) + @($current.Accepts)) { [void]$open.Remove($id) }
 
-            $carried = @($current.CarriesForward)
+            $carried = [System.Collections.Generic.HashSet[string]]::new(
+                [string[]]@($current.CarriesForward), [System.StringComparer]::Ordinal)
 
             foreach ($id in @($open)) {
-                if ($carried -notcontains $id) {
-                    if (-not $lostAt.Contains($id)) { $lostAt[$id] = $current.Id }
+                if (-not $carried.Contains($id)) {
+                    if (-not $lostAt.ContainsKey($id)) { $lostAt[$id] = $current.Id }
                     [void]$open.Remove($id)
                 }
             }
@@ -150,9 +155,11 @@ Describe 'The ledger' {
     It 'closes or carries nothing that was never opened' {
         # The mirror of the rule above. Claiming to close a thread that does not
         # exist is the same failure wearing a coat.
-        $opened = @{}
+        # ORDINAL, for the reason above: this gate is about whether an id
+        # exists, and a hashtable would answer yes to a differently-cased one.
+        $opened = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         foreach ($entry in $script:Entries) {
-            foreach ($id in $entry.OpenThreads) { $opened[$id] = $true }
+            foreach ($id in $entry.OpenThreads) { [void]$opened.Add([string]$id) }
         }
 
         foreach ($entry in $script:Entries) {
@@ -162,7 +169,7 @@ Describe 'The ledger' {
                 # that has never existed, because a fake id of the right shape
                 # has the right shape. That cost a break to find and it is why
                 # this looks the id up rather than matching it.
-                $opened.ContainsKey($id) | Should-BeTrue -Because "entry $($entry.Id) references thread $id, which no entry ever opened"
+                $opened.Contains([string]$id) | Should-BeTrue -Because "entry $($entry.Id) references thread $id, which no entry ever opened"
             }
         }
     }

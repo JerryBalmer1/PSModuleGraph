@@ -110,8 +110,13 @@ function Get-PSModuleDependencyGraph {
 
         $edges = [System.Collections.Generic.List[object]]::new()
         $unresolved = [System.Collections.Generic.List[object]]::new()
-        $edgeSeen = @{}
-        $unresolvedSeen = @{}
+
+        # ORDINAL. A node id is opaque and unique within the payload - see
+        # New-GraphNodeId - and PowerShell hashtable keys are case-insensitive,
+        # so @{} here deduplicated two DIFFERENT edges into one and dropped the
+        # second. knowledge/patterns/0023 is the shape; this is pile one.
+        $edgeSeen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $unresolvedSeen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 
         # One synthetic node per file with top-level calls, not one per module.
         # A single 'script:toplevel' node is the same name collision in the one
@@ -179,9 +184,7 @@ function Get-PSModuleDependencyGraph {
                 # which is not in the source; an edge to each says so, and a
                 # single arbitrary edge would say something false about the rest.
                 foreach ($candidate in $to.Nodes) {
-                    $edgeKey = "$fromId->$($candidate.Id)"
-                    if ($edgeSeen.ContainsKey($edgeKey)) { continue }
-                    $edgeSeen[$edgeKey] = $true
+                    if (-not $edgeSeen.Add("$fromId->$($candidate.Id)")) { continue }
                     $edges.Add([pscustomobject]@{
                             PSTypeName       = 'PSModuleGraph.GraphEdge'
                             Source           = $fromId
@@ -197,9 +200,11 @@ function Get-PSModuleDependencyGraph {
                 }
             }
             else {
-                $uKey = "$fromId=>$toName".ToLowerInvariant()
-                if (-not $unresolvedSeen.ContainsKey($uKey)) {
-                    $unresolvedSeen[$uKey] = $true
+                # The command name folds, because PowerShell resolves command
+                # names case-insensitively and two spellings of an unresolved
+                # call are one missing command. The SOURCE id does not: it is an
+                # identity, and folding it drops a real unresolved reference.
+                if ($unresolvedSeen.Add("$fromId=>" + $toName.ToLowerInvariant())) {
                     $unresolved.Add([pscustomobject]@{
                             PSTypeName      = 'PSModuleGraph.UnresolvedReference'
                             Source          = $fromId
@@ -222,9 +227,7 @@ function Get-PSModuleDependencyGraph {
                 $simple = ($base -split '\.')[-1]
                 $to = Resolve-GraphNodeCandidate -Index $nodeIndex -Name $simple -CallerPath $c.Path
                 foreach ($candidate in $to.Nodes) {
-                    $edgeKey = "$fromId->$($candidate.Id):inherits"
-                    if ($edgeSeen.ContainsKey($edgeKey)) { continue }
-                    $edgeSeen[$edgeKey] = $true
+                    if (-not $edgeSeen.Add("$fromId->$($candidate.Id):inherits")) { continue }
                     $edges.Add([pscustomobject]@{
                             PSTypeName       = 'PSModuleGraph.GraphEdge'
                             Source           = $fromId
@@ -273,9 +276,15 @@ function Get-PSModuleDependencyGraph {
             }
         }
 
-        # Compute roots / leaves based on internal edges only
-        $inbound = @{}
-        $outbound = @{}
+        # Compute roots / leaves based on internal edges only.
+        #
+        # ORDINAL, for the reason $edgeSeen is. Keyed on @{}, two node ids
+        # differing only in case shared one counter, so each reported the
+        # other's degree and one of them could be called a root while something
+        # called it. That is the v0.11.0 defect one level down, in the numbers
+        # that decide what the report labels "entry point or dead code".
+        $inbound = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
+        $outbound = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
         foreach ($n in $nodes) {
             $inbound[$n.Id] = 0
             $outbound[$n.Id] = 0

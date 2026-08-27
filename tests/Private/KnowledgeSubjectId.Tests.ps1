@@ -9,6 +9,21 @@ BeforeAll {
     $script:Sample = Join-Path $script:Repo 'tests/fixtures/SampleModule'
     $script:Src = Join-Path $script:Repo 'src/PSModuleGraph'
 
+    # ORDINAL distinct. `Sort-Object -Unique` folds case, and every count in
+    # this file is a count of IDENTIFIERS, which knowledge/NAMING.md says
+    # preserve case. Folded, two ids differing only in case collapse on BOTH
+    # sides of a comparison and the assertion passes on a population it has
+    # miscounted twice. knowledge/patterns/0023.
+    function Get-DistinctOrdinal {
+        param([AllowEmptyCollection()] [string[]] $Value)
+        $set = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        foreach ($item in $Value) { if ($item) { [void]$set.Add($item) } }
+        $sorted = [string[]]$set
+        [System.Array]::Sort($sorted, [System.StringComparer]::Ordinal)
+        # Enumerated, not wrapped: every caller counts what comes back.
+        $sorted
+    }
+
     function Get-SubjectIdMap {
         <#
         .SYNOPSIS
@@ -38,7 +53,7 @@ BeforeAll {
             ModuleName = $name
             NodeCount  = @($graph.Nodes).Count
             Ids        = $ids
-            Distinct   = @($ids | Sort-Object -Unique)
+            Distinct   = @(Get-DistinctOrdinal -Value $ids)
             Former     = $former
         }
     }
@@ -93,7 +108,7 @@ Describe 'A name in two folders is two subjects, and the old id reaches both' {
         # Guards everything below. If the fixture stops sharing names the split
         # tests pass by never meeting one.
         $script:Fixture.NodeCount | Should-Be 7
-        @($script:Fixture.Former | Sort-Object -Unique).Count | Should-Be 4
+        @(Get-DistinctOrdinal -Value $script:Fixture.Former).Count | Should-Be 4
     }
 
     It 'gives all seven definitions their own id now' {
@@ -227,7 +242,7 @@ Describe 'Every identifier this store used to issue still reaches something' {
         # rather than expected.
         $unchanged = [System.Collections.Generic.HashSet[string]]::new(
             [string[]]$map.Ids, [System.StringComparer]::Ordinal)
-        $moved = @($map.Former | Where-Object { -not $unchanged.Contains($_) } | Sort-Object -Unique)
+        $moved = @(Get-DistinctOrdinal -Value @($map.Former | Where-Object { -not $unchanged.Contains($_) }))
         $moved.Count | Should-BeGreaterThan 0
 
         # Counted with a sample rather than asserted as a collection: broken,
@@ -287,12 +302,12 @@ Describe 'A module with no duplicate names keeps its count and loses every path'
 
     It 'has nothing to repair in the first place' {
         $script:Corpus.NodeCount | Should-Be 19
-        @($script:Corpus.Former | Sort-Object -Unique).Count | Should-Be 19
+        @(Get-DistinctOrdinal -Value $script:Corpus.Former).Count | Should-Be 19
     }
 
     It 'writes exactly as many subjects as it did before' {
         $script:Corpus.Distinct.Count | Should-Be $script:Corpus.NodeCount
-        $script:Corpus.Distinct.Count | Should-Be @($script:Corpus.Former | Sort-Object -Unique).Count
+        $script:Corpus.Distinct.Count | Should-Be @(Get-DistinctOrdinal -Value $script:Corpus.Former).Count
     }
 
     It 'moves every definition that had a path to move to' {
@@ -331,7 +346,7 @@ Describe 'The move itself did not lose or duplicate a file' {
         $files.Count | Should-BeGreaterThan 0
         $subjects.Count | Should-Be $files.Count
 
-        $ids = @($subjects | ForEach-Object { $_.Id } | Sort-Object -Unique)
+        $ids = @(Get-DistinctOrdinal -Value @($subjects | ForEach-Object { $_.Id }))
         $ids.Count | Should-Be $files.Count -Because (
             'two records sharing a file is a collision the id set cannot show')
     }

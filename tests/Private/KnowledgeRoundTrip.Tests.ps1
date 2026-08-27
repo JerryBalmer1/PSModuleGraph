@@ -177,10 +177,14 @@ Describe 'The store reads itself back' {
     It 'points every assignment at a subject that exists' {
         # A dangling assignment is the store having an opinion about something
         # it cannot name.
-        $known = @{}
-        foreach ($subject in $script:Subjects) { $known[$subject.Id] = $true }
+        # ORDINAL. Keyed on @{}, an assignment pointing at 'psmodule:.../get-x'
+        # was satisfied by a subject named '.../Get-X', so the one thing this
+        # gate exists to catch was the one thing it could not see.
+        # knowledge/patterns/0023.
+        $known = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        foreach ($subject in $script:Subjects) { [void]$known.Add([string]$subject.Id) }
 
-        $dangling = @($script:Assignments | Where-Object { -not $known.ContainsKey($_.Subject) })
+        $dangling = @($script:Assignments | Where-Object { -not $known.Contains([string]$_.Subject) })
         @($dangling | ForEach-Object { $_.Subject }) | Should-BeCollection @()
     }
 

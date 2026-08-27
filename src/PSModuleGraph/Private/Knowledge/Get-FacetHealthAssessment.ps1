@@ -60,9 +60,13 @@ function Get-FacetHealthAssessment {
             $namespaces[($record.Subject -split ':', 2)[0]] = $true
         }
         $eligible = @($Subject | Where-Object { $namespaces.ContainsKey($_.Namespace) })
-        $assigned = @{}
-        foreach ($record in $mine) { $assigned[$record.Subject] = $true }
-        $covered = @($eligible | Where-Object { $assigned.ContainsKey($_.Id) })
+        # ORDINAL: a subject URN preserves case (knowledge/NAMING.md), and a
+        # hashtable folds it - so two subjects differing only in case counted
+        # as one assignment and a facet could grade itself 'complete' over a
+        # population it had not covered. knowledge/patterns/0023.
+        $assigned = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        foreach ($record in $mine) { [void]$assigned.Add([string]$record.Subject) }
+        $covered = @($eligible | Where-Object { $assigned.Contains([string]$_.Id) })
 
         $coverage = if ($mine.Count -eq 0) { 'none' }
         elseif ($eligible.Count -gt 0 -and $covered.Count -eq $eligible.Count) { 'complete' }

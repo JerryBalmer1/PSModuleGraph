@@ -187,11 +187,15 @@ Describe 'The v0.3.0 rename, checked semantically' {
         # An edge is compared by the nodes it joins, resolved through each
         # document's own node table, rather than by the raw ids - for the reason
         # given in 'embeds the same nodes'.
+        # ORDINAL. A node id is opaque and case-preserving, and keyed on @{}
+        # two ids differing only in case resolved to one label - so both
+        # documents agreed about an edge neither of them had.
+        # knowledge/patterns/0023.
         $label = {
             param($Document)
-            $map = @{}
-            foreach ($n in @($Document.nodes)) { $map[$n.id] = "$($n.kind)|$($n.name)" }
-            $map
+            $map = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::Ordinal)
+            foreach ($n in @($Document.nodes)) { $map[[string]$n.id] = "$($n.kind)|$($n.name)" }
+            , $map
         }
         $beforeMap = & $label $before
         $afterMap = & $label $after

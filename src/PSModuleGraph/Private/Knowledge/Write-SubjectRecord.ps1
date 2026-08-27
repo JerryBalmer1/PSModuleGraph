@@ -57,7 +57,25 @@ function Write-SubjectRecord {
     # Sorted and de-duplicated so a regeneration is byte-identical: the order
     # aliases arrive in is an accident of iteration, and staleness is detected
     # by comparing bytes.
-    $former = @($Aliases | Where-Object { $_ -and $_ -ne $Id } | Sort-Object -Unique)
+    #
+    # ORDINAL on both operations. `-ne` and `Sort-Object -Unique` both fold
+    # case, and knowledge/NAMING.md says a URN's path segment preserves it, so
+    # this line dropped an alias that differed from the current id only in case
+    # and then merged two former ids that differed only in case. The gate that
+    # reads these was made ordinal at v0.16.0; this is the writer that produces
+    # them. knowledge/patterns/0023.
+    $distinct = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($alias in $Aliases) {
+        if (-not $alias) { continue }
+        if ([string]::Equals($alias, $Id, [System.StringComparison]::Ordinal)) { continue }
+        [void]$distinct.Add($alias)
+    }
+    # Sorted ordinally too. Sort-Object is culture-aware even with
+    # -CaseSensitive, and these bytes are compared for equality across
+    # machines, so the ordering may not depend on a locale. Every subject
+    # carries exactly one alias today, which is why this has never shown.
+    $former = [string[]]$distinct
+    [System.Array]::Sort($former, [System.StringComparer]::Ordinal)
     if ($former.Count) { $document['aliases'] = $former }
 
     $document['generated_by'] = 'PSModuleGraph Update-KnowledgeStore'

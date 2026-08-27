@@ -47,25 +47,31 @@ function Get-GraphNodeMetric {
 
     $ids = @($Graph.Nodes | ForEach-Object { $_.Id })
 
-    $known = @{}
-    foreach ($id in $ids) { $known[$id] = $true }
+    # ORDINAL, every one of them. A node id is opaque and unique within the
+    # payload, and a PowerShell hashtable folds case - so two ids differing
+    # only in case shared one adjacency set, one counter and one result entry,
+    # and the metrics for both were the metrics of their union. The inner
+    # HashSets were already ordinal by default, which is the tell: the values
+    # were right and the index was wrong, in adjacent lines.
+    # knowledge/patterns/0023.
+    $known = [System.Collections.Generic.HashSet[string]]::new([string[]]$ids, [System.StringComparer]::Ordinal)
 
     # Adjacency both ways, deduplicated. Parallel edges are real - two call
     # sites to the same target - but they are one dependency, and counting them
     # twice would make a node that is called twice from one place look as
     # coupled as one called from two.
-    $out = @{}
-    $in = @{}
+    $out = [System.Collections.Generic.Dictionary[string, System.Collections.Generic.HashSet[string]]]::new([System.StringComparer]::Ordinal)
+    $in = [System.Collections.Generic.Dictionary[string, System.Collections.Generic.HashSet[string]]]::new([System.StringComparer]::Ordinal)
     foreach ($id in $ids) {
-        $out[$id] = [System.Collections.Generic.HashSet[string]]::new()
-        $in[$id] = [System.Collections.Generic.HashSet[string]]::new()
+        $out[$id] = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $in[$id] = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     }
 
     foreach ($edge in $Graph.Edges) {
         $source = [string]$edge.Source
         $target = [string]$edge.Target
         if ($source -eq $target) { continue }
-        if (-not $known.ContainsKey($source) -or -not $known.ContainsKey($target)) { continue }
+        if (-not $known.Contains($source) -or -not $known.Contains($target)) { continue }
         [void]$out[$source].Add($target)
         [void]$in[$target].Add($source)
     }
@@ -76,7 +82,7 @@ function Get-GraphNodeMetric {
     function Measure-Reachable {
         param($Start, $Adjacency)
 
-        $seen = [System.Collections.Generic.HashSet[string]]::new()
+        $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $queue = [System.Collections.Generic.Queue[string]]::new()
         foreach ($next in $Adjacency[$Start]) {
             if ($seen.Add($next)) { $queue.Enqueue($next) }
@@ -92,7 +98,7 @@ function Get-GraphNodeMetric {
         $seen.Count
     }
 
-    $result = @{}
+    $result = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
     foreach ($id in $ids) {
         $result[$id] = [ordered]@{
             dependents   = $in[$id].Count
@@ -102,7 +108,10 @@ function Get-GraphNodeMetric {
         }
     }
 
-    $result
+    # Comma, because a Dictionary is IEnumerable and PowerShell unrolls one into
+    # KeyValuePairs on the way out. A Hashtable is special-cased and does not,
+    # which is why this line did not need it before.
+    , $result
 }
 
 function Get-GraphMetricName {
