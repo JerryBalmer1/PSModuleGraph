@@ -595,3 +595,86 @@ Describe 'Export-PSModuleDependencyGraph -Show' {
         }
     }
 }
+
+Describe 'Rendering a module that declares a dependency' {
+    # 0016-t1 and 0016-t2, both found by running a README code block and both
+    # left unfixed for two iterations because a documentation pass that also
+    # changes behaviour is a commit nobody reviews properly.
+
+    It 'renders unresolved targets for a module with a RequiredModules entry' {
+        # THE DEFECT. A `RequiredModules` entry and a `using module` statement
+        # both produce an unresolved record with no line to point at. The
+        # contract types `unresolved[].startLine` as an integer, so sending
+        # `null` made the payload invalid and `-Format Html -IncludeUnresolved`
+        # threw for every module that declares a dependency - including this
+        # one, and including the fixture.
+        #
+        # The other four formats took the switch without complaint, which is
+        # why nobody met it until somebody ran the documented command.
+        $graph = Get-PSModuleDependencyGraph -Path $script:Sample
+        $html = Export-PSModuleDependencyGraph -InputObject $graph -Format Html -IncludeUnresolved
+
+        $html | Should-NotBeNull
+        $html | Should-NotBeEmptyString
+        $data = Get-EmbeddedGraphData -Html $html | ConvertFrom-Json
+        @($data.unresolved).Count | Should-BeGreaterThan 0
+    }
+
+    It 'omits startLine rather than sending it as null' {
+        # The field is OPTIONAL in the contract, so absent is the honest value
+        # for "there is no line here" and it needed no contract change to say
+        # so. Asserted on the payload rather than on the render succeeding,
+        # because a render can succeed for the wrong reason.
+        $graph = Get-PSModuleDependencyGraph -Path $script:Sample
+        $json = Export-PSModuleDependencyGraph -InputObject $graph -Format Json -IncludeUnresolved |
+            ConvertFrom-Json
+
+        $lineless = @($json.unresolved | Where-Object {
+                $_.PSObject.Properties.Name -notcontains 'startLine'
+            })
+        $lineless.Count | Should-BeGreaterThan 0
+
+        foreach ($record in $json.unresolved) {
+            if ($record.PSObject.Properties.Name -contains 'startLine') {
+                # A present startLine is a real line number. Typed rather than
+                # loosely checked would be wrong here: ConvertFrom-Json hands
+                # back [long], and the contract says integer, not Int32.
+                $record.startLine | Should-BeGreaterThan 0
+            }
+        }
+    }
+
+    It 'does not advise a parameter this command does not expose' {
+        # 0016-t2. The renderer's contract failure says "Pass -SkipValidation to
+        # render it anyway"; `-SkipValidation` belongs to `New-RenderDocument`
+        # and `Export-PSModuleDependencyGraph` does not expose it, so the advice
+        # named a way out that does not exist from where the reader is standing.
+        #
+        # Mocked rather than provoked with a bad graph: the point under test is
+        # the rewrite, and building a payload the contract refuses would test
+        # the contract instead.
+        InModuleScope PSModuleGraph {
+            Mock New-RenderDocument {
+                throw 'View model does not satisfy contract/viewmodel.schema.json: because. Pass -SkipValidation to render it anyway.'
+            }
+
+            $thrown = $null
+            try {
+                ConvertTo-GraphHtml -Graph ([pscustomobject]@{
+                        ModuleName = 'x'; ModuleVersion = '1.0'; ModuleBase = 'C:\x'
+                        Nodes = @(); Edges = @(); Roots = @(); Leaves = @(); Unresolved = @()
+                        Stats = [pscustomobject]@{}
+                    }) -Title 'x'
+            }
+            catch { $thrown = $_ }
+
+            ($null -eq $thrown) | Should-BeFalse
+            $thrown.Exception.Message | Should-NotMatchString 'SkipValidation'
+            $thrown.Exception.Message | Should-MatchString 'contract/viewmodel\.schema\.json'
+            $thrown.Exception.Message | Should-MatchString '-Format Json'
+
+            # The reason is the useful half and it is kept, not discarded.
+            $thrown.Exception.InnerException | Should-NotBeNull
+        }
+    }
+}

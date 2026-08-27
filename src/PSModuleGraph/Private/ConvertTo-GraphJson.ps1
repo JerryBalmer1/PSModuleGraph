@@ -69,13 +69,23 @@ function ConvertTo-GraphJson {
 
     if ($IncludeUnresolved) {
         $payload['unresolved'] = @($Graph.Unresolved | ForEach-Object {
-                [ordered]@{
+                $record = [ordered]@{
                     source     = $_.Source
                     sourceName = $_.SourceName
                     targetName = $_.TargetName
                     path       = $_.Path
-                    startLine  = $_.StartLine
                 }
+
+                # OMITTED, not sent as null. A `RequiredModules` entry or a
+                # `using module` statement has no line to point at, and the
+                # contract types `unresolved[].startLine` as an integer, so
+                # `null` is a payload the renderer is right to refuse - which it
+                # did, for every module that declares a dependency, including
+                # this one. The field is optional; absent is the honest value
+                # for "there is no line", and it needed no contract change to
+                # say so.
+                if ($null -ne $_.StartLine) { $record['startLine'] = $_.StartLine }
+                $record
             })
     }
 

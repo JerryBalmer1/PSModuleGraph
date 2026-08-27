@@ -84,5 +84,21 @@ function ConvertTo-GraphHtml {
         editorLinkHelpCommandForOrigin = "Enable-PSModuleGraphEditorLink -AllowedOrigin '{origin}'"
     }
 
-    New-RenderDocument -ViewModel $data -Meta $meta -Strings $strings -Title $Title
+    # The renderer's contract failure advises `-SkipValidation`, which is a
+    # parameter of ITS command and not of any command a caller here reached.
+    # Advice naming a way out that does not exist from where the reader is
+    # standing is worse than no advice, so the message is replaced with one
+    # this surface can honour. The original is kept as the inner exception
+    # rather than discarded, because the reason is the useful half.
+    try {
+        New-RenderDocument -ViewModel $data -Meta $meta -Strings $strings -Title $Title
+    }
+    catch {
+        $reason = $_.Exception.Message -replace '\s*Pass -SkipValidation to render it anyway\.\s*$', ''
+        throw [System.InvalidOperationException]::new(
+            ("$reason This is a defect in PSModuleGraph rather than in the payload you supplied: " +
+                'the graph produced something the view model contract refuses. Export with -Format Json ' +
+                'to get the data, and report the message above.'),
+            $_.Exception)
+    }
 }
