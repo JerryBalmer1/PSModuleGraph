@@ -277,11 +277,6 @@ facet classifies and a metric measures, and the store does the first. Open as a
 design question with no forcing event and no pair of subjects the current shape
 cannot tell apart — which is the evidence rule saying the answer is no.
 
-**Should patterns be subjects with URNs?** `0004-t1`. Two pattern files after
-eighteen entries. URNs, facet assignment and `facet-health` grading would be
-machinery for two records, and the machinery is what would then need
-maintaining. Ask again when there are ten.
-
 **Nobody has asked what a JSON consumer reads.** `0011-t1`. `-Format Json` is
 shaped for the renderer because the renderer is the only consumer. When there is
 a second one, its needs are a contract conversation.
@@ -375,6 +370,13 @@ answered and nobody had removed the thread:
   emits `nodes[].facets`, so the thread was live the whole time. The oldest
   thread in the project, and it was nearly lost to a sentence nobody checked.
   `knowledge/ledger/0020`.
+- ~~`0004-t1` — *should patterns be subjects with URNs?*~~ **Struck at
+  v0.18.5, answered at `0024`.** It stood here saying *"two pattern files after
+  eighteen entries… ask again when there are ten"* while the paragraph three
+  sections above it recorded patterns becoming subjects under `pattern:` on the
+  same day. Nine records now sit in `knowledge/subjects/pattern/` carrying
+  `pattern:` URNs. Answered, not accepted: the acceptance at `0019` does not
+  stand and `0024`'s closure does. `knowledge/ledger/0033`.
 - `0015-t2` — *the page this whole sequence was for has not been looked at.* It
   has, twice, with committed screenshots — `PSGraphRender` `0008` and `0010`.
 - `0001-t4` — *make the store's write path real.* `Update-KnowledgeStore` exists
