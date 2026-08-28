@@ -90,6 +90,9 @@ function Update-KnowledgePatternSubject {
     # Write what should exist, then delete what should not - see
     # Remove-UnwrittenKnowledgeRecord. Removing the subtree first would make
     # every record new and defeat the writer's skip-if-identical guard.
+    #
+    # The log is filled in by Write-SubjectRecord, which is mandatory about it.
+    # Registering here, beside the write, is what ledger/0029 replaced.
     $owned = Join-Path (Join-Path $root 'subjects') 'pattern'
     $kept = [System.Collections.Generic.List[string]]::new()
 
@@ -135,8 +138,7 @@ Carries no assignments. See ``docs/constraints.md``, "Patterns are subjects and
 facet-health does not grade them".
 "@
 
-        $kept.Add((ConvertTo-KnowledgeFilePath -Id "pattern:$patternId" -Root $root -Area 'subjects'))
-        $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema `
+        $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema -Kept $kept `
             -Id "pattern:$patternId" -Name $name -Parent '' -Source $source `
             -GeneratedAt $GeneratedAt -Prompt $Prompt `
             -GeneratedBy 'PSModuleGraph Update-KnowledgePatternSubject' -Body $body

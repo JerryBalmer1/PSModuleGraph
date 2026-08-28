@@ -159,3 +159,48 @@ Describe 'The pattern generator skips and prunes the same way' {
         $result.RecordsPruned | Should-Be 1
     }
 }
+
+Describe 'A write site cannot forget to register what it wrote' {
+    # 0028-t1. v0.18.0 traded a filesystem guarantee - the subtree was deleted,
+    # so nothing stale could survive - for a $kept list filled in at five call
+    # sites, each recomputing the path expression the writer was about to use.
+    #
+    # WHAT A SIXTH SITE WITHOUT ITS $kept.Add ACTUALLY DID, staged and measured
+    # rather than reasoned about: the record was written and then deleted by the
+    # prune at the end of the same run, every run, so it never reached the store
+    # and the run never became idempotent. Four tests in this file went red. So
+    # the omission was detectable, contrary to what 0028-t1 claimed - but only
+    # as churn, by tests about something else, and only after the code had been
+    # written and run.
+    #
+    # Registration now happens inside Write-SubjectRecord and
+    # Write-AssignmentRecord, from the same variable the write uses, and -Kept
+    # is mandatory. The author of the seventh write site is stopped by the
+    # parameter binder rather than by a test they have to still be running.
+
+    It 'makes the write log mandatory on both writers' {
+        foreach ($name in 'Write-SubjectRecord', 'Write-AssignmentRecord') {
+            $parameter = InModuleScope PSModuleGraph -Parameters @{ Name = $name } {
+                (Get-Command -Name $Name).Parameters['Kept']
+            }
+            ($null -ne $parameter) | Should-BeTrue -Because "$name must take a write log"
+
+            $attribute = @($parameter.Attributes |
+                    Where-Object { $_ -is [System.Management.Automation.ParameterAttribute] })[0]
+            $attribute.Mandatory | Should-BeTrue -Because "$name must not let a caller skip registering"
+        }
+    }
+
+    It 'registers every record the run wrote, without the caller saying so' {
+        $store = New-EmptyStore -At (Join-Path $TestDrive 'store4')
+        $result = Update-KnowledgeStore -Path $script:Fixture -StoreRoot $store `
+            -GeneratedAt '2026-08-26' -Confirm:$false
+
+        # The log is the population, not a count kept alongside it.
+        $onDisk = @(Get-ChildItem -LiteralPath (Join-Path $store 'subjects/psmodule') -Filter *.md -File -Recurse) +
+            @(Get-ChildItem -LiteralPath (Join-Path $store 'assignments/psmodule') -Filter *.md -File -Recurse)
+        $result.RecordsKept | Should-Be @($onDisk).Count
+        $result.RecordsPruned | Should-Be 0
+    }
+
+}

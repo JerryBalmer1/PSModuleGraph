@@ -11,6 +11,11 @@ function Write-SubjectRecord {
         Store root.
     .PARAMETER SchemaPath
         subject.schema.json.
+    .PARAMETER Kept
+        The run's write log. THE WRITER REGISTERS ITS OWN PATH, and the
+        parameter is mandatory so that a new write site cannot be added without
+        one. See Remove-UnwrittenKnowledgeRecord for what the log is for and
+        ledger/0029 for why it is here rather than at the call site.
     .PARAMETER Id
         Subject URN.
     .PARAMETER Name
@@ -40,6 +45,7 @@ function Write-SubjectRecord {
     param(
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Root,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $SchemaPath,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.List[string]] $Kept,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Id,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Name,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Parent,
@@ -87,7 +93,10 @@ function Write-SubjectRecord {
     $document['generated_at'] = $GeneratedAt
     $document['prompt'] = $Prompt
 
+    # Registered from the SAME variable the write uses. A caller computing the
+    # path a second time to register it is the defect this closes.
     $path = ConvertTo-KnowledgeFilePath -Id $Id -Root $Root -Area 'subjects'
+    $Kept.Add($path)
     Write-KnowledgeRecord -Path $path -Document $document -Body $Body -SchemaPath $SchemaPath
 }
 
@@ -104,6 +113,8 @@ function Write-AssignmentRecord {
         Store root.
     .PARAMETER SchemaPath
         assignment.schema.json.
+    .PARAMETER Kept
+        The run's write log. Mandatory, for the reason on Write-SubjectRecord.
     .PARAMETER Subject
         Subject URN.
     .PARAMETER Facet
@@ -130,6 +141,7 @@ function Write-AssignmentRecord {
     param(
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Root,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $SchemaPath,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.List[string]] $Kept,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Subject,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Facet,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $FacetPath,
@@ -157,6 +169,7 @@ function Write-AssignmentRecord {
 
     $path = ConvertTo-KnowledgeFilePath -Id $Subject -Root $Root -Area 'assignments' `
         -Facet $Facet -FacetPath $FacetPath
+    $Kept.Add($path)
     Write-KnowledgeRecord -Path $path -Document $document -Body $Body -SchemaPath $SchemaPath
 }
 
@@ -171,7 +184,8 @@ function Update-FacetHealthRecord {
 
         Run after any module's records change, because coverage is a fact about
         the store rather than about one module in it.
-    .PARAMETER Root
+
+            .PARAMETER Root
         Store root.
     .PARAMETER GeneratedAt
         Stamp.
@@ -203,12 +217,17 @@ function Update-FacetHealthRecord {
     $subjects = @(if (Test-Path -LiteralPath $subjectRoot) { Import-KnowledgeSubject -Path $subjectRoot })
     $assignments = @(if (Test-Path -LiteralPath $assignmentRoot) { Import-KnowledgeAssignment -Path $assignmentRoot })
 
+    # The log this function's writers now insist on. Grading still removes each
+    # facet's facet-health directory before rewriting it, so nothing prunes
+    # against the log yet - that is the next commit.
+    $kept = [System.Collections.Generic.List[string]]::new()
+
     $graded = 0
     foreach ($facet in $facets) {
         $id = "facet:$($facet.Id)"
         $stale = Join-Path (Join-Path $Root 'assignments') "facet/$($facet.Id)/facet-health"
         if (Test-Path -LiteralPath $stale) { [System.IO.Directory]::Delete($stale, $true) }
-        Write-SubjectRecord -Root $Root -SchemaPath $subjectSchema -Id $id -Name $facet.Id `
+        Write-SubjectRecord -Root $Root -SchemaPath $subjectSchema -Kept $kept -Id $id -Name $facet.Id `
             -Parent '' -Source (ConvertTo-SubjectSourcePath -Path $facet.Path -Base $Root) `
             -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"
 # facet:$($facet.Id)
@@ -228,7 +247,7 @@ an ordinary namespace and a facet is an ordinary thing to have an opinion about.
 
     foreach ($assessment in $assessments) {
         $subject = "facet:$($assessment.FacetId)"
-        Write-AssignmentRecord -Root $Root -SchemaPath $assignmentSchema -Subject $subject `
+        Write-AssignmentRecord -Root $Root -SchemaPath $assignmentSchema -Kept $kept -Subject $subject `
             -Facet 'facet-health' -FacetPath $assessment.Path -Confidence $assessment.Confidence `
             -EvidenceKind $assessment.Kind -EvidenceValue $assessment.Value `
             -EvidenceSource 'psmodulegraph-facet-health' -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"

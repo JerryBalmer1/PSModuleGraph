@@ -112,11 +112,17 @@ function Update-KnowledgeStore {
         # was new by the time the writer saw it. The store therefore rewrote all
         # 282 records on every build, and a store with three genuinely changed
         # records was indistinguishable from one with none.
+        #
+        # The log is FILLED IN BY THE WRITERS, not here. v0.18.0 registered each
+        # path at the call site, next to the write, by recomputing the path
+        # expression - so the invariant rested on five call sites each
+        # remembering, and a sixth write site added without one would have been
+        # written and then deleted by the same run, every run, for ever. See
+        # ledger/0029.
         $kept = [System.Collections.Generic.List[string]]::new()
 
         $moduleRelative = ConvertTo-SubjectSourcePath -Path $target.ManifestPath -Base $target.ModuleBase
-        $kept.Add((ConvertTo-KnowledgeFilePath -Id $moduleId -Root $root -Area 'subjects'))
-        $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema -Id $moduleId `
+        $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema -Kept $kept -Id $moduleId `
             -Name $moduleName -Parent '' -Source $moduleRelative -GeneratedAt $GeneratedAt -Prompt $Prompt `
             -Body @"
 # $moduleName
@@ -133,8 +139,9 @@ the assignments of the things it contains.
 
             # A rename never deletes. The former id is COMPUTED from the node
             # rather than read off the tree, which is the only thing that makes
-            # this correct: the tree was removed above, and by the time a record
-            # is written its predecessor is already gone.
+            # this correct: under either replacement shape the predecessor is
+            # gone by the time anything could read it - removed before the write
+            # until v0.18.0, pruned after it since.
             #
             # Where names collided the map is one-to-many, so every one of the
             # 32 records claims the same former id. That is a SPLIT, not a
@@ -142,8 +149,7 @@ the assignments of the things it contains.
             # answer - see knowledge/NAMING.md.
             $formerId = Get-LegacyKnowledgeSubjectId -Node $node -ModuleName $moduleName
 
-            $kept.Add((ConvertTo-KnowledgeFilePath -Id $id -Root $root -Area 'subjects'))
-            $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema -Id $id `
+            $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema -Kept $kept -Id $id `
                 -Name ([string]$node.Name) -Parent $moduleId -Source $source -Aliases @($formerId) `
                 -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"
 # $($node.Name)
@@ -152,8 +158,7 @@ A ``$kind`` defined in ``$moduleName``. Its assignments live one per facet under
 ``assignments/``, so changing one classification is a one-file diff.
 "@
 
-            $kept.Add((ConvertTo-KnowledgeFilePath -Id $id -Root $root -Area 'assignments' -Facet 'structure' -FacetPath "structure:$kind"))
-            $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Subject $id `
+            $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Kept $kept -Subject $id `
                 -Facet 'structure' -FacetPath "structure:$kind" -Confidence 1 `
                 -EvidenceKind 'ast' -EvidenceValue ([string]$node.Kind) -EvidenceSource 'psmodulegraph-parser' `
                 -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"
@@ -169,8 +174,7 @@ definition and nothing was inferred from a name.
             if ($kind -ne 'function') { continue }
 
             if ($node.IsExported) {
-                $kept.Add((ConvertTo-KnowledgeFilePath -Id $id -Root $root -Area 'assignments' -Facet 'surface' -FacetPath 'surface:exported'))
-                $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Subject $id `
+                $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Kept $kept -Subject $id `
                     -Facet 'surface' -FacetPath 'surface:exported' -Confidence 1 `
                     -EvidenceKind 'manifest-entry' -EvidenceValue 'FunctionsToExport' `
                     -EvidenceSource 'psmodulegraph-manifest' -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"
@@ -180,8 +184,7 @@ Named in the manifest's ``FunctionsToExport``. A direct observation, so confiden
 "@
             }
             else {
-                $kept.Add((ConvertTo-KnowledgeFilePath -Id $id -Root $root -Area 'assignments' -Facet 'surface' -FacetPath 'surface:internal'))
-                $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Subject $id `
+                $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Kept $kept -Subject $id `
                     -Facet 'surface' -FacetPath 'surface:internal' -Confidence 0.9 `
                     -EvidenceKind 'manifest-absence' -EvidenceValue 'not listed in FunctionsToExport' `
                     -EvidenceSource 'psmodulegraph-manifest' -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"
