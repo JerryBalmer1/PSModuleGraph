@@ -20,6 +20,42 @@ kept so the ledger entry that argued it is still findable.
 
 ## The corpus
 
+**The drift series reports and does not fail, and here is what would license a
+gate.** `0026-t3`. Ruled 2026-08-27. `Measure-CorpusDrift` warns when a control
+term moves and returns; nothing turns red. That is not timidity, it is that
+**two points cannot tell a control that moved from a control that was never
+stable**, so a gate built today would be a gate whose correct state is unknown —
+which is the shape this repository deletes rather than ships. Same split as
+`threads.ps1`: it reports and does not rank, for the same reason.
+
+**The condition, with numbers, all four required.** A gate may be built when:
+
+1. **Five consecutive passes** are in `corpus/analysis/drift-series.jsonl`, each
+   over a population at least one session larger than the last. Three exist and
+   two of them share a population.
+2. Across those five, **every control term's Lift stays within ±1** of its
+   first recorded value. Stated as a band rather than exactness on purpose —
+   see 4.
+3. **At least two prediction rounds have been scored** against a baseline they
+   were written for, and aggregate claim `A3` in
+   `corpus/analysis/predictions.json` — *at most one control moves by more than
+   one Lift point* — **held both times.** A prediction written by the session
+   that assigned the roles tests internal consistency; two rounds against
+   populations that did not exist when the roles were assigned tests the roles.
+4. **The single-episode sensitivity is at most 1.** Reclassify one background
+   episode as foreground and re-score; count the watchlist terms whose Lift
+   moves. **Measured 2026-08-27: 3 of 12** — `pattern` by +2, `gate` by +2,
+   `background` from absent to 3. A gate whose threshold is smaller than the
+   instrument's sensitivity to one episode fires on noise, and one episode is
+   the smallest thing that can be wrong.
+
+**Condition 4 is the one that fails today and it is the important one.** It also
+says something about the readings already taken: **a one-point Lift move is
+inside the range a single misclassified episode produces**, so the `heredoc` 7
+to 6 and `pattern` 5 to 4 in `ledger/0025` are directional evidence and not
+measurements. The aggregate claims are what carry the argument, which is why
+`predictions.json` weights per-term agreement low and says so in the file.
+
 **This corpus has never been independently cleared and must not be published
 until it is.** `0024-t2`. Not a thread and not a backlog item: a limit on what
 may be done with the artefact, written down so it cannot become permanent by
