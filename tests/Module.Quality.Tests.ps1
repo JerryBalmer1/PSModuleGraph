@@ -55,12 +55,13 @@ Describe 'Built module layout' {
             'Get-PSModuleUsingStatement'
             'Resolve-KnowledgeSubject'
             'Test-PSModuleGraphEditorLink'
+            'Update-KnowledgePatternSubject'
             'Update-KnowledgeStore'
         )
 
         $actual = @(Get-Command -Module PSModuleGraph | Select-Object -ExpandProperty Name | Sort-Object)
 
-        $actual.Count | Should-Be 14
+        $actual.Count | Should-Be 15
         $actual | Should-BeCollection $expected
     }
 

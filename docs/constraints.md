@@ -20,6 +20,61 @@ kept so the ledger entry that argued it is still findable.
 
 ## The corpus
 
+**This corpus has never been independently cleared and must not be published
+until it is.** `0024-t2`. Not a thread and not a backlog item: a limit on what
+may be done with the artefact, written down so it cannot become permanent by
+drift.
+
+**What was measured, 2026-08-27.** `Protect-CorpusText` was run over
+`gallery/modules/` — 517 files, 12.5 million characters of eight real published
+modules written by people who had never heard of this project. That is not
+clearance. It is the first input the redactor was neither written against nor
+tested on, which makes it worth more than the fixture, and it is still one
+sample of one kind of text.
+
+It caught what it claims to catch: **28 `<home>` replacements** and **57
+`<email>`**, including a developer's home directory inside a Pester stack trace
+and an author's OneDrive path in an example. Nothing it is documented to find
+was missed.
+
+It missed everything it was never asked to look for, and the quantities are the
+point:
+
+| Surviving the pass | Count | Files |
+| --- | --- | --- |
+| Windows absolute paths outside `Users\` | 284 (103 distinct) | 37 |
+| `github.com/<account>` URLs | 355 | 114 |
+| IPv4 addresses, including RFC1918 | 107 | 16 |
+| UNC shares | 44 | 15 |
+| GUIDs | 39 | 18 |
+| `Author` / `CompanyName` manifest fields | 22 | 22 |
+
+Eight real human and company names survived in manifest fields alone. The
+surviving paths include `C:\GitHub\posh-git`, `C:\zd\` and
+`C:\Backup\RSKey.snk` — a signing-key path on somebody's build machine.
+
+**The finding is not that the redactor is weak. It is that its model is "my
+machine".** Its rules are the author's home directory, the account names it was
+handed, and the repository root. Every one of those is a fact about the person
+running it, and none of them can see a third party's identity, because there is
+no list of third parties and there cannot be one. A corpus assembled from a
+working record contains other people's code, and other people's code carries
+other people's paths.
+
+`gallery/modules/` is not itself ingested — the corpus reads the ledger, the
+pattern log and, when asked, transcripts. **The exposure is the transcripts**,
+which quote whatever was on screen, and what was on screen includes the eight
+modules above.
+
+**The condition that lifts it.** Someone who did not write the redactor and did
+not assemble the corpus reads a generated training set and says it is clean. Not
+a bigger regex, not another pass, not a green test: a second person, because
+every miss above was invisible to the rule that produced it and the author of a
+rule is the worst reader of its blind spots. Until that has happened the corpus
+may be built, queried and argued with locally, and **may not be published,
+uploaded, embedded by a hosted service, or used to train anything that leaves
+this machine.**
+
 **Eight modules chosen by one person for what they were expected to stress.**
 `0012-t1`. That is a sample selected by a hypothesis and it stays one however
 many are added — a ninth module would be chosen the same way, by the same
@@ -47,6 +102,42 @@ fixture would prove a second shape rather than the general case, and the
 extraction it was recorded for is five versions behind us.
 
 ## The store
+
+**Patterns are subjects and `facet-health` does not grade them.** `0024-t1`.
+Ruled 2026-08-27 with `0004-t1`. Patterns became subjects under `pattern:`, and
+they are excluded from facet-health grading until someone measures whether it
+grades them flatteringly.
+
+The reason is `0003-t1`, which records that `facet-health` grades *itself*
+flatteringly. The objection `0004-t1` was originally declined under was that
+*"classifying a population in the turn that creates it is what reflection
+discipline exists to prevent"* — and reflection is what writes the pattern log.
+Answering `0004-t1` yes does not remove that objection. **It moves it**, from
+"may patterns be classified" to "may the thing reflection writes be graded by a
+facet that already flatters itself", and asserting the self-reference is gone
+because the namespace is new is precisely the confidently-wrong move the split
+rule exists to catch.
+
+**The mechanism today is structural, not enforced, and that is why this is
+written down.** `Get-FacetHealthAssessment` infers a facet's eligible population
+from the namespaces it has actually assigned into, so a namespace carrying no
+assignments is invisible to grading. `Update-KnowledgePatternSubject` writes no
+assignments, so `pattern:` is invisible. Nothing checks that it stays that way:
+**the first assignment written against any `pattern:` subject silently makes
+every pattern subject eligible**, and the number would move without anyone
+deciding it should.
+
+**The condition that lifts it.** A measurement, not an argument: grade the
+`pattern:` population with `facet-health` and compare its coverage and depth
+against the `psmodule:` population that no reflection pass authored. If patterns
+grade materially higher, the self-reference is real and the exclusion stays with
+a number attached. If they do not, the exclusion is lifted and this paragraph is
+deleted. Either outcome closes it; **what is not allowed is the exclusion
+quietly becoming permanent because nobody ran the comparison.**
+
+This is recorded here rather than as an open thread deliberately. An exclusion
+that lives in a thread list becomes permanent by drift; one that lives here has
+to be argued with.
 
 **The store does not fit a checkout root deeper than 95 characters.** `0022-t1`.
 Measured 2026-08-27, on Windows, with `core.longpaths` unset. Qualifying every

@@ -291,6 +291,15 @@ task Knowledge Build, Dependencies, {
         $summary = Update-KnowledgeStore -Path $module -StoreRoot $store -GeneratedAt $stamp -Confirm:$false
         Write-Build Green "  $($summary.ModuleName): $($summary.RecordsWritten) record(s), $($summary.FacetsGraded) facet grade(s)"
     }
+
+    # The second namespace, and the third population. Patterns are subjects as
+    # of v0.17.0 - knowledge/NAMING.md, "What may have a URN" - and their
+    # records are generated from the pattern log rather than written by hand.
+    # After the module populations, because it removes and rewrites only
+    # subjects/pattern/ and must not race the tree the loop above replaces.
+    $patterns = Update-KnowledgePatternSubject -Path (Join-Path $BuildRoot 'knowledge/patterns') `
+        -StoreRoot $store -GeneratedAt $stamp -Confirm:$false
+    Write-Build Green "  patterns: $($patterns.RecordsWritten) record(s) from $($patterns.PatternsRead) file(s)"
 }
 
 task Import Build, Dependencies, {

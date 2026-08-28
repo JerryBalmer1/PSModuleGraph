@@ -1,9 +1,117 @@
 # Naming
 
-**Version 0.2.0.** This document is itself versioned, because a naming
+**Version 0.3.0.** This document is itself versioned, because a naming
 convention that changes silently is worse than one that is merely wrong.
 `0.2.0` qualified a definition's URN with the file it is defined in, and added
-the split rule below.
+the split rule below. `0.3.0` states the criterion that decides what may have a
+URN at all, and separates the naming rule from the storage rule - see the two
+sections immediately below, and `ledger/0024`.
+
+---
+
+## Two rules, not one
+
+**This document makes two separate claims and they were read as one for eight
+iterations.** Keeping them apart is the whole of `0.3.0`.
+
+| | The claim | What it governs |
+| --- | --- | --- |
+| **The naming rule** | A subject is identified by a URN, `<namespace>:<path>`, resolvable without knowing what wrote it. | What may be *named*. |
+| **The storage rule** | The file layout mirrors the URN, so a reader finds a file from an identifier without an index. | Where a named thing *lives*. |
+
+The naming rule is a convention and it travels. `corpus/` holds
+`thread.thread_id = '0003-t1'` in a Postgres table, which is the same identifier
+the ledger front matter carries, adopted rather than imported: nothing wrote it
+across, and no code coordinates the two. **The convention is already used by
+something that is not this store, which is the naming rule working exactly as
+intended.**
+
+The storage rule is narrower and is about `knowledge/` only.
+
+**The consequence, which is the thing that was being got wrong.** "Anything
+addressable is a subject" was read as "anything addressable should have a file
+under `subjects/`", and that made three separate questions look like one. They
+are not one, and their answers differ - see "What may have a URN" below.
+
+**This store is not the index of everything this project knows.** It is one
+producer among several that share a naming convention. A thing may be correctly
+named without this store holding it.
+
+---
+
+## What may have a URN
+
+**Since 0.3.0.** Two rules. The first decides whether a thing can be named at
+all; the second decides where a named thing may live.
+
+### Identity is a pure function of intrinsic properties
+
+**A URN names a thing whose identity is a pure function of its own properties -
+never of its position in a document, never of an insertion order.**
+
+This is not new behaviour. It is the rule the store has been applying since the
+alias builder was written, stated for the first time: *"The generator computes a
+former id rather than reading one... This only works because the old id was a
+pure function of fields the new record still carries."* A URN derived from a
+position cannot be recomputed after the document moves, so it cannot survive the
+regeneration this store performs on every build.
+
+The test in the URN section below - *"someone reading it in a file, in another
+language, in another repository, should be able to say what it points at"* - is
+the same rule from the reader's side. An identifier whose referent depends on
+where a sentence sat when it was last parsed fails it.
+
+### A subject lives where a dependency-free reader can reach it
+
+**Today that means a file.**
+
+The load-bearing claim is not that a subject *is* a file. It is that the store
+can be read with no dependencies, and that claim is demonstrated rather than
+asserted by `readers/read_store.py`: 51 lines, standard library only, no YAML
+package, deliberately outside CI. A subject held in a database breaks that
+demonstration and nothing else - reading it would need a driver, credentials and
+a running container, and the 51-line proof that makes `1.0.0`'s criterion
+meaningful would cover part of the store and be silent about the rest. **That is
+worse than not having the proof, because it would still read as a whole-store
+claim.**
+
+`corpus/` reached the same conclusion independently and for its own reasons:
+*"PSCorpus never opens a socket."* Two subsystems, separately, refused the
+socket.
+
+### Three answers, and the reasons are the point
+
+The verdicts settle nothing on their own. **Record the reasons, because only a
+reason resolves the fourth instance of this shape without a fourth debate.**
+
+**Patterns are subjects. `pattern:0004-could-not-check-is-not-passed`.**
+Iteration plus authored slug: both intrinsic, neither positional, stable across
+every regeneration. `corpus/` reached the identical identifier without being
+told - `pattern.pattern_id` is a `TEXT PRIMARY KEY` holding exactly that string
+rather than a serial. Two independent derivations of one identifier is the
+strongest evidence available that the identity is in the thing rather than in
+the naming.
+
+**Claims are not subjects. A sentence has no name.** A claim is one bullet from
+one section of one entry, and its only natural key is
+`(iteration, section, ordinal)` where the ordinal is a position in prose that is
+re-parsed on every ingest. Edit a sentence into an earlier entry and
+`claim:0007/3` silently names a different sentence. Nothing intrinsic
+distinguishes bullet 3 from bullet 4 but where it sits, so there is nothing for
+a URN to be a function of.
+
+**Measurements are not subjects. A measurement is a reading about a thing at a
+time, not a thing.** `facet:structure` is the subject; *"coverage is 0.72"* is
+what one build observed of it. Giving the reading its own URN mints a new
+subject every time the number moves, and under *"removal is not an operation
+this store has"* the subject population would then grow monotonically with the
+build count, forever. Banding the value into facet paths was considered and
+declined separately, on the ground that it freezes thresholds nobody argued for;
+that objection is real but secondary. **The primary objection is that a reading
+is not a thing, and both proposed shapes were answers to the wrong question.**
+
+A measurement is expressed as an assignment's `confidence`, or as a facet-health
+record, both of which are already about a subject rather than being one.
 
 ---
 
@@ -51,6 +159,10 @@ a design question rather than an edit.
 
 ## Subjects are URNs
 
+**This is the naming rule. The storage rule is under "Files" below, and they are
+two claims - see "Two rules, not one" at the top of this document.** What may
+have a URN at all is decided by "What may have a URN", also above.
+
 ```
 <namespace>:<path>
 ```
@@ -85,16 +197,21 @@ carries no hierarchy meaning beyond "this is inside that".
 
 ### The namespace set is data
 
-`psmodule`, `psgallery`, `concept` and `facet` are the namespaces in use today.
+`psmodule`, `psgallery`, `concept`, `facet` and `pattern` are the namespaces in
+use today.
 
 **This list is data, not an enum in a `.ps1`, and must never become one.** Any
 reader needing to know whether a namespace is valid must read it from data.
 
-It is *not yet a facet*, and the proposal to make one was **withdrawn** in
-`ledger/0002` under the reflection evidence rule: every subject in the store is
-`psmodule:`, so no pair of subjects exists that `namespace` would distinguish
-and the existing facets would not. It returns when a second namespace does. A
-dimension with one value is not a dimension.
+**`pattern:` is new in 0.3.0** and it discharges the condition the `namespace`
+facet was withdrawn under. That proposal was declined in `ledger/0002` on the
+explicit ground that every subject in the store was `psmodule:`, so no pair of
+subjects existed that `namespace` would distinguish and the existing facets
+would not - *"It returns when a second namespace does. A dimension with one
+value is not a dimension."* A second namespace now exists, so **the condition is
+met and the proposal is reinstated as a proposal.** It is logged in
+`docs/improvements.md` and deliberately not taken: reflection proposes, the next
+implementation disposes.
 
 Any reader that needs to know whether a namespace is valid reads the facet. A
 reader that hardcodes the list has moved the taxonomy into code, which is the
@@ -137,10 +254,18 @@ networking:cisco:asa:version:7.4.5
 | `subjects/` | one classifiable thing per file, flat | `subject.schema.json` |
 | `assignments/` | one subject x facet -> path per file, flat | `assignment.schema.json` |
 | `ledger/` | one implementation per file | `ledger-entry.schema.json` |
+| `patterns/` | one shape seen at two or more scales | `pattern.schema.json` |
 
-Filenames are `<id>.md` for facets and `NNNN-slug.md` for ledger entries. Under
-`subjects/` and `assignments/` the path is the URN with `:` replaced by `/`, so
-the tree mirrors the identifier.
+Filenames are `<id>.md` for facets and `NNNN-slug.md` for ledger entries and
+patterns. Under `subjects/` and `assignments/` the path is the URN with `:`
+replaced by `/`, so the tree mirrors the identifier.
+
+**`patterns/` is the source, `subjects/pattern/` is the derived record.** A
+pattern file is written by hand and is where the prose lives; its subject record
+is generated from the front matter, carries no prose of its own beyond a pointer,
+and is removed and rewritten on every build like every other generated subject.
+The identifier is the filename - iteration plus authored slug - which is why a
+pattern could become a subject at all. See "What may have a URN".
 
 **Every file is Markdown with YAML front matter.** The front matter is for the
 machine and is schema-validated; the body is for the human and is not optional.
@@ -154,8 +279,8 @@ rests on readability rather than writability. Evidence is now
 independent pieces of evidence for one path is **two assignments**, which is the
 better shape anyway: each then carries its own confidence.
 
-The file layout mirrors the URN, so a reader finds a file from an identifier
-without an index:
+**This is the storage rule.** The file layout mirrors the URN, so a reader finds
+a file from an identifier without an index:
 
 ```
 psmodule:PSModuleGraph/function/Public/Get-PSModuleClass.ps1/Get-PSModuleClass

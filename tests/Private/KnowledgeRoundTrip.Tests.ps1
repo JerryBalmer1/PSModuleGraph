@@ -49,6 +49,27 @@ Describe 'The store is current' {
                 -GeneratedAt $stamp -Prompt $prompt -Confirm:$false | Out-Null
         }
 
+        # EVERY producer, not just the module one. This gate compares whole
+        # trees, so a producer it does not run reports its entire population as
+        # 'no longer generated' - which is what happened the moment patterns
+        # became subjects, and is the gate working rather than failing. A third
+        # producer joins this list; it does not get its own comparison.
+        #
+        # The pattern subjects carry their own prompt: they were written by
+        # ledger/0024 and the module records by ledger/0003, and passing one
+        # entry's prompt to both would rewrite the provenance of six records to
+        # something that did not produce them.
+        # Read off the committed record with a regex rather than through the
+        # store's own parser: Split-FrontMatter is private and unexported, and
+        # a freshness gate that needs the module's internals to state its
+        # expectation is testing the parser as well as the store.
+        $patternSample = Get-Content -Raw -LiteralPath (
+            Join-Path $script:Knowledge 'subjects/pattern/0023-as-sharp-as-the-container.md')
+        $patternPrompt = [regex]::Match($patternSample, '(?m)^prompt:\s*"([^"]+)"').Groups[1].Value
+
+        Update-KnowledgePatternSubject -Path (Join-Path $script:Knowledge 'patterns') -StoreRoot $fresh `
+            -GeneratedAt $stamp -Prompt $patternPrompt -Confirm:$false | Out-Null
+
         # Compared by relative path and content, so the failure names the file
         # rather than reporting that two directories differ.
         #

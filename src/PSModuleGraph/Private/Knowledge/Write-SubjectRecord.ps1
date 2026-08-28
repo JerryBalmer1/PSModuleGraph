@@ -28,6 +28,10 @@ function Write-SubjectRecord {
         Stamp.
     .PARAMETER Prompt
         Ledger entry.
+    .PARAMETER GeneratedBy
+        What produced the record, so a reader can tell one generator's output
+        from another's. Defaults to the module generator because that wrote
+        every record before there was a second producer.
     .PARAMETER Body
         Prose body.
     #>
@@ -43,6 +47,7 @@ function Write-SubjectRecord {
         [Parameter()] [AllowEmptyCollection()] [string[]] $Aliases = @(),
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $GeneratedAt,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Prompt,
+        [Parameter()] [ValidateNotNullOrEmpty()] [string] $GeneratedBy = 'PSModuleGraph Update-KnowledgeStore',
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Body
     )
 
@@ -78,7 +83,7 @@ function Write-SubjectRecord {
     [System.Array]::Sort($former, [System.StringComparer]::Ordinal)
     if ($former.Count) { $document['aliases'] = $former }
 
-    $document['generated_by'] = 'PSModuleGraph Update-KnowledgeStore'
+    $document['generated_by'] = $GeneratedBy
     $document['generated_at'] = $GeneratedAt
     $document['prompt'] = $Prompt
 
