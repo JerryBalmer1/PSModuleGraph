@@ -251,6 +251,12 @@ This is recorded here rather than as an open thread deliberately. An exclusion
 that lives in a thread list becomes permanent by drift; one that lives here has
 to be argued with.
 
+**And until v0.18.5 it was in both**, carried in the `carries_forward` of every
+entry from `0024` to `0032` while this paragraph said it deliberately was not.
+Retired from the thread list at `0033` under `accepts_threads`, which is the
+verb that already means *moved to `docs/constraints.md`*. The constraint is
+unchanged; only its second home is gone.
+
 **The store does not fit a checkout root deeper than 95 characters.** `0022-t1`.
 Measured 2026-08-27, on Windows, with `core.longpaths` unset. Qualifying every
 subject id with the file it is defined in is what bought identity, and it is
