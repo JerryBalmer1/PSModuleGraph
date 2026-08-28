@@ -185,7 +185,16 @@ function Update-FacetHealthRecord {
         Run after any module's records change, because coverage is a fact about
         the store rather than about one module in it.
 
-            .PARAMETER Root
+        THIS IS WHERE v0.18.0 DID NOT REACH. The claim there was that a build
+        which changes nothing writes nothing, and it was measured on the module
+        subtree only: this function still deleted each facet's facet-health
+        directory before rewriting it, so nine records were deleted and
+        recreated on every single build with identical bytes. Same defect, one
+        subtree over, and the writer's guard could not fire for the same reason
+        it could not fire anywhere before v0.18.0 - the file was gone by the
+        time it looked. Replacement here is now write-then-prune too, driven by
+        the same write log the writers fill in.
+    .PARAMETER Root
         Store root.
     .PARAMETER GeneratedAt
         Stamp.
@@ -217,16 +226,11 @@ function Update-FacetHealthRecord {
     $subjects = @(if (Test-Path -LiteralPath $subjectRoot) { Import-KnowledgeSubject -Path $subjectRoot })
     $assignments = @(if (Test-Path -LiteralPath $assignmentRoot) { Import-KnowledgeAssignment -Path $assignmentRoot })
 
-    # The log this function's writers now insist on. Grading still removes each
-    # facet's facet-health directory before rewriting it, so nothing prunes
-    # against the log yet - that is the next commit.
     $kept = [System.Collections.Generic.List[string]]::new()
 
     $graded = 0
     foreach ($facet in $facets) {
         $id = "facet:$($facet.Id)"
-        $stale = Join-Path (Join-Path $Root 'assignments') "facet/$($facet.Id)/facet-health"
-        if (Test-Path -LiteralPath $stale) { [System.IO.Directory]::Delete($stale, $true) }
         Write-SubjectRecord -Root $Root -SchemaPath $subjectSchema -Kept $kept -Id $id -Name $facet.Id `
             -Parent '' -Source (ConvertTo-SubjectSourcePath -Path $facet.Path -Base $Root) `
             -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"
@@ -264,6 +268,24 @@ usually mean each. Treat the evidence axis as a prompt to look rather than a
 finding.
 "@ | Out-Null
         $graded++
+    }
+
+    # The prune, against the same log. Ownership is deliberately narrow and
+    # matches what the delete-first shape used to remove: the facet subjects,
+    # and each facet's facet-health directory. The facet-id directories are
+    # enumerated from disk rather than from $facets, so a facet that has been
+    # deleted loses its assignments as well as being absent from the grading.
+    #
+    # An assignment placed under assignments/facet/<id>/ by some other facet is
+    # not this function's to remove and is left alone.
+    [void](Remove-UnwrittenKnowledgeRecord -Root (Join-Path (Join-Path $Root 'subjects') 'facet') -Kept $kept.ToArray())
+
+    $assignmentFacetRoot = Join-Path (Join-Path $Root 'assignments') 'facet'
+    if (Test-Path -LiteralPath $assignmentFacetRoot) {
+        foreach ($directory in (Get-ChildItem -LiteralPath $assignmentFacetRoot -Directory)) {
+            $health = Join-Path $directory.FullName 'facet-health'
+            [void](Remove-UnwrittenKnowledgeRecord -Root $health -Kept $kept.ToArray())
+        }
     }
 
     $graded

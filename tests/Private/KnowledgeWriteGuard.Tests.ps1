@@ -56,7 +56,14 @@ Describe 'A build that changes nothing writes nothing' {
         # filesystem, because the thing that was wrong was a stat cache, and a
         # rewrite with identical bytes still moves an mtime and still makes git
         # report the file modified.
-        $owned = Join-Path $script:Store 'subjects/psmodule'
+        #
+        # THE WHOLE STORE, not the module subtree. Scoped to subjects/psmodule
+        # this passed while nine facet-health assignments were deleted and
+        # recreated on every run - Update-FacetHealthRecord kept the delete-first
+        # shape until v0.18.1, so the writer's guard could not fire there. A test
+        # that measures the subtree the change was made in reports on the change,
+        # not on the store. ledger/0029.
+        $owned = $script:Store
         $before = @{}
         foreach ($f in (Get-ChildItem -LiteralPath $owned -Filter *.md -File -Recurse)) {
             $before[$f.FullName] = $f.LastWriteTimeUtc.Ticks
@@ -203,4 +210,59 @@ Describe 'A write site cannot forget to register what it wrote' {
         $result.RecordsPruned | Should-Be 0
     }
 
+    It 'grades facets without deleting their assignments first' {
+        # The delete-first shape one subtree over. Nine records were recreated
+        # on every build with identical bytes, which is the defect v0.18.0 said
+        # it had closed.
+        # TWICE before measuring, and the reason is the recursion rather than
+        # flakiness: facet-health grades the store including its own
+        # assignments, so the first run creates a population the second run
+        # grades differently. It reaches a fixed point at the second, and
+        # everything after that must move nothing.
+        $store = New-EmptyStore -At (Join-Path $TestDrive 'store5')
+        foreach ($pass in 1, 2) {
+            Update-KnowledgeStore -Path $script:Fixture -StoreRoot $store `
+                -GeneratedAt '2026-08-26' -Confirm:$false | Out-Null
+        }
+
+        $health = Join-Path $store 'assignments/facet'
+        $before = @{}
+        foreach ($f in (Get-ChildItem -LiteralPath $health -Filter *.md -File -Recurse)) {
+            $before[$f.FullName] = $f.LastWriteTimeUtc.Ticks
+        }
+        @($before.get_Keys()).Count | Should-BeGreaterThan 0
+
+        Update-KnowledgeStore -Path $script:Fixture -StoreRoot $store `
+            -GeneratedAt '2026-08-26' -Confirm:$false | Out-Null
+
+        $moved = [System.Collections.Generic.List[string]]::new()
+        foreach ($f in (Get-ChildItem -LiteralPath $health -Filter *.md -File -Recurse)) {
+            if ($before[$f.FullName] -ne $f.LastWriteTimeUtc.Ticks) { $moved.Add($f.Name) }
+        }
+        @($moved).Count | Should-Be 0
+    }
+
+    It 'still removes an assignment for a facet that has gone' {
+        # The invariant the delete-first shape carried. Pruning is driven from
+        # the directories on disk rather than from the facets read this run, so
+        # a facet whose file was removed loses its records too.
+        $store = New-EmptyStore -At (Join-Path $TestDrive 'store6')
+        Update-KnowledgeStore -Path $script:Fixture -StoreRoot $store `
+            -GeneratedAt '2026-08-26' -Confirm:$false | Out-Null
+
+        # Copies of real records rather than stubs, so the store still parses
+        # when the next run reads it back to compute coverage.
+        $health = Join-Path $store 'assignments/facet/structure/facet-health'
+        $stray = Join-Path $health 'coverage-none.md'
+        Copy-Item -LiteralPath (@(Get-ChildItem -LiteralPath $health -Filter *.md -File)[0].FullName) `
+            -Destination $stray -Force
+        $ghost = Join-Path $store 'subjects/facet/ghost.md'
+        Copy-Item -LiteralPath (Join-Path $store 'subjects/facet/structure.md') -Destination $ghost -Force
+
+        Update-KnowledgeStore -Path $script:Fixture -StoreRoot $store `
+            -GeneratedAt '2026-08-26' -Confirm:$false | Out-Null
+
+        Test-Path -LiteralPath $stray | Should-BeFalse
+        Test-Path -LiteralPath $ghost | Should-BeFalse
+    }
 }
