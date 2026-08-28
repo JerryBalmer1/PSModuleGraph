@@ -292,17 +292,24 @@ Describe 'A module with no duplicate names keeps its count and loses every path'
     # move" alone is satisfied perfectly by a migration that did nothing, which
     # is the failure with no symptom. What says it ran is that every path moved.
     #
-    # corpus/PSCorpus is the right module for it: nineteen definitions, no
-    # duplicated name anywhere, and not in the committed store - so nothing it
-    # says here is a fact about a tree this iteration wrote.
+    # corpus/PSCorpus is the right module for it: no duplicated name anywhere,
+    # and not in the committed store - so nothing it says here is a fact about
+    # a tree this iteration wrote.
+    #
+    # THE COUNT IS EXPECTED TO MOVE when a command is added to that module, and
+    # it moved from nineteen to twenty at v0.17.2 with Measure-CorpusDrift. It
+    # is written literally rather than derived on purpose: a count compared
+    # against itself would pass for a migration that did nothing, which is the
+    # failure with no symptom this whole Describe exists to catch. If you are
+    # here because it went red after adding a function, update the number.
 
     BeforeAll {
         $script:Corpus = Get-SubjectIdMap -ModulePath (Join-Path $script:Repo 'corpus/PSCorpus')
     }
 
     It 'has nothing to repair in the first place' {
-        $script:Corpus.NodeCount | Should-Be 19
-        @(Get-DistinctOrdinal -Value $script:Corpus.Former).Count | Should-Be 19
+        $script:Corpus.NodeCount | Should-Be 20
+        @(Get-DistinctOrdinal -Value $script:Corpus.Former).Count | Should-Be 20
     }
 
     It 'writes exactly as many subjects as it did before' {

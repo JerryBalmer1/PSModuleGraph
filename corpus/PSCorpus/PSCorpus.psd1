@@ -12,6 +12,7 @@
         'Import-CorpusPattern'
         'Import-CorpusTranscript'
         'Measure-CorpusRecurrence'
+        'Measure-CorpusDrift'
         'Export-CorpusTrainingSet'
         'Export-CorpusSql'
     )

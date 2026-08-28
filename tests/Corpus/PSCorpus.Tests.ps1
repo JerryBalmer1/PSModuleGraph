@@ -312,6 +312,136 @@ Describe 'Import-CorpusTranscript' {
     }
 }
 
+Describe 'Measure-CorpusDrift' {
+    BeforeAll {
+        $script:Watch = Join-Path $TestDrive 'watchlist.json'
+        @{
+            schemaVersion    = '1.0.0'
+            watchlistVersion = '9.9.9-test'
+            terms            = @(
+                @{ term = 'heredoc'; role = 'subject'; why = 'the named case' }
+                @{ term = 'seam'; role = 'control'; why = 'work vocabulary' }
+                @{ term = 'absent-term'; role = 'instrument'; why = 'never in the ranking' }
+            )
+        } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $script:Watch -Encoding utf8
+
+        # Rank is position in the ranked output, so order matters and the
+        # fixture is deliberately not alphabetical.
+        $script:Rows = @(
+            [pscustomobject]@{ Term = 'seam'; Lift = 11; Iterations = 11; Occurrences = 26; Background = 0 }
+            [pscustomobject]@{ Term = 'heredoc'; Lift = 7; Iterations = 7; Occurrences = 13; Background = 0 }
+        )
+    }
+
+    It 'places a watched term by its position in the ranking' {
+        $points = Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch `
+            -Pass 'v0.0.1' -At '2026-08-27' -Session 3 -ForegroundEpisode 24 -BackgroundEpisode 23
+        $h = @($points | Where-Object Term -eq 'heredoc')[0]
+        $h.Rank | Should-Be 2
+        $h.Lift | Should-Be 7
+        $h.TotalTerm | Should-Be 2
+        $h.Role | Should-Be 'subject'
+    }
+
+    It 'records a watched term that is absent as a row rather than an absence' {
+        # THE ASSERTION THIS COMMAND EXISTS FOR. A term falling out of the
+        # ranking entirely is the strongest drift signal there is, and dropping
+        # the row would make the series quietly shorten instead of showing it.
+        $points = Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch `
+            -Pass 'v0.0.1' -At '2026-08-27' -Session 3 -ForegroundEpisode 24 -BackgroundEpisode 23
+        @($points).Count | Should-Be 3
+        $gone = @($points | Where-Object Term -eq 'absent-term')[0]
+        $gone.Found | Should-BeFalse
+        $gone.Rank | Should-BeNull
+        $gone.Lift | Should-BeNull
+    }
+
+    It 'produces a row for every watched term when the ranking is empty' {
+        $points = Measure-CorpusDrift -Recurrence @() -Watchlist $script:Watch `
+            -Pass 'v0.0.1' -At '2026-08-27' -Session 0 -ForegroundEpisode 0 -BackgroundEpisode 0
+        @($points).Count | Should-Be 3
+        @($points | Where-Object Found).Count | Should-Be 0
+    }
+
+    It 'writes the population into every point' {
+        # Two points are comparable only if a reader can see they were taken
+        # over the same corpus. A Lift that fell because the population grew is
+        # a different fact from one that fell because background grew.
+        $points = Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch `
+            -Pass 'v0.0.1' -At '2026-08-27' -Session 4 -ForegroundEpisode 26 -BackgroundEpisode 25
+        foreach ($p in $points) {
+            $p.Session | Should-Be 4
+            $p.ForegroundEpisode | Should-Be 26
+            $p.BackgroundEpisode | Should-Be 25
+            $p.WatchlistVersion | Should-Be '9.9.9-test'
+        }
+    }
+
+    It 'appends to the series rather than replacing it' {
+        # Append-only. A series that can be rewritten is a record of what
+        # somebody currently believes was seen.
+        $series = Join-Path $TestDrive 'series.jsonl'
+        Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch -Pass 'p1' -At '2026-08-27' `
+            -Session 3 -ForegroundEpisode 24 -BackgroundEpisode 23 -AppendTo $series | Out-Null
+        Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch -Pass 'p2' -At '2026-08-27' `
+            -Session 4 -ForegroundEpisode 26 -BackgroundEpisode 25 -AppendTo $series | Out-Null
+
+        $lines = @(Get-Content -LiteralPath $series)
+        $lines.Count | Should-Be 6
+        @($lines | Where-Object { $_ -match '"pass":"p1"' }).Count | Should-Be 3
+        @($lines | Where-Object { $_ -match '"pass":"p2"' }).Count | Should-Be 3
+    }
+
+    It 'writes nothing unless it was asked to' {
+        # Appending to a committed series is a decision, not a side effect of
+        # looking at one.
+        $series = Join-Path $TestDrive 'untouched.jsonl'
+        Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch -Pass 'p1' -At '2026-08-27' `
+            -Session 3 -ForegroundEpisode 24 -BackgroundEpisode 23 | Out-Null
+        Test-Path -LiteralPath $series | Should-BeFalse
+    }
+
+    It 'refuses a watchlist it cannot read' {
+        { Measure-CorpusDrift -Recurrence $script:Rows -Watchlist (Join-Path $TestDrive 'nope.json') `
+                -Pass 'p' -At '2026-08-27' -Session 1 -ForegroundEpisode 1 -BackgroundEpisode 1 } |
+            Should-Throw -ExceptionMessage '*No watchlist*'
+    }
+
+    It 'tells two watched terms apart when they differ only in case' {
+        # A term is an identity and PowerShell's default comparison folds case,
+        # which would collapse two watched terms into one row.
+        # knowledge/patterns/0023.
+        $watch = Join-Path $TestDrive 'cased.json'
+        @{
+            schemaVersion = '1.0.0'; watchlistVersion = '1.0.0'
+            terms         = @(
+                @{ term = 'Seam'; role = 'control'; why = 'capitalised' }
+                @{ term = 'seam'; role = 'control'; why = 'lowercase' }
+            )
+        } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $watch -Encoding utf8
+
+        $points = Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $watch `
+            -Pass 'p' -At '2026-08-27' -Session 1 -ForegroundEpisode 1 -BackgroundEpisode 1
+        @($points).Count | Should-Be 2
+        @($points | Where-Object { $_.Term -ceq 'Seam' })[0].Found | Should-BeFalse
+        @($points | Where-Object { $_.Term -ceq 'seam' })[0].Found | Should-BeTrue
+    }
+
+    It 'reads the committed watchlist and finds every role in it' {
+        # The shipped file, not a fixture: a watchlist with no controls cannot
+        # separate drift from corpus growth, and that is the one property this
+        # design rests on.
+        $shipped = Join-Path $script:Repo 'corpus/analysis/watchlist.json'
+        $points = Measure-CorpusDrift -Recurrence @() -Watchlist $shipped `
+            -Pass 'p' -At '2026-08-27' -Session 0 -ForegroundEpisode 0 -BackgroundEpisode 0
+        $roles = @($points | ForEach-Object { $_.Role } | Sort-Object -Unique)
+        $roles | Should-ContainCollection 'control'
+        $roles | Should-ContainCollection 'subject'
+        $roles | Should-ContainCollection 'instrument'
+        @($points | Where-Object Role -eq 'control').Count | Should-BeGreaterThan 2
+    }
+}
+
 Describe 'Protect-CorpusText' {
     It 'redacts a home directory with either separator, single or doubled' {
         # A transcript embeds tool inputs as JSON, so the same path appears both

@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0.0",
+  "watchlistVersion": "0.1.0",
+  "decidedOn": "2026-08-27",
+  "decidedIn": "ledger/0026",
+  "note": "Terms re-scored on every pass so a moving score has somewhere to be seen. This exists because of a measured drift, not a suspected one: the corpus ingests the session that measured the last pass, that session is mostly talk about the terms it measured, talk lands in background, and Lift is foreground minus background - so a term scores LOWER each time somebody looks at it. Removing the measurement sessions was the alternative and was declined; see ledger/0026 for the argument. The point of a watchlist rather than a whole-ranking diff is the ROLES below. Drift that hits subject and instrument terms while controls hold flat is the effect this file exists to track. Drift that hits controls too is a different thing - the corpus growing, the episode boundary moving, the finder changing - and means every reading here has to be re-derived rather than continued.",
+  "roles": {
+    "subject": "A term the measurement was ABOUT. Expected to fall as passes accumulate. Falling is the effect, not a fault.",
+    "instrument": "A term naming the measuring apparatus. It enters the corpus only because measurement happened, so it should appear from nothing and then behave like a subject term.",
+    "control": "Ordinary work vocabulary that no measurement pass discusses. Expected to hold. A control that moves invalidates the reading of every subject term in the same pass."
+  },
+  "terms": [
+    {
+      "term": "heredoc",
+      "role": "subject",
+      "why": "The named case. Quoted-heredoc backslash collapse, measured at Lift 7 rank 98 over three sessions and Lift 6 rank 148 over four, after the session that measured it was ingested."
+    },
+    {
+      "term": "pattern",
+      "role": "subject",
+      "why": "Fell from Lift 5 to Lift 4 across the same two populations, background 2 to 4. A second subject term moving the same way as heredoc, and the one that shows this is not a single-term artefact."
+    },
+    {
+      "term": "measurement",
+      "role": "instrument",
+      "why": "Lift 2 to Lift 1, rank 881 to 1057. The clearest instrument term: it is in the corpus almost entirely because somebody measured something."
+    },
+    {
+      "term": "corpus",
+      "role": "instrument",
+      "why": "Absent from the ranking over three sessions, rank 1031 over four. Appearing from nothing is what an instrument term does when the apparatus starts describing itself."
+    },
+    {
+      "term": "background",
+      "role": "instrument",
+      "why": "Absent, then rank 854. The finder's own vocabulary entering the population the finder reads, which is the mechanism of this whole file in one word."
+    },
+    {
+      "term": "population",
+      "role": "instrument",
+      "why": "Absent, then rank 560. Watched because it is the term this project uses when it is arguing about what to count, so it should track argument rather than work."
+    },
+    {
+      "term": "seam",
+      "role": "control",
+      "why": "Lift 11 in both populations. Core design vocabulary, used while building rather than while measuring."
+    },
+    {
+      "term": "schema",
+      "role": "control",
+      "why": "Lift 10 then 11 - it ROSE. A control is not required to be flat, only to be uncorrelated with measurement. This one rising while heredoc fell is the strongest single piece of evidence that the drift is specific."
+    },
+    {
+      "term": "store",
+      "role": "control",
+      "why": "Lift 7 in both. The knowledge store is the subject of most of the work and none of the measurement."
+    },
+    {
+      "term": "gate",
+      "role": "control",
+      "why": "Lift 6 in both, background 4 then 5. A control that carries real background already, so it tests whether background growth alone moves a score."
+    },
+    {
+      "term": "ledger",
+      "role": "control",
+      "why": "Lift 8 in both. Written every pass by definition, so if mere presence in every session caused drift this would show it first."
+    },
+    {
+      "term": "thread",
+      "role": "control",
+      "why": "Lift 6 in both. Named in every entry's front matter and body, and never the object of a measurement."
+    }
+  ]
+}
