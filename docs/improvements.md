@@ -134,6 +134,19 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Medium
 
+- **The coverage gate measures one module and speaks for the repository.**
+  `$config.CodeCoverage.Path` is `output/PSModuleGraph.psm1` — the built module,
+  which is what the tests import and which was the whole repository when the
+  line was written. `corpus/PSCorpus` is **1,936 lines of the repository's
+  7,687**, is exercised by **741 lines of tests in the same suite**, and
+  contributes nothing to the number. The build prints `Line coverage: 77.97%`
+  and throws with "Raise coverage"; neither says which code, and the scope is
+  recorded only in the `docs/testing.md` sentence that explains why line numbers
+  refer to a generated file. **Medium rather than Small because the target is a
+  throwing gate**: nobody knows the combined figure, and finding out commits
+  somebody to a decision if it lands below 75. *Noticed while looking for a
+  second instance of `pattern:0030`; it is the second instance.*
+
 - **The ledger continuity gate cannot see a thread dropped from
   `carries_forward`.** `tests/Private/LedgerContinuity.Tests.ps1` compares
   entry N against `$previous.OpenThreads` - the threads the previous entry
