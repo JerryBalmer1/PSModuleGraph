@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PSModuleGraph.psm1'
-    ModuleVersion        = '0.18.3'
+    ModuleVersion        = '0.18.4'
     GUID                 = 'a7c3e8f1-4b2d-4e9a-9c1f-6d8e5a0b3f72'
     Author               = 'Jerry Balmer'
     CompanyName          = 'Community'

@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The publication gate now checks the branch, not only the tag.** A tag can be
+  pushed onto a remote whose branch was left behind — `git push origin <tag>`
+  does exactly that — and every previous assertion stayed green while a clone of
+  the default branch got none of the sealed work. The gate asks one `ls-remote`
+  for the branch head and the tag together, then requires the tag's commit to be
+  an ancestor of the branch. Where the remote branch is ahead of anything this
+  clone has fetched the question has no answer here, and unknown fails, by the
+  same rule that fails an unreachable remote. Red four ways against a bare-clone
+  fixture, including a branch pointing at a commit minted with `git commit-tree`
+  that this clone has never seen. Closes `0031-t1`.
+
 - **A `PreTag` gate asserting that the previous iteration was actually
   published.** v0.18.0 and v0.18.1 were tagged, a push was authorised for each,
   and neither reached the remote; nothing noticed until the remote was read from
