@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Two patterns, and the subjects that come out of them.**
+  `pattern:0025-a-record-counts-conclusions-not-incidents` and
+  `pattern:0025-the-instrument-is-in-its-own-population`. The first corrects the
+  ledger-versus-transcript finding; the second records that an instrument
+  standing in its own population moves what it measures, in a direction the
+  mechanism does not predict.
+- **`Import-CorpusTranscript` tests.** Six, over a fixture whose `tool_result`
+  blocks sit in later lines than the calls they answer, so a forward-pass
+  implementation fails them. There were none before, which is why the defect
+  below survived.
+
+### Fixed
+
+- **The corpus recorded no tool failures at all.** `IsError` and `ResultChars`
+  were assigned `$null` unconditionally for every tool call in every session —
+  1,357 of them across three sessions, against 74 real `is_error` results in the
+  raw transcripts. A result arrives in a later line than the call it answers, so
+  results are now matched by `tool_use_id` once a file is read. The measurement
+  that corrected this repository's own claim about lexical recurrence had to
+  re-parse the JSONL outside the module to get a signal the shipped code path
+  could not give it.
+
 - **Patterns are subjects.** `knowledge/NAMING.md` reaches `0.3.0` and states,
   for the first time, the criterion that decides what may carry a URN: an
   identity must be a pure function of the thing's own properties, never of its
