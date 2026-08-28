@@ -38,6 +38,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`docs/constraints.md` argued for itself with a false statistic.** It claimed
+  *twenty-one of twenty-three closures in the very next entry and none ever
+  after four carries*. Recomputed over this repository's 32 entries: **50
+  retirements, 23 in the next entry, 18 past four carries** — and **14 of those
+  18 are entry `0019` alone**, the sweep that created the file. Excluding it,
+  **31 retirements, 23 in the next entry (74%), 4 past four carries**. The
+  argument is kept and made the honest one: retirement is something a deliberate
+  pass does and almost nothing else does. The ruling in `docs/improvements.md`
+  built on the bad figure survives on the corrected one, restated without the
+  absolute.
+- **`0024-t1` was a constraint that said it was deliberately not a thread, and
+  was a thread in every entry since `0024`.** Retired into
+  `accepts_threads` — the verb that already meant *moved to
+  `docs/constraints.md`*. No fifth verb was needed; the existing one had never
+  been used.
+- **`0004-t1` and `0007-t2` were each retired twice and are now one verb each.**
+  `0004-t1` is **closed** at `0024`, which answered it by making patterns
+  subjects; its constraint is struck as answered. `0007-t2` is **accepted** at
+  `0019`; `0024` recovered both on the false premise that `0020` had dropped
+  them, when `0019` had retired them.
+- **`0030` and `0031` reported the always-loaded tier as 18,546 bytes; it is
+  18,869.** Corrected forward, naming both, since the ledger is append-only.
+- **`docs/constraints.md` now marks which constraints were measured and which
+  were only read** — nine and ten. `0024-t2`, which forbids publishing the
+  corpus and carries more numbers than any other, is in the re-read group.
+
 - **A generator can no longer write a record the next prune deletes.** `-Kept`
   was mandatory on `Write-SubjectRecord` and `Write-AssignmentRecord`, which
   made those two the door by convention: `Write-KnowledgeRecord` beneath them
