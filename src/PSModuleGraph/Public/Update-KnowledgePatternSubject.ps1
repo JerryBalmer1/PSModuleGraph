@@ -44,7 +44,11 @@ function Update-KnowledgePatternSubject {
         Stamp. Fixed by the build so a regeneration is byte-identical and
         staleness is detected by comparing trees.
     .PARAMETER Prompt
-        Ledger entry that produced these records.
+        The ledger entry that established this record SHAPE, not the run that
+        last wrote the file. It does not advance with the iteration:
+        Update-KnowledgeStore still carries ledger/0003 after twenty of them,
+        and moving it would rewrite the provenance of every record on every
+        build to name an entry that did not produce them.
     .EXAMPLE
         Update-KnowledgePatternSubject -GeneratedAt 2026-08-26
 
