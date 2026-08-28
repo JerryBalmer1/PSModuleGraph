@@ -75,6 +75,40 @@ may be built, queried and argued with locally, and **may not be published,
 uploaded, embedded by a hosted service, or used to train anything that leaves
 this machine.**
 
+**Narrowed 2026-08-27, `0025`, on a measurement: the corpus does not contain
+third-party source, and the ingester is already why.** `Import-CorpusTranscript`
+keeps visible turn text, summarises a tool INPUT to its first scalar at 300
+characters, and **never stores a tool result** — and a file's contents reach a
+session only as a tool result. Reading `SqlServerDsc` therefore cannot put
+`SqlServerDsc` into the corpus, which was designed for size and leak reasons and
+turns out to answer this. Measured over all four ingested sessions, 2,060 turns
+and 1,485 tool calls: six distinctive literals that exist only inside the
+vendored sources appear **zero** times in the corpus while present on disk —
+`Add-ConditionalFormatting` 35 on disk / 0 ingested, `Write-VcsStatus` 10 / 0,
+`Get-GitDirectory` 7 / 0. Twenty-two turns of 2,060 (1.1%) name a gallery module
+at all, almost all of them user turns using a public package name in a sentence.
+The three third-party absolute paths quoted earlier in this document reached the
+transcript exactly once, in a `tool_result`, and did not survive ingestion.
+
+So the exposure is not "transcripts carry third-party bytes by construction".
+**It is bounded to what somebody types into prose**, which is a smaller and
+differently-shaped risk than a redactor can address anyway.
+
+**What does not follow.** Excluding sessions that touched the gallery costs 4
+sessions of 4 and 2,060 turns of 2,060 — every session touched it, so
+session-level exclusion deletes the corpus. Turn-level exclusion costs 22 turns
+carrying 138,583 of 479,791 characters, and buys nothing, because those turns
+contain no third-party content to remove.
+
+**The constraint therefore stands, and its reason changes.** It is no longer
+"this may contain other people's code". It is that the redactor's misses were
+all in the author's own material — real names, IPs, GUIDs, absolute paths — and
+those are still there, in a record written by one person about one machine. A
+second reader is still the condition. **No ingester restriction was written:
+adding a source filter for a class of content that measures at zero would be
+guarding a door nothing came through.** That the seam already holds is worth
+knowing and is not worth code.
+
 **Eight modules chosen by one person for what they were expected to stress.**
 `0012-t1`. That is a sample selected by a hypothesis and it stays one however
 many are added — a ninth module would be chosen the same way, by the same
