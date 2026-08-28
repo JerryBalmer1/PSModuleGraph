@@ -1,13 +1,14 @@
 {
   "schemaVersion": "1.0.0",
-  "watchlistVersion": "0.1.0",
+  "watchlistVersion": "0.2.0",
   "decidedOn": "2026-08-27",
-  "decidedIn": "ledger/0026",
-  "note": "Terms re-scored on every pass so a moving score has somewhere to be seen. This exists because of a measured drift, not a suspected one: the corpus ingests the session that measured the last pass, that session is mostly talk about the terms it measured, talk lands in background, and Lift is foreground minus background - so a term scores LOWER each time somebody looks at it. Removing the measurement sessions was the alternative and was declined; see ledger/0026 for the argument. The point of a watchlist rather than a whole-ranking diff is the ROLES below. Drift that hits subject and instrument terms while controls hold flat is the effect this file exists to track. Drift that hits controls too is a different thing - the corpus growing, the episode boundary moving, the finder changing - and means every reading here has to be re-derived rather than continued.",
+  "decidedIn": "ledger/0027",
+  "note": "Terms re-scored on every pass so a moving score has somewhere to be seen. This exists because of a measured drift, not a suspected one: the corpus ingests the session that measured the last pass, that session is mostly talk about the terms it measured, talk lands in background, and Lift is foreground minus background - so a term scores LOWER each time somebody looks at it. Removing the measurement sessions was the alternative and was declined; see ledger/0026 for the argument. The point of a watchlist rather than a whole-ranking diff is the ROLES below. Drift that hits subject and instrument terms while controls hold flat is the effect this file exists to track. Drift that hits controls too is a different thing - the corpus growing, the episode boundary moving, the finder changing - and means every reading here has to be re-derived rather than continued. ADDED AT 0.2.0: an UNCLASSIFIED cohort, selected mechanically rather than chosen - the term at every rank that is an exact multiple of 100 in the v0.17.0 three-session ranking. Nobody labelled these. They exist because a prediction written by the session that assigned the roles tests internal consistency and little else: if unclassified vocabulary behaves like the controls, then 'control' means 'typical' and the subject fall is a real effect; if it behaves like the subjects, the roles are describing the labeller rather than the corpus. The first output of the selection rule was taken and not adjusted.",
   "roles": {
     "subject": "A term the measurement was ABOUT. Expected to fall as passes accumulate. Falling is the effect, not a fault.",
     "instrument": "A term naming the measuring apparatus. It enters the corpus only because measurement happened, so it should appear from nothing and then behave like a subject term.",
-    "control": "Ordinary work vocabulary that no measurement pass discusses. Expected to hold. A control that moves invalidates the reading of every subject term in the same pass."
+    "control": "Ordinary work vocabulary that no measurement pass discusses. Expected to hold. A control that moves invalidates the reading of every subject term in the same pass.",
+    "unclassified": "Chosen by a stated mechanical rule, not by inspection. No per-term expectation. The COHORT is the test: its aggregate behaviour is the baseline that says whether 'control' is a real category or a restatement of what the labeller already saw."
   },
   "terms": [
     {
@@ -69,6 +70,61 @@
       "term": "thread",
       "role": "control",
       "why": "Lift 6 in both. Named in every entry's front matter and body, and never the object of a measurement."
+    },
+    {
+      "term": "looks",
+      "role": "unclassified",
+      "why": "Rank 100 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "show",
+      "role": "unclassified",
+      "why": "Rank 200 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "menu",
+      "role": "unclassified",
+      "why": "Rank 300 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "callers",
+      "role": "unclassified",
+      "why": "Rank 400 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "required",
+      "role": "unclassified",
+      "why": "Rank 500 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "analyzer",
+      "role": "unclassified",
+      "why": "Rank 600 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "proposes next",
+      "role": "unclassified",
+      "why": "Rank 700 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "prior",
+      "role": "unclassified",
+      "why": "Rank 800 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "action copy",
+      "role": "unclassified",
+      "why": "Rank 900 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "fixes",
+      "role": "unclassified",
+      "why": "Rank 1000 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
+    },
+    {
+      "term": "judgement call",
+      "role": "unclassified",
+      "why": "Rank 1100 in the v0.17.0 three-session ranking. Selected by the rule, not by judgement, and kept whatever it turned out to be."
     }
   ]
 }

@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "1.0.0",
+  "predictionsVersion": "0.1.0",
+  "writtenOn": "2026-08-27",
+  "writtenIn": "ledger/0027",
+  "baselinePass": "v0.17.1",
+  "testedByPass": "v0.17.3",
+  "watchlistVersion": "0.2.0",
+  "note": "Written BEFORE the pass that tests it and before anything new was ingested. The watchlist roles were assigned after seeing which terms held, which is fitting rather than hypothesis; the only thing that converts them into a hypothesis is a claim made before the observation, so here it is. Each prediction is stated FROM THE ROLE, not from the last number - the reasoning field says which rule produced it, and where the role and the last number disagree the role wins and the prediction is deliberately the harder one. Scored against the v0.17.3 point by Measure-CorpusDrift -Prediction. The score is the finding whichever way it goes.",
+  "scoring": {
+    "delta": "lift(testedByPass) - lift(baselinePass), per term, over whatever population the tested pass names.",
+    "fall": "delta < 0",
+    "hold": "delta == 0",
+    "rise": "delta > 0",
+    "absentBoth": "A term absent from both passes scores 'hold'. A term that leaves the ranking scores 'fall'; one that enters scores 'rise'.",
+    "perTermWeight": "LOW, and this is not a hedge written after the fact. Reclassifying ONE background episode of 47 - the measured worst case of the piped-command defect - moves three of twelve classified terms by up to two Lift points. A single term agreeing or disagreeing is inside that noise. The aggregate claims below are the actual test."
+  },
+  "aggregate": [
+    {
+      "id": "A1",
+      "claim": "The median delta over subject and instrument terms is strictly less than the median delta over control terms.",
+      "reasoning": "This is the whole mechanism in one comparison and it does not depend on any single term. If measurement talk lands in background and background is subtracted, the terms the measurement discusses must fall relative to the terms it does not.",
+      "falsifiedBy": "medians equal or reversed"
+    },
+    {
+      "id": "A2",
+      "claim": "The median delta over the eleven unclassified terms is closer to the control median than to the subject-and-instrument median.",
+      "reasoning": "THE INDEPENDENT TEST, and the one that can embarrass this whole design. Nobody labelled the unclassified cohort. If ordinary vocabulary nobody classified behaves like the controls, then 'control' names a real property of the corpus. If it behaves like the subjects, 'control' names the labeller's expectation and every reading in ledger/0026 has to be re-derived.",
+      "falsifiedBy": "the unclassified median sitting at or below the subject-and-instrument median"
+    },
+    {
+      "id": "A3",
+      "claim": "At most one of the six control terms moves by more than one Lift point.",
+      "reasoning": "The stability condition the whole design rests on. It is stated as a number so it can fail. It is deliberately not 'controls hold exactly': the worst-case test moved one control by two points on a single-episode reclassification, so demanding exactness would be demanding a precision the instrument has been measured not to have.",
+      "falsifiedBy": "two or more controls moving by more than one"
+    }
+  ],
+  "terms": [
+    { "term": "heredoc", "role": "subject", "predicted": "fall", "reasoning": "Subject rule: the pass that tests this will itself have discussed the term, in episodes where no tool failed, which is background." },
+    { "term": "pattern", "role": "subject", "predicted": "fall", "reasoning": "Subject rule, same mechanism. Note this is the harder call: under the worst-case reclassification pattern ROSE from 5 to 7, so the role and the sensitivity test disagree and the role is what is being predicted." },
+    { "term": "measurement", "role": "instrument", "predicted": "fall", "reasoning": "Instrument rule: it is in the corpus almost entirely because somebody measured something, so it accumulates background faster than foreground." },
+    { "term": "corpus", "role": "instrument", "predicted": "fall", "reasoning": "Instrument rule. It sits at Lift 1, so a fall means leaving the ranking entirely, which the scoring counts as a fall." },
+    { "term": "background", "role": "instrument", "predicted": "fall", "reasoning": "Instrument rule, and the strongest case for it: the word names the bucket that measurement talk lands in, so it should track measurement almost exactly." },
+    { "term": "population", "role": "instrument", "predicted": "fall", "reasoning": "Instrument rule. This project uses the word when arguing about what to count, and arguing is background." },
+    { "term": "seam", "role": "control", "predicted": "hold", "reasoning": "Control rule: design vocabulary used while building and not while measuring." },
+    { "term": "schema", "role": "control", "predicted": "hold", "reasoning": "Control rule. It rose last time; the role predicts no direction, so hold is the honest call and a second rise would count against this prediction." },
+    { "term": "store", "role": "control", "predicted": "hold", "reasoning": "Control rule: the knowledge store is the subject of most of the work and none of the measurement." },
+    { "term": "gate", "role": "control", "predicted": "hold", "reasoning": "Control rule. The least safe control: it already carries real background, and it moved by two under the worst-case test. Predicted hold anyway, because the role is what is on trial." },
+    { "term": "ledger", "role": "control", "predicted": "hold", "reasoning": "Control rule. Written every pass by definition, so if mere presence caused drift this would fail first." },
+    { "term": "thread", "role": "control", "predicted": "hold", "reasoning": "Control rule: named in every entry and never the object of a measurement." },
+    { "term": "looks", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction. Scored into the A2 cohort median only." },
+    { "term": "show", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "menu", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "callers", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "required", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "analyzer", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "proposes next", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "prior", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "action copy", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "fixes", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." },
+    { "term": "judgement call", "role": "unclassified", "predicted": "unknown", "reasoning": "No per-term expectation by construction." }
+  ]
+}
