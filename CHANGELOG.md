@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Patterns are subjects.** `knowledge/NAMING.md` reaches `0.3.0` and states,
+  for the first time, the criterion that decides what may carry a URN: an
+  identity must be a pure function of the thing's own properties, never of its
+  position in a document or an insertion order. It also separates the naming
+  rule from the storage rule, which had been read as one claim for eight
+  iterations. `Update-KnowledgePatternSubject` generates a `pattern:` subject
+  for every entry in the pattern log. Claims and measurements are not subjects,
+  and the reasons are recorded rather than the verdicts.
+- **Corpus sampling weights are data.** `corpus/sampling/weights.json` is
+  versioned, dated, and carries the population size behind each number.
+  `Export-CorpusTrainingSet -WeightProfile` applies it; without the switch no
+  weight is emitted and `training_example.weight` takes its column default, so
+  the database records what was extracted rather than an untested belief about
+  what it is worth.
+
+### Changed
+
+- **`Write-SubjectRecord` takes a `-GeneratedBy`**, so a record says which
+  generator produced it now that there are two.
+
 - **The ledger records why a thread left, not only that it did.**
   `supersedes_threads` names a thread a new one replaces by id;
   `recovers_threads` names one that left the record without being closed and
