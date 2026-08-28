@@ -5,11 +5,28 @@ was raised as a ledger thread, each was ruled on, and each is here because the
 answer is *"yes, and that is the trade"* rather than *"not yet"*.
 
 This file exists because an accepted limitation that stays in the thread list is
-not accepted, it is deferred — and the ledger's own measurement is that deferral
-is the state nothing in this project has ever recovered from. Twenty-one of
-twenty-three closures happened in the very next entry and **none has ever
-happened after four carries**. A thread that will not be worked on and will not
-be struck is a line item that costs a reading every iteration and buys nothing.
+not accepted, it is deferred — and the ledger's own measurement is that the
+ordinary flow of work does not retire a thread it has carried for long.
+
+**The numbers, recomputed at v0.18.5 over all 32 entries.** Fifty retirement
+events; 23 in the very next entry; 18 after more than four carries. Those last
+two look like they contradict each other and they do not, because **entry `0019`
+alone accounts for 19 retirements and 14 of the 18 long ones** — it is the
+deliberate sweep that created this file, commit *"Retire twelve limitations as
+chosen rather than pending"*.
+
+Take that sweep out and the shape is sharp: **31 retirements, 23 of them in the
+very next entry (74%), and 4 past four carries.** So retirement is something a
+deliberate pass does, and almost nothing else does. A thread not answered
+immediately is not on its way to being answered — it is waiting for somebody to
+sit down and decide about it, and this file is where that decision goes when the
+answer is *"yes, and that is the trade"*.
+
+An earlier version of this paragraph claimed *twenty-one of twenty-three
+closures in the very next entry and none ever after four carries*. That was
+false and had been for eight entries. It was measured before `0019`'s sweep and
+never recomputed, and a ruling in `docs/improvements.md` was built on it —
+`0033` records both.
 
 **Reading this is how you find out something is deliberate before proposing to
 fix it.** If you think one of these is wrong, that is a proposal — raise it, do

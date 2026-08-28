@@ -191,12 +191,30 @@ the next change to this cheaper**. Three concrete tests:
   invisible. *`PSGraphRender` ledger `0010`.*
 - **Nothing totals the open threads, and doing it by hand does not scale.**
   Eighty-eight raised across both repositories, 23 closed, 2 vanished, 63
-  open - 37 of them here. Twenty-one of the 23 closures happened in the very
-  next entry and nothing has ever closed after being carried four times, so
-  carry count is a measure of how long ago something was noticed and not a
-  priority. The table is in `PSGraphRender` ledger `0010` and is stale the
-  moment either repository writes another entry. It wants the same twenty
-  lines of code as the gate above.
+  open - 37 of them here. The table is in `PSGraphRender` ledger `0010` and is
+  stale the moment either repository writes another entry. It wants the same
+  twenty lines of code as the gate above.
+
+  **Corrected at v0.18.5.** This item used to continue: *"twenty-one of the 23
+  closures happened in the very next entry and nothing has ever closed after
+  being carried four times, so carry count is a measure of how long ago
+  something was noticed and not a priority."* The second clause is false. That
+  count was taken across both repositories before `0019`; recomputed over this
+  repository's 32 entries it is **50 retirements, 23 in the very next entry, and
+  18 after more than four carries**. The other repository's half is not
+  recomputed here.
+
+  **The ruling survives, on the corrected numbers and for a better reason.**
+  Fourteen of those 18 long retirements are entry `0019` alone - the sweep that
+  wrote `docs/constraints.md`. Excluding it: **31 retirements, 23 in the next
+  entry (74%), 4 past four carries.** So the shape the ruling depends on holds -
+  a thread is answered immediately or it is not answered by the ordinary flow -
+  and *carry count still measures how long ago something was noticed rather than
+  what it is worth*. What has to go is the absolute: things **do** get retired
+  after four carries, four times organically and once more at v0.18.5, and every
+  one of those took a pass that sat down and decided. That strengthens the
+  ruling rather than weakening it, and it was reached from a number nobody had
+  checked in eight entries. `knowledge/ledger/0033`.
 - **The skills directory is a byte-identical copy in two repositories with
   nothing keeping it in sync.** Five of the seven skills exist in both, and
   the copy in `PSGraphRender` cites a charter test that does not exist there,
