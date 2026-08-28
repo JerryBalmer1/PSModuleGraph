@@ -27,6 +27,7 @@ BeforeAll {
             $read = Read-KnowledgeFile -Path $Path -SchemaName 'ledger-entry.schema.json'
             [pscustomobject]@{
                 Id             = $read.Data['id']
+                Tag            = Get-HashtableValue -InputObject $read.Data -Key 'tag' -Default ''
                 Closes         = @(Get-HashtableValue -InputObject $read.Data -Key 'closes' -Default @())
                 PruneProposals = @(Get-HashtableValue -InputObject $read.Data -Key 'prune_proposals' -Default @())
             }
@@ -147,5 +148,89 @@ Describe 'The version the module reports' -Tag 'PreTag' {
         $existing = @(& git -C $repo tag --list "v$intended")
         @($existing).Count | Should-Be 0 -Because (
             "v$intended is already tagged, so this iteration is about to reuse a released version")
+    }
+}
+
+Describe 'The tag before this one' -Tag 'PreTag' {
+    It 'is on the remote at the commit it names here' {
+        # THE FAILURE THIS PREVENTS. v0.18.0 and v0.18.1 were tagged, a push was
+        # authorised for each, and neither reached the remote. Nothing noticed
+        # until the remote was read from outside this machine three iterations
+        # later, so v0.18.2 was sealed on top of two releases that existed only
+        # on this disk. `0031`.
+        #
+        # A gate cannot verify the push that has not happened yet: publishing is
+        # the operator's and runs after the tag. It CAN verify the previous one.
+        # That fails one iteration late, which is the honest limit of anything
+        # checkable from inside - and one late beats three.
+        #
+        # THIS MAKES A NETWORK CALL AND FAILS WHEN IT CANNOT. There is no
+        # offline expression of "what does the remote hold": remote-tracking
+        # refs answer from the last fetch, which is a cache, and a cache would
+        # have passed this gate on all three of the iterations above. Skipping
+        # when offline would make it a mechanism that reports success where
+        # nothing could contradict it - pattern `0017`, the shape this
+        # repository deletes. The cost is real and stated in
+        # `docs/constraints.md`: tagging now requires a reachable remote.
+        #
+        # Asserting the COMMIT and not merely the ref is what makes this more
+        # than "something called v0.18.1 is up there". A ref cannot exist on a
+        # remote without its whole ancestry, so a matching commit proves every
+        # commit up to that tag transferred. It does not prove the remote BRANCH
+        # advanced to include it - `0031-t1`.
+        if ($script:Entries.Count -lt 2) {
+            Set-ItResult -Skipped -Because 'there is no previous entry, so no previous tag was cut'
+            return
+        }
+
+        $previous = $script:Entries[-2]
+        $previous.Tag | Should-NotBeEmptyString -Because "entry $($previous.Id) must declare the tag it sealed"
+
+        # Overridable for the same reason PSMODULEGRAPH_LEDGER_DIR is: this has
+        # to be provable against a remote that is missing the tag, holds it at
+        # the wrong commit, or cannot be reached, and none of the three can be
+        # staged on the real one.
+        $remote = $env:PSMODULEGRAPH_PUBLISH_REMOTE
+        if (-not $remote) { $remote = 'origin' }
+
+        # Without this a remote that wants credentials prompts and the gate
+        # hangs, which is worse than either answer it could give.
+        $restore = $env:GIT_TERMINAL_PROMPT
+        $env:GIT_TERMINAL_PROMPT = '0'
+        try {
+            # BOTH patterns, deliberately. ls-remote matches the peeled entry
+            # by its own name, so asking only for `refs/tags/X` returns the tag
+            # object and never `refs/tags/X^{}` - and the commit assertion below
+            # would then have nothing to read. Checked against the real remote
+            # and against a fixture before being relied on.
+            $output = @(& git -C $script:Repo ls-remote --tags $remote `
+                    "refs/tags/$($previous.Tag)" "refs/tags/$($previous.Tag)^{}" 2>&1 |
+                    ForEach-Object { "$_" })
+            $exit = $LASTEXITCODE
+        }
+        finally {
+            if ($null -eq $restore) { Remove-Item -LiteralPath 'Env:\GIT_TERMINAL_PROMPT' -ErrorAction Ignore }
+            else { $env:GIT_TERMINAL_PROMPT = $restore }
+        }
+
+        $exit | Should-Be 0 -Because (
+            "the remote '$remote' could not be read, so whether $($previous.Tag) was published is unknown - and unknown is not a pass. git said: $($output -join ' / ')")
+
+        $pattern = "\srefs/tags/$([regex]::Escape($previous.Tag))(\^\{\})?$"
+        $refs = @($output | Where-Object { $_ -match $pattern })
+        @($refs).Count | Should-BeGreaterThan 0 -Because (
+            "$($previous.Tag) is tagged here and is not on '$remote'. The iteration before this one was never published, and this one is about to be sealed on top of it.")
+
+        # An annotated tag answers twice: the tag object, and ^{} for the commit
+        # it peels to. Every tag this repository cuts is annotated.
+        $peeled = @($refs | Where-Object { $_ -match '\^\{\}$' })
+        @($peeled).Count | Should-Be 1 -Because (
+            "$($previous.Tag) on '$remote' must be an annotated tag, as every tag here is")
+
+        $remoteCommit = ($peeled[0] -split '\s+')[0]
+        $localCommit = (& git -C $script:Repo rev-list -n1 $previous.Tag)
+
+        $remoteCommit | Should-Be $localCommit -Because (
+            "$($previous.Tag) points at $localCommit here and at $remoteCommit on '$remote', so what was published is not what this ledger says was published")
     }
 }

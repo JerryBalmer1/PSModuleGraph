@@ -316,6 +316,33 @@ The counterweight is in the shape of the artefacts — the gate proofs are a tab
 of four different acts rather than a paragraph averaging them, because the
 paragraph is where the memory smooths.
 
+## Publishing
+
+**The tag gate reads the remote over the network, and tagging fails when it
+cannot.** `0031`. Ruled 2026-08-27. `PreTag` asserts that the tag the *previous*
+ledger entry declared is on the remote, at the commit it names here. There is no
+offline expression of that question: remote-tracking refs answer from the last
+fetch, and that cache would have passed on every one of the three iterations
+where this actually failed. Both alternatives are worse than the cost. Skipping
+when the remote is unreachable builds a gate that cannot fail in precisely the
+condition it exists to detect, which is pattern `0017` and the shape this
+repository deletes on sight; approximating with the cached ref builds a gate
+that reports on this machine's memory of the remote rather than on the remote.
+So the network call stays and the cost is stated rather than hidden: **an
+iteration cannot be tagged from a machine that cannot reach the remote.** There
+is deliberately no override that turns it off - `PSMODULEGRAPH_PUBLISH_REMOTE`
+redirects it at another remote so it can be proven against fixtures, and cannot
+disable it.
+
+**It fails one iteration late, and that is the limit rather than an oversight.**
+Publishing is the operator's and happens after the tag, so nothing inside the
+repository can verify a push that has not been made yet; the previous one is the
+most recent thing any gate here can see. Against the failure that produced it,
+one late is what it buys: v0.18.0 and v0.18.1 were tagged and never pushed, and
+this gate would have turned v0.18.1 red for v0.18.0's absence instead of letting
+three iterations accumulate unpublished. `0031-t1` is what it still does not
+see.
+
 ## Closed rather than accepted
 
 For completeness, because they read the same way in a diff and are not the same
