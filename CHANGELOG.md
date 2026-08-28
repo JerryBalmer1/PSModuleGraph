@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A generator can no longer write a record the next prune deletes.** `-Kept`
+  was mandatory on `Write-SubjectRecord` and `Write-AssignmentRecord`, which
+  made those two the door by convention: `Write-KnowledgeRecord` beneath them
+  took a path and no log. Registration now happens there, in the last function
+  in this repository that touches the filesystem, and `-Kept` is mandatory on
+  it too. Staged, the bypass went from **5 tests red, about counts** to **17,
+  each naming the missing parameter**.
+
 - **A write site cannot forget to register what it wrote.** The replacement
   invariant — a population is replaced, not merged — moved in v0.18.0 from a
   deleted subtree onto a list of paths built at five call sites, each
