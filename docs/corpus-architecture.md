@@ -117,6 +117,44 @@ have to be told out of band.** In order:
 
 Append only. Do not re-litigate these.
 
+**2026-08-27 — `v0.17.1` is a pass whose subject readings do not stand.**
+`0027-t2`. The rule written in `0026` says a control that moves invalidates the
+subject readings in the same pass. `schema` moved, by one Lift point, between
+`v0.17.0` and `v0.17.1`. So those readings do not stand. **The rule survives and
+the data point does not.**
+
+Three options existed and two were refused, and the refusals are the part worth
+keeping because this argument will be had again:
+
+- **Demote `schema` from control.** Refused: it fits the roles to the
+  observation. `schema` was made a control because it held, and would be
+  un-made because it moved. A category that is revised whenever a member
+  behaves inconveniently classifies nothing, and this is the same fitting that
+  `0027` wrote the predictions to escape.
+- **Widen what "control" permits** — say, hold within one point rather than
+  hold. Refused: it changes the rule after seeing the number. The band would be
+  chosen to admit exactly the observation that broke it. `predictions.json`
+  already carries a ±1 band in aggregate claim `A3`, and that band was written
+  **before** the pass it tests, which is the whole difference.
+- **Accept the pass as unusable.** Taken. It costs one data point and keeps the
+  rule falsifiable.
+
+**Both refused options make the design unfalsifiable by adjusting it**, which is
+the failure this subsystem exists to avoid measuring its way into.
+
+`schema` stays a control in `corpus/analysis/predictions.json`, predicted to
+hold. If it rises again next pass against that prediction, that is a finding
+produced the honest way round — a claim made before the observation, failing.
+
+**The citation this corrects.** `ledger/0026` cites `schema` rising as *"the
+strongest single piece of evidence that the drift is specific"*. Under this
+ruling that citation is invalid: the same movement cannot be evidence for a
+reading and grounds for discarding the pass that produced it. The ledger is
+append-only so `0026` stands as written. **`ledger/0028` carries the
+correction**, and names `0026` in doing so — the thing `0003` should have done
+for `0002-t4` and did not.
+
+
 **2026-08-27 — The drift is measured, not excluded. `0025-t2`.** Every pass
 ingests the session that measured the previous one. That session is mostly talk
 about the terms it measured, talk lands in background because discussing a trap
@@ -134,6 +172,16 @@ incidents while episode granularity demands exactly the incident-versus-talk
 judgement the finder was supposed to make. Every session is part work and part
 measurement, so a binary mark is a blunt instrument on a continuum — and once
 applied, the drift is hidden rather than removed.
+
+**WHAT THIS RESULT IS AND IS NOT, corrected 2026-08-27.** The numbers above are
+the argument for building the instrument. They are **not** an admissible
+measurement of specificity, because `schema` — a control — moved in the same
+pass, and the rule below says that invalidates the subject readings in it. See
+the `0027-t2` ruling above. What survives is: **the mechanism is argued, the
+instrument exists, and the first admissible reading has not been taken yet.** It
+is `v0.17.3` scored against `corpus/analysis/predictions.json`, which was
+written before the population it will be scored over existed. Until then nothing
+here has shown that the drift is specific; it has shown what would show it.
 
 `Measure-CorpusDrift` re-scores `corpus/analysis/watchlist.json` every pass and
 appends to an append-only series. **The roles carry the design.** Subject and
