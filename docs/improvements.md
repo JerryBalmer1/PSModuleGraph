@@ -75,6 +75,20 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Small
 
+- **The facet prune is not reported by anything.**
+  `Update-FacetHealthRecord` now deletes facet subjects and facet-health
+  assignments that a run did not write, and returns only the number of facets
+  graded, so a deletion in that subtree happens silently. `RecordsPruned` in the
+  summary means the module subtree and says so nowhere. The fix is a shape
+  question — a second return value, or one write log per run threaded through
+  both — rather than a line. *Noticed while making registration mandatory.*
+- **Nothing checks that facet grading reaches a fixed point.** Grades are
+  computed over a store that includes the previous run's grades, so the first
+  run creates a population the second grades differently, and the tests now run
+  it twice before measuring stillness. Two runs is what was observed, not what
+  was proved; a facet whose grade depends on its own grade could oscillate for
+  ever and the only symptom would be a store that never stops churning.
+  *Noticed while widening the mtime test to the whole store.*
 - **The `template-notice` partial names PSModuleGraph commands.** Below the seam,
   which the extraction checklist forbids. The fix is the pattern the banner
   already uses: pass the command through config and interpolate. *Noticed while
@@ -277,6 +291,10 @@ the next change to this cheaper**. Three concrete tests:
   writes **0 of 252** records and moves no mtime, against 282 rewritten before.
   Both halves were proved falsifiable — the guard disabled turns three tests red,
   the prune disabled turns five red. *Logged Small in `0024`, taken in `0028`.*
+  **Corrected in `0029`: "moves no mtime" was measured on the module subtree,
+  and nine facet-health assignments went on being deleted and recreated on every
+  build because `Update-FacetHealthRecord` kept the delete-first shape. The test
+  that reported the result was scoped to the subtree the change was made in.**
 
 - **A "root" was an artefact of the name index.** The index mapped a lowercased
   bare name to one id, so the last definition parsed won and every earlier one

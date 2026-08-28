@@ -1,7 +1,7 @@
 ---
 ledger: "0025"
 tag: v0.17.1
-scales: [recurrence finder over ledger versus transcript, tool error signal in schema versus code, ledger thread cost versus thread record]
+scales: [recurrence finder over ledger versus transcript, tool error signal in schema versus code, ledger thread cost versus thread record, improvement backlog versus the code path it named, open thread versus the failure it was staged against]
 confidence: 0.7
 supersedes: []
 ---
@@ -57,6 +57,29 @@ Counting the record says "one thread, two sentences". Counting the incidents
 says "nineteen laps of attention". Nothing in the store holds the second number,
 which is why a thread can go missing without the loss being felt.
 
+**The improvement backlog, the named fix against the code path, v0.18.0.**
+A scale this pattern was not written for, and the one that shows it is not only
+about counting. The backlog entry said the store rewrote every record on every
+build and that the fix was a skip-if-identical guard in `Write-KnowledgeRecord`.
+Both halves came from the *record* of the symptom: the writer is where a write
+appears in a stack trace. The incident was two functions away, in a line that
+reads as housekeeping - `Update-KnowledgeStore` removed the whole owned subtree
+before writing anything, so **that guard alone would never have fired.** The
+entry was accurate about the defect and wrong about every part of the fix, which
+is the same inversion: the place a problem is recorded is not the place it
+happens.
+
+**The same pass, twice, v0.18.1.** `0028-t1` then claimed that a write site
+added without its registration would orphan a record and that **nothing would
+detect it**. That was read off the test names, which are about churn and
+replacement and say nothing about registration. Staged - a sixth write site,
+committed to nothing, one build - it turned **four tests red**, because the
+unregistered record was deleted by the same run that wrote it and the run
+therefore never became idempotent. The population that was counted was tests
+that *mention* the invariant. The population that mattered was tests that
+*fail*. One build separated the two, and the thread had stood for a version
+saying the opposite.
+
 ## Handoff
 
 **Before you conclude that something is rare, say out loud which population you
@@ -84,3 +107,9 @@ that is written up in
 [[0025-the-instrument-is-in-its-own-population]]. Read that one before you trust
 a transcript number, because the two failures point in opposite directions and
 the second will quietly undo the first.
+
+**And staging is cheap enough that reading is not an excuse.** Two of the five
+cases above are a claim about code that nobody ran: one about a guard that could
+not fire, one about a test suite that would not notice. Both took a single build
+to settle. If the sentence you are about to write is "nothing would catch this",
+it is a prediction, and you are holding the apparatus that tests it.

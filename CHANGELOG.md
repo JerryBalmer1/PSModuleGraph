@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A write site cannot forget to register what it wrote.** The replacement
+  invariant — a population is replaced, not merged — moved in v0.18.0 from a
+  deleted subtree onto a list of paths built at five call sites, each
+  recomputing the path expression the writer was about to use. `-Kept` is now a
+  mandatory parameter of `Write-SubjectRecord` and `Write-AssignmentRecord`, and
+  the writer registers the same variable it writes to, so a new write site
+  cannot be added without one: omitting it fails at parameter binding, naming
+  the parameter. Staged as a sixth unregistered write site, the omission fails
+  **17 tests and 3 blocks** where the previous shape wrote the record, deleted
+  it in the same run, and failed 4.
+- **Facet grading stopped deleting what it was about to rewrite.**
+  `Update-FacetHealthRecord` removed each facet's `facet-health` directory
+  before writing it, which is the delete-first shape v0.18.0 replaced everywhere
+  else, so the writer's skip guard could not fire there. Nine records were
+  recreated with identical bytes on every build. It now writes through the same
+  write log and prunes after, and the mtime test that missed this covers the
+  whole store rather than one subtree. Measured: **0 of 39** records touched on
+  a converged rebuild, against 9 before.
+
 - **A build that changes nothing writes nothing.** The store rewrote all 282
   records on every build, so one with three genuinely changed records was
   indistinguishable from one with none. Replacement is now
@@ -24,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not write and prunes the directories that leaves empty. The old shape removed
   the whole owned subtree first, which is why a guard in the writer alone could
   never have fired. Measured: a second run writes **0 of 252** records and moves
-  no mtime.
+  no mtime *in the module subtree*. Nine facet-health assignments went on being
+  deleted and recreated every build until the entry below.
 
 - **A prediction written before the pass that tests it.**
   `corpus/analysis/predictions.json` states a direction for every classified
