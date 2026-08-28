@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A prediction written before the pass that tests it.**
+  `corpus/analysis/predictions.json` states a direction for every classified
+  watchlist term, from its role rather than its last number, with three
+  aggregate claims and explicit falsifiers. The watchlist gains an
+  **unclassified cohort** of eleven terms selected by a mechanical rule — the
+  term at every rank that is a multiple of 100 in the first ranking — because a
+  prediction written by the session that assigned the roles tests internal
+  consistency and little else.
+- **`Measure-CorpusDrift` scores a pass against its predictions** via
+  `-Prediction`, `-Baseline` and `-BaselinePass`, and warns by name when a
+  control term moves. It reports and does not fail: two points cannot tell a
+  control that moved from one that was never stable. The four numbered clauses
+  that would license turning it into a gate are in `docs/constraints.md`, and
+  the fourth fails today.
+
+### Fixed
+
+- **A prediction scored against the wrong baseline produced a plausible table.**
+  The first dry run read 8 of 12 against a pass the predictions were not written
+  for. The command now warns when the declared `baselinePass` and the supplied
+  one differ.
+
 - **An instrument for a drift that was confirmed and moving.** Every pass
   ingests the session that measured the previous one, that session is mostly
   talk about the terms it measured, talk lands in background, and Lift is
