@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A `PreTag` gate asserting that the previous iteration was actually
+  published.** v0.18.0 and v0.18.1 were tagged, a push was authorised for each,
+  and neither reached the remote; nothing noticed until the remote was read from
+  outside this machine, three iterations later. The gate reads the tag the
+  previous ledger entry declared and requires it on the remote **at the commit
+  it names here** — a ref cannot exist remotely without its ancestry, so a
+  matching commit proves the whole range transferred. It makes a network call
+  and fails when it cannot make one: remote-tracking refs are a cache and would
+  have passed on all three occasions. The accepted cost, in
+  `docs/constraints.md`, is that an iteration cannot be tagged from a machine
+  that cannot reach the remote.
+
 - **`Update-KnowledgeStore` and `Update-KnowledgePatternSubject` report
   `RecordsKept` and `RecordsPruned`** alongside `RecordsWritten`, so a build
   says how much of the store it left alone.

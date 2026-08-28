@@ -75,6 +75,21 @@ the next change to this cheaper**. Three concrete tests:
 
 ### Small
 
+- **`docs/constraints.md` is an authority that `CLAUDE.md` does not name.** It
+  holds every accepted limitation, it is now cited by a `PreTag` gate and by two
+  ledger entries, and it is absent from the on-demand table at the foot of
+  `CLAUDE.md` — so a session finds it only by following a link from another
+  document that it also had no reason to open. The fix is one table row. It is
+  logged rather than taken because the always-loaded tier ratchets *down* and an
+  addition to it is a decision, not a prune. *Noticed while writing the
+  enforcement boundary into it — ledger `0031`.*
+- **Two readers of the ledger's `tag` field in `tests/PreTag.Tests.ps1`.**
+  `Get-LedgerFront` exposes it through the schema-validated reader; the version
+  gate a few lines below parses the same field out of raw text with its own
+  regex. They cannot disagree while both read the same YAML, but the front
+  matter has one shape and two places that know it. *Noticed while adding the
+  second reader — `0031-t4`.*
+
 - **The facet prune is not reported by anything.**
   `Update-FacetHealthRecord` now deletes facet subjects and facet-health
   assignments that a run did not write, and returns only the number of facets
@@ -133,6 +148,16 @@ the next change to this cheaper**. Three concrete tests:
   written before that measurement would have been confidently wrong.
 
 ### Medium
+
+- **The publish route produces no artefact, and the gate for it is one
+  iteration downstream.** v0.18.0 and v0.18.1 were tagged and never reached the
+  remote, and the forensics could not distinguish "never issued" from "issued
+  into a frozen editor and dropped" because the route — the editor's Git UI —
+  records neither. `PreTag` now catches the *consequence* one iteration later.
+  What would catch the *cause* is a publish step that prints something a person
+  or a check can read: the remote head after the push, or an exit code. That is
+  the operator's workflow rather than this repository's code, which is why it is
+  logged here and stopped on. *Ledger `0031`, `0031-t2`.*
 
 - **The coverage gate measures one module and speaks for the repository.**
   `$config.CodeCoverage.Path` is `output/PSModuleGraph.psm1` — the built module,
