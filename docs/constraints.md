@@ -269,6 +269,26 @@ maintaining. Ask again when there are ten.
 shaped for the renderer because the renderer is the only consumer. When there is
 a second one, its needs are a contract conversation.
 
+**Enforcement stops at the last function this repository owns, and below that it
+is convention.** `0030-t2`. Ruled 2026-08-27, after the same question had been
+asked and deferred in three consecutive entries. The store's write path has
+three tiers and they are not interchangeable. **The language enforces the top:**
+`-Kept` is `[Parameter(Mandatory)]` on `Write-KnowledgeRecord`, so the binder
+refuses the call before any body runs, for every caller, whether or not that
+caller ever runs a test. **A test enforces the middle:**
+`tests/Private/KnowledgeWriteGuard.Tests.ps1` is the only thing that can see a
+*bypass*, because a bypass is by definition not a call to a signature declared
+here - no mandatory parameter can reach a caller that never names the parameter.
+**Below that is convention:** `[System.IO.File]::WriteAllText` into `knowledge/`
+is reachable from any new function and nothing here will ever make it not be.
+The boundary sits at the deepest function this repository owns because that is
+the deepest signature a binder can be attached to; going further means wrapping
+or banning the framework, and owning a wrapper for the BCL costs more than the
+defect it would prevent. The consequence to accept is that **the guarantee is
+strongest against the caller trying to do the right thing and weakest against
+the one who is not** - which is the correct direction, because the failure being
+guarded is a generator written in a hurry, not an adversary.
+
 ## The instruction tier
 
 **The ceiling's headroom is a guess.** `0005-t2`. It is currently 19,000 bytes
