@@ -152,7 +152,7 @@ Describe 'The version the module reports' -Tag 'PreTag' {
 }
 
 Describe 'The tag before this one' -Tag 'PreTag' {
-    It 'is on the remote at the commit it names here' {
+    It 'is on the remote at the commit it names here, on a branch that contains it' {
         # THE FAILURE THIS PREVENTS. v0.18.0 and v0.18.1 were tagged, a push was
         # authorised for each, and neither reached the remote. Nothing noticed
         # until the remote was read from outside this machine three iterations
@@ -176,8 +176,13 @@ Describe 'The tag before this one' -Tag 'PreTag' {
         # Asserting the COMMIT and not merely the ref is what makes this more
         # than "something called v0.18.1 is up there". A ref cannot exist on a
         # remote without its whole ancestry, so a matching commit proves every
-        # commit up to that tag transferred. It does not prove the remote BRANCH
-        # advanced to include it - `0031-t1`.
+        # commit up to that tag transferred.
+        #
+        # And asserting the BRANCH is `0031-t1`, closed. A tag proves its own
+        # ancestry and nothing about where the branch points: `git push origin
+        # <tag>` publishes the tag and leaves the branch behind, and anyone
+        # cloning the default branch then gets none of the sealed work while
+        # every assertion above stays green.
         if ($script:Entries.Count -lt 2) {
             Set-ItResult -Skipped -Because 'there is no previous entry, so no previous tag was cut'
             return
@@ -193,17 +198,28 @@ Describe 'The tag before this one' -Tag 'PreTag' {
         $remote = $env:PSMODULEGRAPH_PUBLISH_REMOTE
         if (-not $remote) { $remote = 'origin' }
 
+        # The branch being published is the one being tagged. Detached HEAD is
+        # not a state an iteration is sealed from, and it fails rather than
+        # guessing a name.
+        $branch = (& git -C $script:Repo symbolic-ref --short HEAD 2>&1 |
+                ForEach-Object { "$_" }) -join ''
+        if ($LASTEXITCODE -ne 0) { $branch = '' }
+        $branch | Should-NotBeEmptyString -Because (
+            'HEAD is detached, so there is no branch whose publication could be checked')
+
         # Without this a remote that wants credentials prompts and the gate
         # hangs, which is worse than either answer it could give.
         $restore = $env:GIT_TERMINAL_PROMPT
         $env:GIT_TERMINAL_PROMPT = '0'
         try {
-            # BOTH patterns, deliberately. ls-remote matches the peeled entry
-            # by its own name, so asking only for `refs/tags/X` returns the tag
-            # object and never `refs/tags/X^{}` - and the commit assertion below
-            # would then have nothing to read. Checked against the real remote
-            # and against a fixture before being relied on.
-            $output = @(& git -C $script:Repo ls-remote --tags $remote `
+            # THREE patterns, and no `--tags`. ls-remote matches the peeled
+            # entry by its own name, so asking only for `refs/tags/X` returns
+            # the tag object and never `refs/tags/X^{}` - the commit assertion
+            # below would have nothing to read. `--tags` is dropped because the
+            # branch head has to come back from the same call; one round trip,
+            # one answer, no window between two reads of the same remote.
+            $output = @(& git -C $script:Repo ls-remote $remote `
+                    "refs/heads/$branch" `
                     "refs/tags/$($previous.Tag)" "refs/tags/$($previous.Tag)^{}" 2>&1 |
                     ForEach-Object { "$_" })
             $exit = $LASTEXITCODE
@@ -232,5 +248,25 @@ Describe 'The tag before this one' -Tag 'PreTag' {
 
         $remoteCommit | Should-Be $localCommit -Because (
             "$($previous.Tag) points at $localCommit here and at $remoteCommit on '$remote', so what was published is not what this ledger says was published")
+
+        # `0031-t1`. One comparison, and it closes the hole the gate was built
+        # for rather than the one beside it.
+        $headLine = @($output | Where-Object { $_ -match "\srefs/heads/$([regex]::Escape($branch))$" })
+        @($headLine).Count | Should-Be 1 -Because (
+            "'$remote' has no $branch, so nothing published there carries the history this tag seals")
+
+        $remoteBranch = ($headLine[0] -split '\s+')[0]
+
+        # Both objects have to be here for the ancestry question to be
+        # answerable at all. When the remote branch is ahead of anything this
+        # clone has fetched, the honest answer is 'unknown' - and unknown fails,
+        # by the same rule that fails an unreachable remote.
+        & git -C $script:Repo cat-file -e "$remoteBranch^{commit}" 2>&1 | Out-Null
+        $LASTEXITCODE | Should-Be 0 -Because (
+            "'$remote' has $branch at $remoteBranch and this clone has never seen that commit, so whether it contains $($previous.Tag) cannot be answered from here. Fetch first.")
+
+        & git -C $script:Repo merge-base --is-ancestor $localCommit $remoteBranch 2>&1 | Out-Null
+        $LASTEXITCODE | Should-Be 0 -Because (
+            "$($previous.Tag) is on '$remote' and $branch there is $remoteBranch, which does not contain it - the tag was published and the branch was left behind")
     }
 }

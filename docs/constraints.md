@@ -340,8 +340,10 @@ repository can verify a push that has not been made yet; the previous one is the
 most recent thing any gate here can see. Against the failure that produced it,
 one late is what it buys: v0.18.0 and v0.18.1 were tagged and never pushed, and
 this gate would have turned v0.18.1 red for v0.18.0's absence instead of letting
-three iterations accumulate unpublished. `0031-t1` is what it still does not
-see.
+three iterations accumulate unpublished. `0031-t1` - that a tag can be published
+onto a remote whose branch was left behind - was closed at v0.18.4 by asserting
+the branch contains the tag's commit. What is left is the lateness itself, and
+it does not lift.
 
 ## Closed rather than accepted
 
