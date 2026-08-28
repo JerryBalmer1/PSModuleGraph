@@ -35,6 +35,31 @@ not quietly reverse it.
 Retired at **v0.15.0** unless a later entry says otherwise. The thread id is
 kept so the ledger entry that argued it is still findable.
 
+## What has been checked, and what has only been read
+
+**Nineteen constraints. Nine were re-measured at v0.18.4 against a value in the
+paragraph; ten were re-read.** The distinction is the one the audit turned on,
+and every finding it produced came from the first group. Marked here rather than
+per paragraph so there is one place to keep current.
+
+**Re-measured, value confirmed unless noted:** `0026-t3` (three drift passes,
+condition 1 still unmet) · `0012-t1` (eight modules) · `0009-t1` (*"five
+versions behind"* is now 27 tags — the only stale number found here) ·
+`0024-t1` (2 pattern subjects when written, 9 now) · `0022-t1` (163 characters,
+exact) · `0022-t3` (one alias per subject, exact) · `0003-t3` (zero assignments)
+· `0005-t2` (18,869 bytes) · `0017-t2` (seven skills).
+
+**Re-read only — the reasoning was followed and nothing was measured against
+it:** `0024-t2` · `0008-t1` · `0011-t2` · `0007-t2` · `0011-t1` · `0030-t2` ·
+`0005-t3` · `0017-t3` · both paragraphs under "Publishing".
+
+**`0024-t2` is the one to notice in that second list.** It carries more numbers
+than any other constraint here — 517 files, 28 and 57 redactions, six counts of
+what survived — and it is the constraint that forbids publishing the corpus.
+None of those numbers has been re-measured since the day they were taken. It is
+in the re-read group because re-measuring it means re-running the redactor over
+the gallery, which is not a reading.
+
 ## The corpus
 
 **The drift series reports and does not fail, and here is what would license a
