@@ -107,6 +107,13 @@ function Write-KnowledgeRecord {
         until v0.16.1. Front matter is deliberately left alone: a scalar
         holding a carriage return is a record this store's own reader cannot
         read, and normalising it here would hide that rather than fix it.
+        REGISTRATION HAPPENS HERE, at the last function in this repository that
+        touches the filesystem, and -Kept is mandatory so that it cannot happen
+        anywhere else by accident. v0.18.1 put it in Write-SubjectRecord and
+        Write-AssignmentRecord instead, which made those two the door by
+        CONVENTION: a generator calling this function directly wrote a record
+        the next prune deleted. See ledger/0030 for how far down this can go -
+        the next layer is System.IO.File and is not this repository's to close.
     .PARAMETER Path
         Destination file.
     .PARAMETER Document
@@ -115,6 +122,11 @@ function Write-KnowledgeRecord {
         Prose body. Not optional - see knowledge/NAMING.md.
     .PARAMETER SchemaPath
         JSON Schema the record must satisfy before it is written.
+    .PARAMETER Kept
+        The run's write log. Every path this function is asked to write is
+        added to it, whether or not bytes are written - "kept" means the record
+        should exist, not that it changed. Remove-UnwrittenKnowledgeRecord
+        deletes everything under the run's subtree that is not in it.
     .OUTPUTS
         1 if bytes were written, 0 if the file was already correct. Callers sum
         it, so a build that changes nothing reports nothing written.
@@ -125,7 +137,8 @@ function Write-KnowledgeRecord {
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Path,
         [Parameter(Mandatory)] [ValidateNotNull()] [System.Collections.IDictionary] $Document,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Body,
-        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $SchemaPath
+        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $SchemaPath,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.List[string]] $Kept
     )
 
     # Validated even under -WhatIf. A dry run that skips validation would report
@@ -134,6 +147,12 @@ function Write-KnowledgeRecord {
     if ($false -eq $result.IsValid) {
         throw "Refusing to write '$Path': $($result.Reason)"
     }
+
+    # BEFORE the ShouldProcess return, and before the skip guard below. A path
+    # is registered because the record should exist, not because this call
+    # changed it: registering only what was written would make the prune delete
+    # every record that was already correct.
+    $Kept.Add($Path)
 
     if (-not $PSCmdlet.ShouldProcess($Path, 'Write knowledge record')) { return 0 }
 

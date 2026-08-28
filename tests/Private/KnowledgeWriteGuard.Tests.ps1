@@ -185,8 +185,16 @@ Describe 'A write site cannot forget to register what it wrote' {
     # is mandatory. The author of the seventh write site is stopped by the
     # parameter binder rather than by a test they have to still be running.
 
-    It 'makes the write log mandatory on both writers' {
-        foreach ($name in 'Write-SubjectRecord', 'Write-AssignmentRecord') {
+    It 'makes the write log mandatory on every writer, down to the one that opens the file' {
+        # ALL THREE, and the third is the point. v0.18.1 made -Kept mandatory on
+        # the two wrappers only, which made them the door by convention:
+        # Write-KnowledgeRecord beneath them took a path and no log, so a
+        # generator calling it directly wrote a record the next prune deleted.
+        # Staged, that turned five tests red - detected, but by tests about
+        # churn, and only two of the five said anything about registration.
+        # Registration is now in the last function here that touches the
+        # filesystem. ledger/0030.
+        foreach ($name in 'Write-SubjectRecord', 'Write-AssignmentRecord', 'Write-KnowledgeRecord') {
             $parameter = InModuleScope PSModuleGraph -Parameters @{ Name = $name } {
                 (Get-Command -Name $Name).Parameters['Kept']
             }

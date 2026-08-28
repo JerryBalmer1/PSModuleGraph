@@ -12,10 +12,11 @@ function Write-SubjectRecord {
     .PARAMETER SchemaPath
         subject.schema.json.
     .PARAMETER Kept
-        The run's write log. THE WRITER REGISTERS ITS OWN PATH, and the
-        parameter is mandatory so that a new write site cannot be added without
-        one. See Remove-UnwrittenKnowledgeRecord for what the log is for and
-        ledger/0029 for why it is here rather than at the call site.
+        The run's write log, passed through to Write-KnowledgeRecord, which is
+        where a path is registered. Mandatory so that a new write site cannot be
+        added without one. See ledger/0029 for why it is a parameter rather than
+        a line at the call site, and ledger/0030 for why the registration is one
+        layer further down than this.
     .PARAMETER Id
         Subject URN.
     .PARAMETER Name
@@ -93,11 +94,8 @@ function Write-SubjectRecord {
     $document['generated_at'] = $GeneratedAt
     $document['prompt'] = $Prompt
 
-    # Registered from the SAME variable the write uses. A caller computing the
-    # path a second time to register it is the defect this closes.
     $path = ConvertTo-KnowledgeFilePath -Id $Id -Root $Root -Area 'subjects'
-    $Kept.Add($path)
-    Write-KnowledgeRecord -Path $path -Document $document -Body $Body -SchemaPath $SchemaPath
+    Write-KnowledgeRecord -Path $path -Document $document -Body $Body -SchemaPath $SchemaPath -Kept $Kept
 }
 
 function Write-AssignmentRecord {
@@ -169,8 +167,7 @@ function Write-AssignmentRecord {
 
     $path = ConvertTo-KnowledgeFilePath -Id $Subject -Root $Root -Area 'assignments' `
         -Facet $Facet -FacetPath $FacetPath
-    $Kept.Add($path)
-    Write-KnowledgeRecord -Path $path -Document $document -Body $Body -SchemaPath $SchemaPath
+    Write-KnowledgeRecord -Path $path -Document $document -Body $Body -SchemaPath $SchemaPath -Kept $Kept
 }
 
 function Update-FacetHealthRecord {
