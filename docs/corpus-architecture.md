@@ -42,9 +42,14 @@ corpus/
   load.ps1                     the one command; runs on the host or in the loader
   PSCorpus/
     Public/                    Import-CorpusLedger, -Pattern, -Transcript,
-                               Measure-CorpusRecurrence,
+                               Measure-CorpusRecurrence, Measure-CorpusDrift,
                                Export-CorpusTrainingSet, -Sql
     Private/                   redaction, front matter, SQL literals
+  analysis/
+    watchlist.json             terms re-scored every pass, and their ROLES
+    drift-series.jsonl         append-only. one row per term per pass
+  sampling/
+    weights.json               sampling weights. the ingester does not read it
   docker/
     Dockerfile                 pgvector/pg16 with the init scripts baked in
     docker-compose.yml         db + a loader that needs nothing on the host
@@ -111,6 +116,44 @@ have to be told out of band.** In order:
 ## Decisions made and why
 
 Append only. Do not re-litigate these.
+
+**2026-08-27 — The drift is measured, not excluded. `0025-t2`.** Every pass
+ingests the session that measured the previous one. That session is mostly talk
+about the terms it measured, talk lands in background because discussing a trap
+does not fail a tool call, and Lift is foreground minus background — so **a term
+scores lower each time somebody looks at it.** Measured across two populations:
+`heredoc` 7 to 6, `pattern` 5 to 4, `measurement` 2 to 1, while `seam`, `store`,
+`gate`, `ledger` and `thread` held and `schema` rose.
+
+The alternative was to mark measurement sessions and exclude them from
+background. **Declined.** Excluding requires the instrument to classify its own
+occasions, which is the failure being described rather than a way out of it; the
+mark would be self-declared by the party whose presence is the confound; and at
+session granularity it would have thrown away the one episode carrying the real
+incidents while episode granularity demands exactly the incident-versus-talk
+judgement the finder was supposed to make. Every session is part work and part
+measurement, so a binary mark is a blunt instrument on a continuum — and once
+applied, the drift is hidden rather than removed.
+
+`Measure-CorpusDrift` re-scores `corpus/analysis/watchlist.json` every pass and
+appends to an append-only series. **The roles carry the design.** Subject and
+instrument terms are expected to fall; controls are expected to hold. A pass
+where controls move too is not a stronger version of this reading, it is a
+different phenomenon — corpus growth, a moved episode boundary, a changed finder
+— and every subject reading in that pass has to be re-derived rather than
+continued. Drift is only legible against something that did not drift.
+
+**Rank and Lift are not the same measurement.** Control ranks slipped between
+the two populations — `store` 69 to 78, `ledger` 40 to 45 — while their Lift
+held exactly, because the ranking grew from 1,121 terms to 1,198. Rank moves
+with the corpus; Lift does not. Read Lift for drift and rank for context.
+
+**The series is always one pass behind, by construction.** A point is taken over
+the corpus as it stood at the previous tag, so it is reproducible; a point taken
+over a live transcript could not be re-taken. That is the structural blind spot
+from `pattern:0025-the-instrument-is-in-its-own-population` inherited rather
+than solved, and it is inherited deliberately: an irreproducible point is worse
+than a late one.
 
 **2026-08-26 — Four training kinds, weighted by rarity rather than quality.**
 Ordinary exchanges are abundant in every corpus ever assembled; a recorded doubt

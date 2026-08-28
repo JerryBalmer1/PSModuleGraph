@@ -18,6 +18,14 @@
     from the ledger and the pattern log alone.
 .PARAMETER SqlOut
     Where to write the load script.
+.PARAMETER DriftSeriesOut
+    Append this pass's watchlist scores to a drift series as JSONL. OMITTED BY
+    DEFAULT: appending to a committed, append-only record is a decision, not a
+    side effect of building the corpus. Without it the scores are still
+    computed and reported in the summary, so a pass can be looked at without
+    being written down.
+.PARAMETER Pass
+    What to call this point in the drift series. A tag.
 .PARAMETER WeightProfile
     Sampling weights to apply - corpus/sampling/weights.json. OMITTED BY
     DEFAULT, and deliberately: the weights are an argument nobody has tested,
@@ -36,6 +44,8 @@ param(
     [Parameter()] [string] $TranscriptPath,
     [Parameter()] [string] $SqlOut = './output/corpus/corpus.sql',
     [Parameter()] [string] $WeightProfile,
+    [Parameter()] [string] $DriftSeriesOut,
+    [Parameter()] [string] $Pass,
     [Parameter()] [string] $JsonlOut
 )
 
@@ -74,6 +84,28 @@ if ($TranscriptPath) {
 }
 
 $recurrence = Measure-CorpusRecurrence -Claim $ledger.Claims
+
+# The drift pass. Runs over the ledger recurrence rather than the transcript
+# ones, because that is the population load.ps1 scores by default and a series
+# whose population changes silently between points is worse than no series.
+# The transcript-episode numbers in ledger/0025 and ledger/0026 were taken by
+# hand over a stated population and their points name it. See
+# corpus/analysis/watchlist.json for why the roles matter.
+$drift = @()
+$watchlist = Join-Path $RepositoryRoot 'corpus/analysis/watchlist.json'
+if (Test-Path -LiteralPath $watchlist) {
+    $driftArgs = @{
+        Recurrence        = $recurrence
+        Watchlist         = $watchlist
+        Pass              = $(if ($Pass) { $Pass } else { 'unnamed' })
+        At                = (Get-Date -Format 'yyyy-MM-dd')
+        Session           = $(if ($transcript) { @($transcript.Sessions).Count } else { 0 })
+        ForegroundEpisode = 0
+        BackgroundEpisode = 0
+    }
+    if ($DriftSeriesOut) { $driftArgs['AppendTo'] = $DriftSeriesOut }
+    $drift = @(Measure-CorpusDrift @driftArgs)
+}
 $trainingArgs = @{ Ledger = $ledger; PatternSet = $patterns; Transcript = $transcript }
 if ($WeightProfile) { $trainingArgs['WeightProfile'] = $WeightProfile }
 $training = Export-CorpusTrainingSet @trainingArgs
@@ -111,6 +143,9 @@ if ($JsonlOut) {
     Turns       = if ($transcript) { @($transcript.Turns).Count } else { 0 }
     ToolCalls   = if ($transcript) { @($transcript.ToolCalls).Count } else { 0 }
     Recurrence  = @($recurrence).Count
+    Drift       = @($drift).Count
+    DriftFound  = @($drift | Where-Object Found).Count
+    DriftSeries = $DriftSeriesOut
     Examples    = @($training).Count
     Weighted    = [bool]$WeightProfile
     Sql         = $sql.FullName
