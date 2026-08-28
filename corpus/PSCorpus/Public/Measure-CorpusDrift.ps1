@@ -59,6 +59,16 @@ function Measure-CorpusDrift {
         Episodes classified foreground.
     .PARAMETER BackgroundEpisode
         Episodes classified background.
+    .PARAMETER Prediction
+        Path to corpus/analysis/predictions.json - what each term was expected
+        to do, written before the pass that tests it. Supplied with -Baseline,
+        every point gains PreviousLift, Delta, Outcome and Agrees.
+    .PARAMETER Baseline
+        A drift series to read the previous point from, with -BaselinePass
+        naming which pass in it. Without both, no delta can be computed and the
+        prediction is carried on the point unscored rather than guessed at.
+    .PARAMETER BaselinePass
+        Which pass in the baseline series to compare against.
     .PARAMETER AppendTo
         Append the points to this file as JSONL. Omitted, they are returned and
         nothing is written: appending to a committed series is a decision, not
@@ -102,6 +112,18 @@ function Measure-CorpusDrift {
 
         [Parameter()]
         [ValidateNotNullOrEmpty()]
+        [string] $Prediction,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string] $Baseline,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string] $BaselinePass,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
         [string] $AppendTo
     )
 
@@ -116,7 +138,43 @@ function Measure-CorpusDrift {
     $rows = @($Recurrence)
     $total = $rows.Count
 
+    # Predictions and the baseline are read once. Both are optional and each is
+    # useless without the other: a prediction with nothing to compare against
+    # cannot be scored, and a delta with no prediction is just a number that
+    # moved.
+    $predicted = @{}
+    if ($Prediction) {
+        if (-not (Test-Path -LiteralPath $Prediction)) { throw "No prediction file at '$Prediction'." }
+        $forecast = Get-Content -LiteralPath $Prediction -Raw | ConvertFrom-Json
+        foreach ($row in $forecast.terms) { $predicted[[string]$row.term] = [string]$row.predicted }
+
+        # A prediction names the baseline it was written against. Scoring it
+        # from a different one produces a table that looks right and answers a
+        # question nobody asked - which is how the first dry run of this
+        # command read 8 of 12 against the wrong pass.
+        if ($BaselinePass -and $forecast.baselinePass -and
+            [string]$forecast.baselinePass -cne $BaselinePass) {
+            Write-Warning ("Prediction file was written against baseline '$($forecast.baselinePass)' " +
+                "and is being scored against '$BaselinePass'. The agreement column is not the test it looks like.")
+        }
+    }
+
+    $before = @{}
+    if ($Baseline) {
+        if (-not $BaselinePass) { throw 'Baseline needs BaselinePass: a series holds more than one pass.' }
+        if (-not (Test-Path -LiteralPath $Baseline)) { throw "No baseline series at '$Baseline'." }
+        foreach ($line in [System.IO.File]::ReadLines($Baseline)) {
+            if (-not $line.Trim()) { continue }
+            $point = $null
+            try { $point = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ([string]$point.pass -cne $BaselinePass) { continue }
+            $before[[string]$point.term] = $point
+        }
+        if ($before.get_Count() -eq 0) { throw "Baseline series '$Baseline' holds no pass named '$BaselinePass'." }
+    }
+
     $points = [System.Collections.Generic.List[object]]::new()
+    $movedControl = [System.Collections.Generic.List[string]]::new()
     foreach ($watched in $list.terms) {
         $term = [string]$watched.term
 
@@ -133,16 +191,54 @@ function Measure-CorpusDrift {
             }
         }
 
+        # A term absent from both passes held. One that left the ranking fell;
+        # one that entered rose. Absence is a score, not a gap - a term falling
+        # out entirely is the strongest move there is.
+        $role = [string]$watched.role
+        $lift = $(if ($found) { [int]$found.Lift } else { $null })
+        $previousLift = $null
+        $delta = $null
+        $outcome = $null
+        if ($Baseline -and $before.ContainsKey($term)) {
+            $prior = $before[$term]
+            $previousLift = $(if ($null -ne $prior.lift) { [int]$prior.lift } else { $null })
+            $a = $(if ($null -ne $previousLift) { $previousLift } else { 0 })
+            $b = $(if ($null -ne $lift) { $lift } else { 0 })
+            $delta = $b - $a
+            $outcome = $(if ($delta -lt 0) { 'fall' } elseif ($delta -gt 0) { 'rise' } else { 'hold' })
+        }
+
+        $forecastFor = $(if ($predicted.ContainsKey($term)) { $predicted[$term] } else { $null })
+        $agrees = $null
+        if ($forecastFor -and $outcome -and $forecastFor -ne 'unknown') {
+            $agrees = ($forecastFor -eq $outcome)
+        }
+
+        # REPORTING, NOT FAILING. Nothing yet knows what the threshold should
+        # be - two points cannot tell a control that moved from one that was
+        # never stable - so this says so and returns. The condition that would
+        # license a gate is in docs/constraints.md, with a number in it.
+        $controlMoved = ($role -eq 'control' -and $null -ne $delta -and $delta -ne 0)
+        if ($controlMoved) {
+            $movedControl.Add(("{0} ({1:+#;-#;0})" -f $term, $delta))
+        }
+
         $points.Add([pscustomobject]@{
                 PSTypeName        = 'PSCorpus.DriftPoint'
                 Pass              = $Pass
                 At                = $At
                 Term              = $term
-                Role              = [string]$watched.role
+                Role              = $role
                 Found             = [bool]$found
                 Rank              = $(if ($found) { $rank } else { $null })
                 TotalTerm         = $total
-                Lift              = $(if ($found) { [int]$found.Lift } else { $null })
+                Lift              = $lift
+                PreviousLift      = $previousLift
+                Delta             = $delta
+                Outcome           = $outcome
+                Predicted         = $forecastFor
+                Agrees            = $agrees
+                ControlMoved      = $controlMoved
                 Lap               = $(if ($found) { [int]$found.Iterations } else { $null })
                 Occurrence        = $(if ($found) { [int]$found.Occurrences } else { $null })
                 Background        = $(if ($found) { [int]$found.Background } else { $null })
@@ -174,6 +270,12 @@ function Measure-CorpusDrift {
                 laps               = $_.Lap
                 occurrences        = $_.Occurrence
                 background         = $_.Background
+                previous_lift      = $_.PreviousLift
+                delta              = $_.Delta
+                outcome            = $_.Outcome
+                predicted          = $_.Predicted
+                agrees             = $_.Agrees
+                control_moved      = $_.ControlMoved
                 sessions           = $_.Session
                 foreground_episodes = $_.ForegroundEpisode
                 background_episodes = $_.BackgroundEpisode
@@ -182,6 +284,15 @@ function Measure-CorpusDrift {
         }
         $text = (($lines) -join "`n") + "`n"
         [System.IO.File]::AppendAllText($AppendTo, $text, [System.Text.UTF8Encoding]::new($false))
+    }
+
+    # Said out loud, once, naming them. A control moving does not mean the pass
+    # is wrong - it means the reading of every subject term in it has to be
+    # re-derived rather than continued, because drift is only legible against
+    # something that did not drift.
+    if ($movedControl.Count) {
+        Write-Warning ("Control term(s) moved in pass '$Pass': " + ($movedControl -join ', ') +
+            '. Subject readings in this pass cannot be continued from the previous one - see docs/constraints.md.')
     }
 
     @($points)

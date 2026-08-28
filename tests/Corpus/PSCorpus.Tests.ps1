@@ -427,6 +427,110 @@ Describe 'Measure-CorpusDrift' {
         @($points | Where-Object { $_.Term -ceq 'seam' })[0].Found | Should-BeTrue
     }
 
+    It 'scores an outcome against a baseline and a prediction' {
+        $series = Join-Path $TestDrive 'scored.jsonl'
+        Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch -Pass 'base' -At '2026-08-27' `
+            -Session 3 -ForegroundEpisode 24 -BackgroundEpisode 23 -AppendTo $series | Out-Null
+
+        $forecast = Join-Path $TestDrive 'pred.json'
+        @{
+            schemaVersion = '1.0.0'; predictionsVersion = '1.0.0'; baselinePass = 'base'
+            terms         = @(
+                @{ term = 'heredoc'; role = 'subject'; predicted = 'fall' }
+                @{ term = 'seam'; role = 'control'; predicted = 'hold' }
+                @{ term = 'absent-term'; role = 'instrument'; predicted = 'hold' }
+            )
+        } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $forecast -Encoding utf8
+
+        # heredoc drops from 7 to 5; seam holds at 11.
+        $later = @(
+            [pscustomobject]@{ Term = 'seam'; Lift = 11; Iterations = 11; Occurrences = 26; Background = 0 }
+            [pscustomobject]@{ Term = 'heredoc'; Lift = 5; Iterations = 7; Occurrences = 13; Background = 2 }
+        )
+        $points = Measure-CorpusDrift -Recurrence $later -Watchlist $script:Watch -Prediction $forecast `
+            -Baseline $series -BaselinePass 'base' -Pass 'next' -At '2026-08-28' `
+            -Session 4 -ForegroundEpisode 26 -BackgroundEpisode 25
+
+        $h = @($points | Where-Object Term -eq 'heredoc')[0]
+        $h.PreviousLift | Should-Be 7
+        $h.Delta | Should-Be -2
+        $h.Outcome | Should-Be 'fall'
+        $h.Agrees | Should-BeTrue
+
+        $seam = @($points | Where-Object Term -eq 'seam')[0]
+        $seam.Outcome | Should-Be 'hold'
+        $seam.ControlMoved | Should-BeFalse
+
+        # A term absent from both passes held rather than vanished.
+        $gone = @($points | Where-Object Term -eq 'absent-term')[0]
+        $gone.Outcome | Should-Be 'hold'
+        $gone.Agrees | Should-BeTrue
+    }
+
+    It 'reports a control that moved rather than failing on it' {
+        # REPORTING, NOT FAILING. Two points cannot tell a control that moved
+        # from one that was never stable, so a gate built now would be a gate
+        # whose correct state is unknown. It warns and returns.
+        $series = Join-Path $TestDrive 'moved.jsonl'
+        Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch -Pass 'base' -At '2026-08-27' `
+            -Session 3 -ForegroundEpisode 24 -BackgroundEpisode 23 -AppendTo $series | Out-Null
+
+        $later = @([pscustomobject]@{ Term = 'seam'; Lift = 9; Iterations = 11; Occurrences = 26; Background = 2 })
+
+        $warnings = @()
+        $points = Measure-CorpusDrift -Recurrence $later -Watchlist $script:Watch `
+            -Baseline $series -BaselinePass 'base' -Pass 'next' -At '2026-08-28' `
+            -Session 4 -ForegroundEpisode 26 -BackgroundEpisode 25 -WarningVariable warnings -WarningAction SilentlyContinue
+
+        @($points).Count | Should-Be 3
+        $seam = @($points | Where-Object Term -eq 'seam')[0]
+        $seam.ControlMoved | Should-BeTrue
+        $seam.Delta | Should-Be -2
+        @($warnings).Count | Should-BeGreaterThan 0
+        [string]$warnings[0] | Should-MatchString 'seam'
+    }
+
+    It 'says so when a prediction is scored against a baseline it was not written for' {
+        # The failure this guard exists for is a table that looks right. The
+        # first dry run of this command read 8 of 12 against the wrong pass.
+        $series = Join-Path $TestDrive 'wrongbase.jsonl'
+        Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch -Pass 'earlier' -At '2026-08-27' `
+            -Session 3 -ForegroundEpisode 24 -BackgroundEpisode 23 -AppendTo $series | Out-Null
+
+        $forecast = Join-Path $TestDrive 'pred2.json'
+        @{
+            schemaVersion = '1.0.0'; predictionsVersion = '1.0.0'; baselinePass = 'the-declared-one'
+            terms         = @(@{ term = 'heredoc'; role = 'subject'; predicted = 'fall' })
+        } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $forecast -Encoding utf8
+
+        $warnings = @()
+        Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch -Prediction $forecast `
+            -Baseline $series -BaselinePass 'earlier' -Pass 'next' -At '2026-08-28' `
+            -Session 4 -ForegroundEpisode 26 -BackgroundEpisode 25 -WarningVariable warnings -WarningAction SilentlyContinue | Out-Null
+
+        @($warnings | Where-Object { $_ -match 'the-declared-one' }).Count | Should-BeGreaterThan 0
+    }
+
+    It 'refuses a baseline pass the series does not hold' {
+        $series = Join-Path $TestDrive 'sparse.jsonl'
+        Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch -Pass 'only' -At '2026-08-27' `
+            -Session 3 -ForegroundEpisode 24 -BackgroundEpisode 23 -AppendTo $series | Out-Null
+        { Measure-CorpusDrift -Recurrence $script:Rows -Watchlist $script:Watch `
+                -Baseline $series -BaselinePass 'never-written' -Pass 'p' -At '2026-08-28' `
+                -Session 1 -ForegroundEpisode 1 -BackgroundEpisode 1 } |
+            Should-Throw -ExceptionMessage '*no pass named*'
+    }
+
+    It 'carries an unclassified cohort that nobody labelled' {
+        # The independent test. A prediction written by the session that
+        # assigned the roles confirms internal consistency; a cohort selected by
+        # a mechanical rule is the thing that can embarrass it.
+        $shipped = Join-Path $script:Repo 'corpus/analysis/watchlist.json'
+        $points = Measure-CorpusDrift -Recurrence @() -Watchlist $shipped `
+            -Pass 'p' -At '2026-08-27' -Session 0 -ForegroundEpisode 0 -BackgroundEpisode 0
+        @($points | Where-Object Role -eq 'unclassified').Count | Should-BeGreaterThan 5
+    }
+
     It 'reads the committed watchlist and finds every role in it' {
         # The shipped file, not a fixture: a watchlist with no controls cannot
         # separate drift from corpus growth, and that is the one property this
