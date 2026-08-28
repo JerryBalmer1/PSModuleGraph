@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **An instrument for a drift that was confirmed and moving.** Every pass
+  ingests the session that measured the previous one, that session is mostly
+  talk about the terms it measured, talk lands in background, and Lift is
+  foreground minus background — so a term scores lower each time somebody looks
+  at it. `Measure-CorpusDrift` re-scores `corpus/analysis/watchlist.json` per
+  pass into an append-only series. The watchlist carries **roles**: subject and
+  instrument terms are expected to fall, controls are expected to hold, and a
+  pass where controls move too is a different phenomenon rather than a stronger
+  reading of this one. Measured across two populations, `heredoc` fell 7 to 6,
+  `pattern` 5 to 4 and `measurement` 2 to 1, while `seam`, `store`, `gate`,
+  `ledger` and `thread` held and `schema` rose.
+
 - **Two patterns, and the subjects that come out of them.**
   `pattern:0025-a-record-counts-conclusions-not-incidents` and
   `pattern:0025-the-instrument-is-in-its-own-population`. The first corrects the
