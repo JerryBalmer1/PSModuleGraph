@@ -82,6 +82,54 @@ the next change to this cheaper**. Three concrete tests:
 - **`Show-RenderDocument`, `Get-PSModuleGraphAsset` and
   `Get-PSModuleGraphAssetPath` carry graph vocabulary in their names.** On the
   checklist already; listed here so it is not forgotten between passes.
+- **`Write-KnowledgeRecord` rewrites every record on every run.** It validates,
+  then calls `File.WriteAllText` unconditionally - no read-before-write, no
+  content comparison, no skip-if-identical. The `Knowledge` build task drives it
+  over both populations, so a build that changes nothing still touches all 282
+  files. Today that costs only mtime churn, which git tolerates; the cost that
+  matters is that a store with three genuinely changed records is
+  indistinguishable at a glance from one with none. It also resurrects
+  stat-cache noise the next time any byte-level detail shifts - as the
+  LF-front-matter-over-CRLF-body defect closed in v0.16.1 did, leaving 282
+  files reporting modified with identical blob hashes until the index was
+  renormalised. The guard is one hash comparison before the write. Logged
+  rather than taken because it is the write path. *Noticed while explaining a
+  282-file empty diff.*
+- **The `namespace` facet has met its condition and is reinstated as a
+  proposal.** Withdrawn in `ledger/0002` under the reflection evidence rule, on
+  the explicit ground that every subject in the store was `psmodule:` so no
+  pair of subjects existed that `namespace` would distinguish and the existing
+  facets would not — *"It returns when a second namespace does. A dimension
+  with one value is not a dimension."* `pattern:` is a second namespace as of
+  v0.17.0, so the condition is met and the withdrawal no longer holds.
+  **Proposed, not taken:** reflection proposes and the next implementation
+  disposes, and the same rule that withdrew it forbids taking it in the pass
+  that qualified it. Note before taking it that a `namespace` facet assigning
+  into `pattern:` would make `pattern:` a namespace `facet-health` has assigned
+  into, which lifts the exclusion in `constraints.md` as a side effect rather
+  than as a decision — read that constraint first. *Qualified in `0024`.*
+- **`Import-CorpusTranscript` hardcodes `IsError = $null` and
+  `ResultChars = $null`.** Neither is ever populated, so `tool_call.is_error`
+  is null for all 1,357 tool calls in the three ingested sessions while the raw
+  transcripts carry **74** `"is_error":true` results. The schema comment says
+  tool results are *measured, never stored* — measuring is the half that is
+  missing. A failed tool call is the strongest available marker of where a
+  session went wrong, and the corpus currently cannot answer "which turns
+  failed" at all; the recurrence measurement below had to recover it by
+  re-parsing the JSONL outside the module. *Found while pointing the recurrence
+  finder at transcripts, `0024`.*
+- **PROPOSED FOR `knowledge/patterns/`, not written: the ledger records
+  conclusions, not incidents.** A trap that costs a round five times is written
+  down once, if at all, so **frequency-in-record runs inverse to cost-in-practice
+  for exactly the traps worth finding.** That is a property of the corpus rather
+  than of any one finder, which is why it belongs in the pattern log and not in
+  a function comment. Do not write it in the pass that proposed it. **Read the
+  measurement in `ledger/0024` first: it changes the claim.** The finder was
+  never blind to this class — pointed at transcript episodes the heredoc trap
+  scores **Lift 7, rank 98 of 1,121, background 0**, where against ledger claim
+  sections it scores nothing. The pattern is therefore about *which population
+  was read*, not about a limit of lexical recurrence, and a version of it
+  written before that measurement would have been confidently wrong.
 
 ### Medium
 
