@@ -211,6 +211,107 @@ None.
     }
 }
 
+Describe 'Import-CorpusTranscript' {
+    # THERE WAS NO TEST HERE UNTIL v0.17.1, AND THAT IS WHY THE DEFECT LIVED.
+    # IsError and ResultChars were assigned $null unconditionally for every
+    # tool call in every session. Nothing read them, so nothing noticed, and the
+    # first measurement that needed them re-parsed the JSONL outside the module
+    # rather than failing - which is the quietest way for a gap to survive.
+
+    BeforeAll {
+        $script:Jsonl = Join-Path $TestDrive 'session-a.jsonl'
+
+        # A result is ALWAYS in a later line than the call it answers, which is
+        # the whole reason the module needs a post-pass. The fixture is built
+        # that way on purpose: a single forward pass passes no test here.
+        $lines = @(
+            (@{
+                    type = 'assistant'; uuid = 'u1'; parentUuid = $null
+                    timestamp = '2026-08-27T10:00:00Z'; gitBranch = 'main'
+                    message = @{
+                        model   = 'test-model'
+                        content = @(
+                            @{ type = 'text'; text = 'Writing the file with a heredoc.' }
+                            @{ type = 'tool_use'; id = 'call-ok'; name = 'Bash'; input = @{ command = 'echo hello' } }
+                            @{ type = 'tool_use'; id = 'call-bad'; name = 'Bash'; input = @{ command = 'cat missing' } }
+                        )
+                    }
+                } | ConvertTo-Json -Depth 8 -Compress)
+            (@{
+                    type = 'user'; uuid = 'u2'; parentUuid = 'u1'
+                    timestamp = '2026-08-27T10:00:05Z'
+                    message = @{
+                        content = @(
+                            @{ type = 'tool_result'; tool_use_id = 'call-ok'; is_error = $false; content = 'hello' }
+                            @{ type = 'tool_result'; tool_use_id = 'call-bad'; is_error = $true; content = 'unexpected EOF while looking for matching quote' }
+                        )
+                    }
+                } | ConvertTo-Json -Depth 8 -Compress)
+            (@{
+                    type = 'assistant'; uuid = 'u3'; parentUuid = 'u2'
+                    timestamp = '2026-08-27T10:00:09Z'
+                    message = @{
+                        model   = 'test-model'
+                        content = @(
+                            @{ type = 'text'; text = 'The heredoc ate the backslashes. Using the Write tool instead.' }
+                            @{ type = 'tool_use'; id = 'call-unanswered'; name = 'Write'; input = @{ file_path = 'out.md' } }
+                        )
+                    }
+                } | ConvertTo-Json -Depth 8 -Compress)
+        )
+        [System.IO.File]::WriteAllLines($script:Jsonl, [string[]]$lines, [System.Text.UTF8Encoding]::new($false))
+
+        $script:Read = Import-CorpusTranscript -Path $script:Jsonl -RepositoryRoot $TestDrive
+        $script:Calls = @($script:Read.ToolCalls)
+    }
+
+    It 'reads every tool call in the session' {
+        $script:Calls.Count | Should-Be 3
+    }
+
+    It 'marks the call whose result carried is_error' {
+        $bad = @($script:Calls | Where-Object { $_.IsError -eq $true })
+        $bad.Count | Should-Be 1
+        $bad[0].ToolName | Should-Be 'Bash'
+    }
+
+    It 'marks a successful call false rather than leaving it unknown' {
+        # False and null are different statements. Null said 'nobody looked' for
+        # 1,357 calls; false says 'looked, and it succeeded'.
+        $ok = @($script:Calls | Where-Object { $_.IsError -eq $false })
+        $ok.Count | Should-Be 1
+    }
+
+    It 'leaves a call with no result at null' {
+        # This module reads LIVE transcripts, so the last call in a file is
+        # routinely unanswered. Null is the honest value; false would assert a
+        # success that has not happened yet.
+        $pending = @($script:Calls | Where-Object { $null -eq $_.IsError })
+        $pending.Count | Should-Be 1
+        $pending[0].ToolName | Should-Be 'Write'
+    }
+
+    It 'measures the result without storing it' {
+        $bad = @($script:Calls | Where-Object { $_.IsError -eq $true })[0]
+        $bad.ResultChars | Should-Be 'unexpected EOF while looking for matching quote'.Length
+        # The clause the schema makes: measured, never stored. The result body
+        # is nowhere on the record.
+        @($bad.PSObject.Properties.Name) -contains 'ResultText' | Should-BeFalse
+        @($bad.PSObject.Properties.Name) -contains 'ResultChars' | Should-BeTrue
+    }
+
+    It 'keeps the visible text of a turn and drops the result-only line' {
+        # Two, not three. The middle line carries nothing but tool_result
+        # blocks - no visible text, no tool call of its own - so it is a
+        # bookkeeping record and keeping it would inflate every per-turn
+        # statistic. Its results still reach the calls they answer, which is
+        # the point of resolving them by id rather than by adjacency.
+        $turns = @($script:Read.Turns)
+        $turns.Count | Should-Be 2
+        @($turns | Where-Object { $_.Text -match 'heredoc' }).Count | Should-Be 2
+    }
+}
+
 Describe 'Protect-CorpusText' {
     It 'redacts a home directory with either separator, single or doubled' {
         # A transcript embeds tool inputs as JSON, so the same path appears both

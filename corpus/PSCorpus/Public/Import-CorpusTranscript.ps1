@@ -21,7 +21,23 @@ function Import-CorpusTranscript {
 
         TOOL RESULTS ARE MEASURED, NEVER STORED. A build log is tens of
         thousands of characters of no training value, and it is where machine
-        paths and environment leak in bulk.
+        paths and environment leak in bulk. Measured means measured: until
+        v0.17.1 IsError and ResultChars were both assigned $null
+        unconditionally, so the clause described an intention rather than the
+        code. Across three sessions that was 1,357 tool calls carrying no error
+        signal at all while the raw transcripts held 74 is_error results, and a
+        recurrence measurement that needed 'which turns failed' had to re-parse
+        the JSONL outside this module to get it.
+
+        A RESULT ARRIVES LATER THAN THE CALL IT ANSWERS. The tool_use block is
+        in an assistant line and its tool_result is in a following user line,
+        so a single forward pass cannot resolve one against the other. Results
+        are collected by tool_use_id as they are read and applied to the file's
+        own tool calls once the file is finished. A call whose result never
+        arrived keeps $null, which is the honest value for a session that was
+        still running when it was read - and this module reads live
+        transcripts, so that is the common case at the tail rather than a
+        malformation.
 
         A malformed line is skipped and counted rather than thrown on. A
         transcript is an append-only log written by a live process, so its last
@@ -76,6 +92,11 @@ function Import-CorpusTranscript {
         $sessionId = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
         $sourceId = "transcript:$sessionId"
 
+        # Results by tool_use_id, and where this file's calls start, so the
+        # post-pass below touches only its own.
+        $resultById = @{}
+        $callsFrom = $toolCalls.Count
+
         $sources.Add([pscustomobject]@{
                 PSTypeName = 'PSCorpus.Source'
                 SourceId   = $sourceId
@@ -124,6 +145,25 @@ function Import-CorpusTranscript {
                         'text' { [void]$text.AppendLine([string]$block.text) }
                         'thinking' { $thinkingChars += ([string]$block.thinking).Length }
                         'tool_use' { $blocks += $block }
+                        'tool_result' {
+                            # get_Item-free: keyed by an opaque tool_use id, not
+                            # by English, so a hashtable is safe here. The
+                            # content is a string or a list of blocks; only its
+                            # LENGTH is kept, per the clause above.
+                            $chars = 0
+                            $payload = $block.content
+                            if ($payload -is [string]) { $chars = $payload.Length }
+                            elseif ($payload) {
+                                foreach ($part in @($payload)) {
+                                    if ($part -is [string]) { $chars += $part.Length }
+                                    elseif ($part.text) { $chars += ([string]$part.text).Length }
+                                }
+                            }
+                            $resultById[[string]$block.tool_use_id] = [pscustomobject]@{
+                                IsError     = [bool]$block.is_error
+                                ResultChars = $chars
+                            }
+                        }
                         default { }
                     }
                 }
@@ -180,6 +220,10 @@ function Import-CorpusTranscript {
                         Ordinal      = $toolOrdinal++
                         ToolName     = [string]$block.name
                         InputSummary = $summary
+                        # The id is kept only long enough to match a result to
+                        # its call; it is not part of the corpus and never
+                        # reaches the database.
+                        ToolUseId    = [string]$block.id
                         IsError      = $null
                         ResultChars  = $null
                     })
@@ -187,6 +231,20 @@ function Import-CorpusTranscript {
 
             $ordinal++
         }
+
+        # Results applied once the file is read, because a result is always in a
+        # later line than the call it answers.
+        $resolved = 0
+        for ($i = $callsFrom; $i -lt $toolCalls.Count; $i++) {
+            $call = $toolCalls[$i]
+            if (-not $call.ToolUseId) { continue }
+            if (-not $resultById.ContainsKey($call.ToolUseId)) { continue }
+            $outcome = $resultById[$call.ToolUseId]
+            $call.IsError = $outcome.IsError
+            $call.ResultChars = $outcome.ResultChars
+            $resolved++
+        }
+        Write-Verbose "$($file.Name): matched $resolved of $($toolCalls.Count - $callsFrom) tool call(s) to a result."
 
         if ($torn -gt 0) {
             Write-Verbose "$($file.Name): skipped $torn unparsable line(s)."
