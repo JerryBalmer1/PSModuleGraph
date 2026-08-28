@@ -5,24 +5,29 @@ function Export-CorpusTrainingSet {
     .DESCRIPTION
         THE DELIVERABLE, and the reason every other command exists.
 
-        Four kinds, and the weights are not a guess at quality - they are how
-        RARE the kind is. Ordinary exchanges are abundant in every corpus ever
-        assembled; a recorded doubt with an outcome attached is not. A sampler
-        that treats them equally drowns the signal that made this worth
-        building.
+        Four kinds: exchange, calibration, critique and handoff. What separates
+        them is what each one is evidence OF, and the definitions are in
+        corpus/docker/init/01-schema.sql where the tables are.
 
-          exchange     1.0  (prompt, response). Ordinary supervised data.
-          calibration  3.0  a claim the author made about the LIMITS of their
-                            own work, written before anyone checked, with
-                            whether the next lap resolved it. Predictions about
-                            one's own reliability WITH ground truth attached are
-                            almost absent from public corpora.
-          critique     4.0  the author criticising the instruction they were
-                            given. A preference pair where the model is the
-                            critic, which is the direction almost nobody
-                            collects.
-          handoff      2.5  advice written to the author's next self about what
-                            to check first and what they got wrong.
+        THIS COMMAND ASSIGNS NO WEIGHTS, AND THAT IS THE POINT. It used to
+        stamp 1.0, 3.0, 4.0 and 2.5 from a map written inline. Those numbers
+        are an argument about what public corpora are short of, not a
+        measurement of anything in this database - and at the time they were
+        written the critique population was TWO ROWS, which cannot test a
+        weight of four. An ingester that writes them anyway turns an untested
+        belief into a column value that every downstream reader takes for data.
+
+        So the weights left. They live in corpus/sampling/weights.json, which
+        is versioned, dated, and carries the reasoning and the population size
+        behind each number. Omit -WeightProfile and no weight is emitted at
+        all: training_example.weight takes its column default of 1.0 and the
+        database records what was EXTRACTED rather than what someone believed
+        about it. Pass -WeightProfile and the file is applied - opt in, from
+        data, with a version attached.
+
+        Adding or changing a weight is therefore a data edit. If it ever
+        requires editing this file, that is a defect - report it rather than
+        working around it.
 
         Every example keeps a pointer back to the rows that produced it. A
         training example nobody can trace to its evidence is one nobody can
@@ -37,8 +42,15 @@ function Export-CorpusTrainingSet {
     .PARAMETER MinExchangeLength
         Shortest user turn that becomes an exchange. A one-word 'go' is a real
         turn and a worthless example.
+    .PARAMETER WeightProfile
+        Path to a sampling weight file - corpus/sampling/weights.json. Omitted,
+        every example is emitted with no weight and the column default stands.
+        A kind absent from the file is left unweighted rather than defaulted to
+        something, because a missing entry is a question nobody answered and
+        1.0 would answer it silently.
     .OUTPUTS
-        PSCorpus.TrainingExample records.
+        PSCorpus.TrainingExample records. Weight is $null unless -WeightProfile
+        was given.
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -55,20 +67,49 @@ function Export-CorpusTrainingSet {
 
         [Parameter()]
         [ValidateRange(1, 100000)]
-        [int] $MinExchangeLength = 80
+        [int] $MinExchangeLength = 80,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string] $WeightProfile
     )
+
+    # Read once, before anything is emitted. A profile that cannot be read is
+    # a thrown error rather than a silent fall back to unweighted: asking for a
+    # weighting and getting none without being told is the failure this
+    # parameter exists to make impossible.
+    $weights = @{}
+    $profileVersion = $null
+    if ($WeightProfile) {
+        if (-not (Test-Path -LiteralPath $WeightProfile)) {
+            throw "No weight profile at '$WeightProfile'."
+        }
+        $profile = Get-Content -LiteralPath $WeightProfile -Raw | ConvertFrom-Json
+        $profileVersion = $profile.weightsVersion
+        foreach ($kind in $profile.weights.PSObject.Properties.Name) {
+            $weights[$kind] = [double]$profile.weights.$kind.weight
+        }
+    }
 
     $examples = [System.Collections.Generic.List[object]]::new()
 
     function Add-Example {
-        param($Kind, $Prompt, $Completion, $Weight, $Metadata)
+        param($Kind, $Prompt, $Completion, $Metadata)
         if ([string]::IsNullOrWhiteSpace($Prompt) -or [string]::IsNullOrWhiteSpace($Completion)) { return }
+
+        # $null, not 1.0, when no profile was given. The SQL writer omits the
+        # column for a null weight so the database default applies, and a null
+        # in the JSONL says 'nobody decided' where a 1.0 would say 'decided,
+        # and the answer was one'.
+        $weight = $null
+        if ($weights.ContainsKey($Kind)) { $weight = $weights[$Kind] }
+
         $examples.Add([pscustomobject]@{
                 PSTypeName = 'PSCorpus.TrainingExample'
                 Kind       = $Kind
                 Prompt     = $Prompt.Trim()
                 Completion = $Completion.Trim()
-                Weight     = $Weight
+                Weight     = $weight
                 Metadata   = $Metadata
             })
     }
@@ -89,7 +130,7 @@ function Export-CorpusTrainingSet {
         if ($doubts.Count -eq 0) { continue }
 
         $completion = ($doubts | ForEach-Object { '- ' + $_.Body }) -join "`n"
-        Add-Example -Kind 'calibration' -Weight 3.0 `
+        Add-Example -Kind 'calibration' `
             -Prompt ("You have just finished this work:`n`n$($entry.PromptIntent)`n`n" +
             'List what you could NOT verify. Be specific about what would have to happen to settle each one.') `
             -Completion $completion `
@@ -108,7 +149,7 @@ function Export-CorpusTrainingSet {
     if ($PatternSet) {
         foreach ($pattern in $PatternSet.Patterns) {
             if (-not $pattern.Handoff) { continue }
-            Add-Example -Kind 'handoff' -Weight 2.5 `
+            Add-Example -Kind 'handoff' `
                 -Prompt ("You observed this, at $($pattern.Scales.Count) separate scales:`n`n" +
                 "$($pattern.Statement)`n`n" +
                 'Write to the version of yourself that starts the next session having read none of this. ' +
@@ -180,7 +221,7 @@ function Export-CorpusTrainingSet {
                 }
                 if (-not $answer) { continue }
 
-                Add-Example -Kind 'exchange' -Weight 1.0 `
+                Add-Example -Kind 'exchange' `
                     -Prompt $episode.Prompt.Text -Completion $answer.Text `
                     -Metadata @{
                     session        = $sessionId
@@ -196,7 +237,7 @@ function Export-CorpusTrainingSet {
                 foreach ($reply in $episode.Replies) {
                     $critique = Get-CorpusCritique -Text $reply.Text
                     if (-not $critique) { continue }
-                    Add-Example -Kind 'critique' -Weight 4.0 `
+                    Add-Example -Kind 'critique' `
                         -Prompt ("Here is an instruction you were given:`n`n$($episode.Prompt.Text)`n`n" +
                         'Name the single thing about it you think is wrong, and say why.') `
                         -Completion $critique `

@@ -160,6 +160,19 @@ function Export-CorpusSql {
         Add-Line '-- training_example ---------------------------------------------------'
         Add-Line 'DELETE FROM training_example;'
         foreach ($example in $TrainingExample) {
+            # The weight column is OMITTED when nobody decided a weight, so the
+            # schema's DEFAULT 1.0 applies and the database records what was
+            # extracted rather than an untested belief about how much it is
+            # worth. Writing 1.0 explicitly would be indistinguishable from a
+            # sampler having chosen 1.0, which is a different statement.
+            # See corpus/sampling/weights.json.
+            if ($null -eq $example.Weight) {
+                Add-Line ("INSERT INTO training_example (kind, prompt, completion, metadata) VALUES ({0}, {1}, {2}, {3}::jsonb);" -f
+                    (ConvertTo-SqlLiteral $example.Kind), (ConvertTo-SqlLiteral $example.Prompt),
+                    (ConvertTo-SqlLiteral $example.Completion),
+                    (ConvertTo-SqlLiteral ($example.Metadata | ConvertTo-Json -Depth 6 -Compress)))
+                continue
+            }
             Add-Line ("INSERT INTO training_example (kind, prompt, completion, weight, metadata) VALUES ({0}, {1}, {2}, {3}, {4}::jsonb);" -f
                 (ConvertTo-SqlLiteral $example.Kind), (ConvertTo-SqlLiteral $example.Prompt),
                 (ConvertTo-SqlLiteral $example.Completion),

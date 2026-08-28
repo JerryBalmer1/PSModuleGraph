@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0.0",
+  "weightsVersion": "0.1.0",
+  "note": "Sampling weights for training_example.kind. THESE ARE AN ARGUMENT, NOT A MEASUREMENT. Nothing has been trained on this corpus and no held-out comparison has been run, so every number below is a prediction about what public corpora are short of - not a result. They live here, outside the ingester, because a value nobody can test must at least be a value somebody can change without editing code, and must carry the date and the reasoning that produced it. The ingester does not read this file. It writes no weight at all, so training_example.weight takes its column default of 1.0 and the database records what was extracted rather than what someone believed about it. A sampler reads this file and applies it at sampling time, which is where a weighting decision belongs.",
+  "decidedOn": "2026-08-27",
+  "decidedIn": "ledger/0024",
+  "evidence": "none",
+  "supersededBy": null,
+  "weights": {
+    "exchange": {
+      "weight": 1.0,
+      "basis": "The baseline. Ordinary supervised data, abundant in every corpus ever assembled. Every other number is a ratio against this one.",
+      "population": "unbounded"
+    },
+    "calibration": {
+      "weight": 3.0,
+      "basis": "A claim the author made about the limits of their own work, written before anyone checked, with whether the next lap resolved it. Predictions about one's own reliability WITH ground truth attached are close to absent from public corpora.",
+      "population": "one per iteration that recorded a doubt"
+    },
+    "critique": {
+      "weight": 4.0,
+      "basis": "The author criticising the instruction they were given. A preference pair where the model is the critic, which is the direction almost nobody collects.",
+      "population": "two rows at the time this file was written",
+      "caution": "Two rows cannot test a weight of four. This is the least evidenced number in the file and the first one a held-out comparison should move."
+    },
+    "handoff": {
+      "weight": 2.5,
+      "basis": "Advice written to the author's next self, in the second person, about what to check first and what they got wrong.",
+      "population": "one per pattern carrying a handoff"
+    }
+  }
+}

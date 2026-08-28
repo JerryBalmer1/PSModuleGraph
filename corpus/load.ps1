@@ -18,6 +18,11 @@
     from the ledger and the pattern log alone.
 .PARAMETER SqlOut
     Where to write the load script.
+.PARAMETER WeightProfile
+    Sampling weights to apply - corpus/sampling/weights.json. OMITTED BY
+    DEFAULT, and deliberately: the weights are an argument nobody has tested,
+    so the corpus is built unweighted and the database's column default stands.
+    Pass this when sampling, not when ingesting.
 .PARAMETER JsonlOut
     Also write the training set as JSONL, which is what most trainers eat.
 .EXAMPLE
@@ -30,6 +35,7 @@ param(
     [Parameter()] [string] $RepositoryRoot,
     [Parameter()] [string] $TranscriptPath,
     [Parameter()] [string] $SqlOut = './output/corpus/corpus.sql',
+    [Parameter()] [string] $WeightProfile,
     [Parameter()] [string] $JsonlOut
 )
 
@@ -68,7 +74,9 @@ if ($TranscriptPath) {
 }
 
 $recurrence = Measure-CorpusRecurrence -Claim $ledger.Claims
-$training = Export-CorpusTrainingSet -Ledger $ledger -PatternSet $patterns -Transcript $transcript
+$trainingArgs = @{ Ledger = $ledger; PatternSet = $patterns; Transcript = $transcript }
+if ($WeightProfile) { $trainingArgs['WeightProfile'] = $WeightProfile }
+$training = Export-CorpusTrainingSet @trainingArgs
 
 $sql = Export-CorpusSql -Ledger $ledger -PatternSet $patterns -Transcript $transcript `
     -TrainingExample $training -Recurrence $recurrence -Path $SqlOut
@@ -104,6 +112,7 @@ if ($JsonlOut) {
     ToolCalls   = if ($transcript) { @($transcript.ToolCalls).Count } else { 0 }
     Recurrence  = @($recurrence).Count
     Examples    = @($training).Count
+    Weighted    = [bool]$WeightProfile
     Sql         = $sql.FullName
     Jsonl       = $JsonlOut
 }

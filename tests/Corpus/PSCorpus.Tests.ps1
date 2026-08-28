@@ -299,11 +299,47 @@ Describe 'Export-CorpusTrainingSet' {
         $calibration[0].Prompt | Should-MatchString 'could NOT verify'
     }
 
-    It 'weights a calibration example above an ordinary exchange' {
-        # Not a guess at quality - a statement of how rare the kind is. A
-        # sampler treating them equally drowns the signal.
+    It 'assigns no weight when no profile was asked for' {
+        # The ingester used to stamp 3.0 here from a map written inline. Those
+        # numbers are an argument about what public corpora lack, not a
+        # measurement of anything in this database, and writing them made an
+        # untested belief indistinguishable from data. Null rather than 1.0:
+        # the SQL writer omits the column entirely so the schema default
+        # applies, and 'nobody decided' stays distinguishable from 'decided,
+        # and the answer was one'.
         $calibration = @($script:Examples | Where-Object Kind -eq 'calibration')[0]
-        $calibration.Weight | Should-BeGreaterThan 1.0
+        $calibration.Weight | Should-BeNull
+    }
+
+    It 'takes every weight from the profile it was given' {
+        # The gate that makes corpus/sampling/weights.json load-bearing rather
+        # than decorative. The values here are DELIBERATELY not the shipped
+        # ones: a test written against the real file would pass just as well if
+        # the command had kept its hardcoded map, which is the thing this
+        # change removed.
+        $profile = Join-Path $TestDrive 'weights.json'
+        @{
+            schemaVersion  = '1.0.0'
+            weightsVersion = '9.9.9-test'
+            weights        = @{ calibration = @{ weight = 7.5 } }
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $profile -Encoding utf8
+
+        $weighted = Export-CorpusTrainingSet -Ledger $script:Ledger2 -WeightProfile $profile
+
+        $calibration = @($weighted | Where-Object Kind -eq 'calibration')[0]
+        $calibration.Weight | Should-Be 7.5
+
+        # A kind the profile does not mention stays unweighted rather than
+        # falling back to 1.0. A missing entry is a question nobody answered.
+        $handoff = @($weighted | Where-Object Kind -eq 'handoff')
+        foreach ($example in $handoff) { $example.Weight | Should-BeNull }
+    }
+
+    It 'refuses a weight profile it cannot read' {
+        # Asking for a weighting and silently getting none is the failure the
+        # parameter exists to make impossible.
+        { Export-CorpusTrainingSet -Ledger $script:Ledger2 -WeightProfile (Join-Path $TestDrive 'absent.json') } |
+            Should-Throw -ExceptionMessage '*No weight profile*'
     }
 
     It 'records whether the next lap closed anything this one opened' {
