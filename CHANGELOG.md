@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`Update-KnowledgeStore` and `Update-KnowledgePatternSubject` report
+  `RecordsKept` and `RecordsPruned`** alongside `RecordsWritten`, so a build
+  says how much of the store it left alone.
+
+### Changed
+
+- **A build that changes nothing writes nothing.** The store rewrote all 282
+  records on every build, so one with three genuinely changed records was
+  indistinguishable from one with none. Replacement is now
+  write-what-should-exist then delete-what-should-not — `Write-KnowledgeRecord`
+  compares rendered bytes and returns without touching a file that is already
+  correct, and `Remove-UnwrittenKnowledgeRecord` deletes the records a run did
+  not write and prunes the directories that leaves empty. The old shape removed
+  the whole owned subtree first, which is why a guard in the writer alone could
+  never have fired. Measured: a second run writes **0 of 252** records and moves
+  no mtime.
+
 - **A prediction written before the pass that tests it.**
   `corpus/analysis/predictions.json` states a direction for every classified
   watchlist term, from its role rather than its last number, with three

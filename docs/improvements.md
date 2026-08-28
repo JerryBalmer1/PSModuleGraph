@@ -82,19 +82,6 @@ the next change to this cheaper**. Three concrete tests:
 - **`Show-RenderDocument`, `Get-PSModuleGraphAsset` and
   `Get-PSModuleGraphAssetPath` carry graph vocabulary in their names.** On the
   checklist already; listed here so it is not forgotten between passes.
-- **`Write-KnowledgeRecord` rewrites every record on every run.** It validates,
-  then calls `File.WriteAllText` unconditionally - no read-before-write, no
-  content comparison, no skip-if-identical. The `Knowledge` build task drives it
-  over both populations, so a build that changes nothing still touches all 282
-  files. Today that costs only mtime churn, which git tolerates; the cost that
-  matters is that a store with three genuinely changed records is
-  indistinguishable at a glance from one with none. It also resurrects
-  stat-cache noise the next time any byte-level detail shifts - as the
-  LF-front-matter-over-CRLF-body defect closed in v0.16.1 did, leaving 282
-  files reporting modified with identical blob hashes until the index was
-  renormalised. The guard is one hash comparison before the write. Logged
-  rather than taken because it is the write path. *Noticed while explaining a
-  282-file empty diff.*
 - **The `namespace` facet has met its condition and is reinstated as a
   proposal.** Withdrawn in `ledger/0002` under the reflection evidence rule, on
   the explicit ground that every subject in the store was `psmodule:` so no
@@ -275,6 +262,21 @@ the next change to this cheaper**. Three concrete tests:
 ---
 
 ## Done
+
+- **A build that changed nothing rewrote all 282 records.** So a store with
+  three genuinely changed records was indistinguishable at a glance from one
+  with none, and 282 files reported modified with identical blob hashes.
+  **The diagnosis in the backlog entry was wrong in a way worth keeping:** it
+  said the fix was a skip-if-identical guard in `Write-KnowledgeRecord`, and
+  that guard alone would never have fired, because `Update-KnowledgeStore`
+  removed the whole owned subtree before writing anything — every record was new
+  by the time the writer saw it. The churn came from the replacement strategy,
+  not from the writer. Replacement is now write-what-should-exist then
+  delete-what-should-not, via `Remove-UnwrittenKnowledgeRecord`, and the writer
+  compares rendered bytes before writing. Measured: a second `Knowledge` run
+  writes **0 of 252** records and moves no mtime, against 282 rewritten before.
+  Both halves were proved falsifiable — the guard disabled turns three tests red,
+  the prune disabled turns five red. *Logged Small in `0024`, taken in `0028`.*
 
 - **A "root" was an artefact of the name index.** The index mapped a lowercased
   bare name to one id, so the last definition parsed won and every earlier one
