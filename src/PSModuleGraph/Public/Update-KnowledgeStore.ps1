@@ -105,15 +105,17 @@ function Update-KnowledgeStore {
         # Everything this module owns is replaced, not merged: a definition that
         # has been deleted must lose its records, and merging would leave them
         # behind as facts about something that no longer exists.
-        foreach ($area in 'subjects', 'assignments') {
-            $owned = Join-Path (Join-Path $root $area) "psmodule/$moduleName"
-            if ((Test-Path -LiteralPath $owned) -and
-                $PSCmdlet.ShouldProcess($owned, 'Remove records this module owns before rewriting them')) {
-                Remove-Item -LiteralPath $owned -Recurse -Force
-            }
-        }
+        #
+        # WRITE WHAT SHOULD EXIST, THEN DELETE WHAT SHOULD NOT. Until v0.18.0
+        # this removed the whole owned subtree first, which is the same
+        # invariant and is also why nothing could ever be skipped: every file
+        # was new by the time the writer saw it. The store therefore rewrote all
+        # 282 records on every build, and a store with three genuinely changed
+        # records was indistinguishable from one with none.
+        $kept = [System.Collections.Generic.List[string]]::new()
 
         $moduleRelative = ConvertTo-SubjectSourcePath -Path $target.ManifestPath -Base $target.ModuleBase
+        $kept.Add((ConvertTo-KnowledgeFilePath -Id $moduleId -Root $root -Area 'subjects'))
         $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema -Id $moduleId `
             -Name $moduleName -Parent '' -Source $moduleRelative -GeneratedAt $GeneratedAt -Prompt $Prompt `
             -Body @"
@@ -140,6 +142,7 @@ the assignments of the things it contains.
             # answer - see knowledge/NAMING.md.
             $formerId = Get-LegacyKnowledgeSubjectId -Node $node -ModuleName $moduleName
 
+            $kept.Add((ConvertTo-KnowledgeFilePath -Id $id -Root $root -Area 'subjects'))
             $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema -Id $id `
                 -Name ([string]$node.Name) -Parent $moduleId -Source $source -Aliases @($formerId) `
                 -GeneratedAt $GeneratedAt -Prompt $Prompt -Body @"
@@ -149,6 +152,7 @@ A ``$kind`` defined in ``$moduleName``. Its assignments live one per facet under
 ``assignments/``, so changing one classification is a one-file diff.
 "@
 
+            $kept.Add((ConvertTo-KnowledgeFilePath -Id $id -Root $root -Area 'assignments' -Facet 'structure' -FacetPath "structure:$kind"))
             $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Subject $id `
                 -Facet 'structure' -FacetPath "structure:$kind" -Confidence 1 `
                 -EvidenceKind 'ast' -EvidenceValue ([string]$node.Kind) -EvidenceSource 'psmodulegraph-parser' `
@@ -165,6 +169,7 @@ definition and nothing was inferred from a name.
             if ($kind -ne 'function') { continue }
 
             if ($node.IsExported) {
+                $kept.Add((ConvertTo-KnowledgeFilePath -Id $id -Root $root -Area 'assignments' -Facet 'surface' -FacetPath 'surface:exported'))
                 $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Subject $id `
                     -Facet 'surface' -FacetPath 'surface:exported' -Confidence 1 `
                     -EvidenceKind 'manifest-entry' -EvidenceValue 'FunctionsToExport' `
@@ -175,6 +180,7 @@ Named in the manifest's ``FunctionsToExport``. A direct observation, so confiden
 "@
             }
             else {
+                $kept.Add((ConvertTo-KnowledgeFilePath -Id $id -Root $root -Area 'assignments' -Facet 'surface' -FacetPath 'surface:internal'))
                 $written += Write-AssignmentRecord -Root $root -SchemaPath $assignmentSchema -Subject $id `
                     -Facet 'surface' -FacetPath 'surface:internal' -Confidence 0.9 `
                     -EvidenceKind 'manifest-absence' -EvidenceValue 'not listed in FunctionsToExport' `
@@ -189,6 +195,19 @@ the code it analyses.
             }
         }
 
+        # The prune, after everything this module owns has been written. Gated
+        # here rather than only inside the helper so -WhatIf reports the
+        # deletions without reaching them, while the WRITES above still run
+        # their validation - a dry run that skips validation would report
+        # success for a store it could not actually write.
+        $pruned = 0
+        foreach ($area in 'subjects', 'assignments') {
+            $owned = Join-Path (Join-Path $root $area) "psmodule/$moduleName"
+            if ($PSCmdlet.ShouldProcess($owned, 'Remove records this run did not write')) {
+                $pruned += Remove-UnwrittenKnowledgeRecord -Root $owned -Kept $kept.ToArray()
+            }
+        }
+
         $graded = Update-FacetHealthRecord -Root $root -GeneratedAt $GeneratedAt -Prompt $Prompt
 
         [pscustomobject]@{
@@ -196,6 +215,8 @@ the code it analyses.
             StoreRoot      = $root
             ModuleName     = $moduleName
             RecordsWritten = $written
+            RecordsKept    = $kept.Count
+            RecordsPruned  = $pruned
             FacetsGraded   = $graded
             GeneratedAt    = $GeneratedAt
             Prompt         = $Prompt

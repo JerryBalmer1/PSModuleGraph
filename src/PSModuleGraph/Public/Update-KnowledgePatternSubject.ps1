@@ -86,11 +86,12 @@ function Update-KnowledgePatternSubject {
     # Replaced, not merged. A pattern file that has been removed must lose its
     # subject, and merging would leave a record behind as a fact about
     # something that is no longer in the log.
+    #
+    # Write what should exist, then delete what should not - see
+    # Remove-UnwrittenKnowledgeRecord. Removing the subtree first would make
+    # every record new and defeat the writer's skip-if-identical guard.
     $owned = Join-Path (Join-Path $root 'subjects') 'pattern'
-    if ((Test-Path -LiteralPath $owned) -and
-        $PSCmdlet.ShouldProcess($owned, 'Remove pattern subjects before rewriting them')) {
-        Remove-Item -LiteralPath $owned -Recurse -Force
-    }
+    $kept = [System.Collections.Generic.List[string]]::new()
 
     $written = 0
     $files = @(Get-ChildItem -LiteralPath $Path -Filter '*.md' -File | Sort-Object Name)
@@ -134,10 +135,16 @@ Carries no assignments. See ``docs/constraints.md``, "Patterns are subjects and
 facet-health does not grade them".
 "@
 
+        $kept.Add((ConvertTo-KnowledgeFilePath -Id "pattern:$patternId" -Root $root -Area 'subjects'))
         $written += Write-SubjectRecord -Root $root -SchemaPath $subjectSchema `
             -Id "pattern:$patternId" -Name $name -Parent '' -Source $source `
             -GeneratedAt $GeneratedAt -Prompt $Prompt `
             -GeneratedBy 'PSModuleGraph Update-KnowledgePatternSubject' -Body $body
+    }
+
+    $pruned = 0
+    if ($PSCmdlet.ShouldProcess($owned, 'Remove pattern subjects this run did not write')) {
+        $pruned = Remove-UnwrittenKnowledgeRecord -Root $owned -Kept $kept.ToArray()
     }
 
     [pscustomobject]@{
@@ -145,6 +152,8 @@ facet-health does not grade them".
         StoreRoot      = $root
         PatternsRead   = $files.Count
         RecordsWritten = $written
+        RecordsKept    = $kept.Count
+        RecordsPruned  = $pruned
         GeneratedAt    = $GeneratedAt
     }
 }

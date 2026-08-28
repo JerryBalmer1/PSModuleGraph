@@ -289,7 +289,7 @@ task Knowledge Build, Dependencies, {
 
     foreach ($module in $SrcRoot, (Join-Path $TestsRoot 'fixtures/SampleModule')) {
         $summary = Update-KnowledgeStore -Path $module -StoreRoot $store -GeneratedAt $stamp -Confirm:$false
-        Write-Build Green "  $($summary.ModuleName): $($summary.RecordsWritten) record(s), $($summary.FacetsGraded) facet grade(s)"
+        Write-Build Green "  $($summary.ModuleName): $($summary.RecordsWritten) of $($summary.RecordsKept) record(s) rewritten, $($summary.RecordsPruned) pruned, $($summary.FacetsGraded) facet grade(s)"
     }
 
     # The second namespace, and the third population. Patterns are subjects as
@@ -299,7 +299,7 @@ task Knowledge Build, Dependencies, {
     # subjects/pattern/ and must not race the tree the loop above replaces.
     $patterns = Update-KnowledgePatternSubject -Path (Join-Path $BuildRoot 'knowledge/patterns') `
         -StoreRoot $store -GeneratedAt $stamp -Confirm:$false
-    Write-Build Green "  patterns: $($patterns.RecordsWritten) record(s) from $($patterns.PatternsRead) file(s)"
+    Write-Build Green "  patterns: $($patterns.RecordsWritten) of $($patterns.RecordsKept) record(s) rewritten from $($patterns.PatternsRead) file(s), $($patterns.RecordsPruned) pruned"
 }
 
 task Import Build, Dependencies, {

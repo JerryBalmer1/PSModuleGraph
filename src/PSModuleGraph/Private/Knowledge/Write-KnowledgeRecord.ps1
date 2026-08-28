@@ -88,6 +88,18 @@ function Write-KnowledgeRecord {
         CRLF diff against a copy checked out elsewhere is noise that hides the
         change a reader is looking for.
 
+        A RECORD WHOSE BYTES ARE ALREADY RIGHT IS NOT REWRITTEN. Returns 0 and
+        leaves the file, its mtime and its stat cache alone. Before v0.18.0 every
+        record was rewritten on every build, so a store with three genuinely
+        changed records looked exactly like one with none - 282 files reporting
+        modified with identical blob hashes, which is noise that eventually
+        hides a real change.
+
+        The guard costs one read of a file the caller is about to overwrite, and
+        it is deliberately a byte comparison rather than a hash: at this size a
+        hash is slower and would introduce a collision the comparison does not
+        have.
+
         The Body is normalised, not merely joined. Joining the lines with LF
         settles the endings BETWEEN them and says nothing about the ones inside
         a value, and $Body arrives from a here-string carrying its source
@@ -103,6 +115,9 @@ function Write-KnowledgeRecord {
         Prose body. Not optional - see knowledge/NAMING.md.
     .PARAMETER SchemaPath
         JSON Schema the record must satisfy before it is written.
+    .OUTPUTS
+        1 if bytes were written, 0 if the file was already correct. Callers sum
+        it, so a build that changes nothing reports nothing written.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType([int])]
@@ -122,14 +137,90 @@ function Write-KnowledgeRecord {
 
     if (-not $PSCmdlet.ShouldProcess($Path, 'Write knowledge record')) { return 0 }
 
+    $body = $Body.TrimEnd().Replace("`r`n", "`n").Replace("`r", "`n")
+    $lines = @('---') + (ConvertTo-FlatKnowledgeYaml -Document $Document) + @('---', '') + $body
+    $text = ($lines -join "`n") + "`n"
+
+    # Rendered first, compared second, written last. Comparing the rendered text
+    # rather than the document is what makes this correct: two documents can
+    # differ in ways the renderer flattens away, and the file is what a reader
+    # sees.
+    #
+    # ORDINAL, and byte-for-byte. The store's own rules say a URN preserves
+    # case, so a record differing from its predecessor only in the case of an id
+    # is a DIFFERENT record and must be written. knowledge/patterns/0023.
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        $existing = [System.IO.File]::ReadAllText($Path, [System.Text.UTF8Encoding]::new($false))
+        if ([string]::Equals($existing, $text, [System.StringComparison]::Ordinal)) { return 0 }
+    }
+
     $directory = Split-Path -Path $Path -Parent
     if (-not (Test-Path -LiteralPath $directory)) {
         New-Item -ItemType Directory -Path $directory -Force | Out-Null
     }
 
-    $body = $Body.TrimEnd().Replace("`r`n", "`n").Replace("`r", "`n")
-    $lines = @('---') + (ConvertTo-FlatKnowledgeYaml -Document $Document) + @('---', '') + $body
-    $text = ($lines -join "`n") + "`n"
     [System.IO.File]::WriteAllText($Path, $text, [System.Text.UTF8Encoding]::new($false))
     1
+}
+
+function Remove-UnwrittenKnowledgeRecord {
+    <#
+    .SYNOPSIS
+        Deletes every record under a subtree that this run did not write, and
+        prunes the directories left empty.
+    .DESCRIPTION
+        THE OTHER HALF OF NOT REWRITING EVERYTHING.
+
+        The store's rule is that a population is REPLACED, not merged: a
+        definition that has been deleted must lose its records, or the store
+        keeps answering for something that no longer exists. Until v0.18.0 that
+        was enforced by removing the whole owned subtree before writing
+        anything, which is correct and is also why nothing could be skipped -
+        every file was new by the time the writer saw it, so a guard in the
+        writer would never have fired.
+
+        Replacement is now: write what should exist, then delete what should not.
+        The invariant is identical and the churn is gone.
+
+        ORDINAL comparison on paths. A path is an identity here and the default
+        comparer folds case, which on a case-sensitive filesystem would treat
+        two distinct records as one and delete the survivor.
+    .PARAMETER Root
+        The subtree this run owns.
+    .PARAMETER Kept
+        Full paths written or confirmed correct by this run.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string] $Root,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Kept
+    )
+
+    if (-not (Test-Path -LiteralPath $Root)) { return 0 }
+
+    $keep = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($path in $Kept) { [void]$keep.Add([System.IO.Path]::GetFullPath($path)) }
+
+    $removed = 0
+    foreach ($file in (Get-ChildItem -LiteralPath $Root -Filter *.md -File -Recurse)) {
+        if ($keep.Contains([System.IO.Path]::GetFullPath($file.FullName))) { continue }
+        if ($PSCmdlet.ShouldProcess($file.FullName, 'Remove a record this run did not write')) {
+            Remove-Item -LiteralPath $file.FullName -Force
+            $removed++
+        }
+    }
+
+    # Deepest first, so a directory emptied by the loop above is itself
+    # collected in the same pass rather than surviving until the next run.
+    $directories = @(Get-ChildItem -LiteralPath $Root -Directory -Recurse |
+            Sort-Object { $_.FullName.Length } -Descending)
+    foreach ($directory in $directories) {
+        if (@(Get-ChildItem -LiteralPath $directory.FullName -Force).Count -ne 0) { continue }
+        if ($PSCmdlet.ShouldProcess($directory.FullName, 'Remove a directory this run emptied')) {
+            Remove-Item -LiteralPath $directory.FullName -Force
+        }
+    }
+
+    $removed
 }
